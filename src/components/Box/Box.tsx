@@ -1,6 +1,6 @@
 import React, { forwardRef } from 'react';
 import type { ElementType } from 'react';
-import type { PolymorphicComponentPropWithRef, PolymorphicRef } from '../../types/polymorphic';
+import type { PolymorphicComponentPropWithRef } from '../../types/polymorphic';
 import { mergeClasses } from '../../utilities/mergeClasses';
 import styles from './Box.module.css';
 
@@ -46,7 +46,7 @@ type BoxComponent = <C extends ElementType = 'div'>(
  * Spacing props resolve to `--ds-space-*` tokens so no component ever
  * hardcodes a length — see docs/SPEC.md "Styling Strategy".
  */
-export const Box: BoxComponent = forwardRef(function Box<C extends ElementType = 'div'>(
+export const Box = forwardRef(function Box<C extends ElementType = 'div'>(
   {
     as,
     className,
@@ -67,7 +67,7 @@ export const Box: BoxComponent = forwardRef(function Box<C extends ElementType =
     ml,
     ...rest
   }: BoxProps<C>,
-  ref?: PolymorphicRef<C>,
+  ref: React.ForwardedRef<Element>,
 ) {
   const Component = as || 'div';
 
@@ -97,7 +97,7 @@ export const Box: BoxComponent = forwardRef(function Box<C extends ElementType =
       {...rest}
     />
   );
-});
+}) as unknown as BoxComponent;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (Box as any).displayName = 'Box';
