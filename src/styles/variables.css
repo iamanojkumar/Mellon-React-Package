@@ -1,0 +1,99 @@
+/*
+  Placeholder design tokens. Names mirror what @company/tokens-web is
+  expected to export — swap this file for the generated one and no
+  component code should need to change. See docs/SPEC.md.
+*/
+:root {
+  /* Color — surface */
+  --ds-color-surface-primary: #ffffff;
+  --ds-color-surface-secondary: #f5f5f5;
+  --ds-color-surface-inverse: #111111;
+
+  /* Color — text */
+  --ds-color-text-primary: #111111;
+  --ds-color-text-secondary: #4b4b4b;
+  --ds-color-text-inverse: #ffffff;
+  --ds-color-text-disabled: #9a9a9a;
+
+  /* Color — border */
+  --ds-color-border-primary: #d9d9d9;
+  --ds-color-border-focus: #2563eb;
+
+  /* Color — brand / status */
+  --ds-color-brand-primary: #2563eb;
+  --ds-color-status-success: #15803d;
+  --ds-color-status-warning: #b45309;
+  --ds-color-status-danger: #b91c1c;
+
+  /* Spacing */
+  --ds-space-none: 0;
+  --ds-space-xs: 0.25rem;
+  --ds-space-sm: 0.5rem;
+  --ds-space-md: 1rem;
+  --ds-space-lg: 1.5rem;
+  --ds-space-xl: 2rem;
+  --ds-space-2xl: 3rem;
+
+  /* Radius */
+  --ds-radius-none: 0;
+  --ds-radius-sm: 0.25rem;
+  --ds-radius-md: 0.5rem;
+  --ds-radius-lg: 1rem;
+  --ds-radius-full: 9999px;
+
+  /* Typography */
+  --ds-font-family-base:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --ds-font-family-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --ds-font-size-xs: 0.75rem;
+  --ds-font-size-sm: 0.875rem;
+  --ds-font-size-md: 1rem;
+  --ds-font-size-lg: 1.25rem;
+  --ds-font-size-xl: 1.5rem;
+  --ds-font-weight-regular: 400;
+  --ds-font-weight-medium: 500;
+  --ds-font-weight-bold: 700;
+  --ds-line-height-tight: 1.2;
+  --ds-line-height-base: 1.5;
+
+  /* Motion */
+  --ds-motion-duration-fast: 100ms;
+  --ds-motion-duration-medium: 200ms;
+  --ds-motion-duration-slow: 320ms;
+  --ds-motion-easing-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ds-motion-easing-decelerate: cubic-bezier(0, 0, 0.2, 1);
+  --ds-motion-easing-accelerate: cubic-bezier(0.4, 0, 1, 1);
+
+  /* Elevation */
+  --ds-elevation-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --ds-elevation-md: 0 4px 8px rgba(0, 0, 0, 0.08);
+  --ds-elevation-lg: 0 12px 24px rgba(0, 0, 0, 0.12);
+
+  /* Z-index */
+  --ds-z-index-dropdown: 1000;
+  --ds-z-index-overlay: 1100;
+  --ds-z-index-modal: 1200;
+  --ds-z-index-toast: 1300;
+  --ds-z-index-tooltip: 1400;
+}
+
+[data-ds-theme='dark'] {
+  --ds-color-surface-primary: #111111;
+  --ds-color-surface-secondary: #1c1c1c;
+  --ds-color-surface-inverse: #ffffff;
+
+  --ds-color-text-primary: #f5f5f5;
+  --ds-color-text-secondary: #b3b3b3;
+  --ds-color-text-inverse: #111111;
+  --ds-color-text-disabled: #6b6b6b;
+
+  --ds-color-border-primary: #333333;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ds-motion-duration-fast: 0ms;
+    --ds-motion-duration-medium: 0ms;
+    --ds-motion-duration-slow: 0ms;
+  }
+}
