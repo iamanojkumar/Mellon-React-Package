@@ -1,0 +1,19 @@
+.card {
+  box-sizing: border-box;
+  background: var(--ds-color-surface-primary);
+  border-radius: var(--ds-radius-lg);
+}
+
+.card[data-variant='outlined'] {
+  border: 1px solid var(--ds-color-border-primary);
+}
+
+.card[data-variant='elevated'][data-elevation='sm'] {
+  box-shadow: var(--ds-elevation-sm);
+}
+.card[data-variant='elevated'][data-elevation='md'] {
+  box-shadow: var(--ds-elevation-md);
+}
+.card[data-variant='elevated'][data-elevation='lg'] {
+  box-shadow: var(--ds-elevation-lg);
+}

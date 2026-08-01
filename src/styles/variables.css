@@ -1,93 +1,104 @@
 /*
-  Placeholder design tokens. Names mirror what @company/tokens-web is
-  expected to export — swap this file for the generated one and no
-  component code should need to change. See docs/SPEC.md.
+  Bridges the --ds-* names component code references to the real
+  @mellon/tokens-web tokens (linked locally from
+  ../mellon_designsystem_foundation/builds/web until it's published to
+  npm — see package.json). Foundation token names/scales don't match this
+  file 1:1 (e.g. a numeric --spacing-* scale vs. this xs/sm/md scale, or
+  multi-layer --elevation-N-* shadows vs. a single box-shadow var), so
+  each line below is a deliberate mapping, not a rename. When the real
+  package is synced, only this file should need to change — component
+  .tsx/.module.css files never reference tokens.web directly.
 */
+@import '@mellon/tokens-web/css';
+@import '@mellon/tokens-web/css/theme-light';
+@import '@mellon/tokens-web/css/theme-dark';
+@import '@mellon/tokens-web/css/theme-high-contrast';
+
 :root {
   /* Color — surface */
-  --ds-color-surface-primary: #ffffff;
-  --ds-color-surface-secondary: #f5f5f5;
-  --ds-color-surface-inverse: #111111;
+  --ds-color-surface-primary: var(--semantic-color-surface-primary);
+  --ds-color-surface-secondary: var(--semantic-color-surface-secondary);
+  --ds-color-surface-inverse: var(--semantic-color-surface-inverse);
+  --ds-color-surface-overlay: var(--semantic-color-surface-overlay);
 
   /* Color — text */
-  --ds-color-text-primary: #111111;
-  --ds-color-text-secondary: #4b4b4b;
-  --ds-color-text-inverse: #ffffff;
-  --ds-color-text-disabled: #9a9a9a;
+  --ds-color-text-primary: var(--semantic-color-text-primary);
+  --ds-color-text-secondary: var(--semantic-color-text-secondary);
+  --ds-color-text-inverse: var(--semantic-color-text-inverse);
+  --ds-color-text-disabled: var(--semantic-color-text-disabled);
 
   /* Color — border */
-  --ds-color-border-primary: #d9d9d9;
-  --ds-color-border-focus: #2563eb;
+  --ds-color-border-primary: var(--semantic-color-border-default);
+  --ds-color-border-focus: var(--semantic-color-border-focus);
 
   /* Color — brand / status */
-  --ds-color-brand-primary: #2563eb;
-  --ds-color-status-success: #15803d;
-  --ds-color-status-warning: #b45309;
-  --ds-color-status-danger: #b91c1c;
+  --ds-color-brand-primary: var(--semantic-color-accent-default);
+  --ds-color-status-success: var(--semantic-color-success-default);
+  --ds-color-status-warning: var(--semantic-color-warning-default);
+  --ds-color-status-danger: var(--semantic-color-error-default);
 
-  /* Spacing */
-  --ds-space-none: 0;
-  --ds-space-xs: 0.25rem;
-  --ds-space-sm: 0.5rem;
-  --ds-space-md: 1rem;
-  --ds-space-lg: 1.5rem;
-  --ds-space-xl: 2rem;
-  --ds-space-2xl: 3rem;
+  /* Spacing — exact rem matches on the foundation's numeric scale */
+  --ds-space-none: var(--spacing-0);
+  --ds-space-xs: var(--spacing-1);
+  --ds-space-sm: var(--spacing-2);
+  --ds-space-md: var(--spacing-4);
+  --ds-space-lg: var(--spacing-6);
+  --ds-space-xl: var(--spacing-8);
+  --ds-space-2xl: var(--spacing-12);
 
   /* Radius */
-  --ds-radius-none: 0;
-  --ds-radius-sm: 0.25rem;
-  --ds-radius-md: 0.5rem;
-  --ds-radius-lg: 1rem;
-  --ds-radius-full: 9999px;
+  --ds-radius-none: var(--radius-none);
+  --ds-radius-sm: var(--radius-sm);
+  --ds-radius-md: var(--radius-md);
+  --ds-radius-lg: var(--radius-xl);
+  --ds-radius-full: var(--radius-full);
 
   /* Typography */
-  --ds-font-family-base:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --ds-font-family-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
-  --ds-font-size-xs: 0.75rem;
-  --ds-font-size-sm: 0.875rem;
-  --ds-font-size-md: 1rem;
-  --ds-font-size-lg: 1.25rem;
-  --ds-font-size-xl: 1.5rem;
-  --ds-font-weight-regular: 400;
-  --ds-font-weight-medium: 500;
-  --ds-font-weight-bold: 700;
-  --ds-line-height-tight: 1.2;
-  --ds-line-height-base: 1.5;
+  --ds-font-family-base: var(--font-family-body);
+  --ds-font-family-mono: var(--font-family-mono);
+  --ds-font-size-xs: var(--font-size-xs);
+  --ds-font-size-sm: var(--font-size-sm);
+  --ds-font-size-md: var(--font-size-md);
+  --ds-font-size-lg: var(--font-size-lg);
+  --ds-font-size-xl: var(--font-size-xl);
+  --ds-font-weight-regular: var(--font-weight-regular);
+  --ds-font-weight-medium: var(--font-weight-medium);
+  --ds-font-weight-bold: var(--font-weight-bold);
+  --ds-line-height-tight: var(--font-line-height-tight);
+  --ds-line-height-base: var(--font-line-height-normal);
 
   /* Motion */
-  --ds-motion-duration-fast: 100ms;
-  --ds-motion-duration-medium: 200ms;
-  --ds-motion-duration-slow: 320ms;
-  --ds-motion-easing-standard: cubic-bezier(0.4, 0, 0.2, 1);
-  --ds-motion-easing-decelerate: cubic-bezier(0, 0, 0.2, 1);
-  --ds-motion-easing-accelerate: cubic-bezier(0.4, 0, 1, 1);
+  --ds-motion-duration-fast: var(--motion-duration-fast);
+  --ds-motion-duration-medium: var(--motion-duration-normal);
+  --ds-motion-duration-slow: var(--motion-duration-slow);
+  --ds-motion-easing-standard: var(--motion-easing-standard);
+  --ds-motion-easing-decelerate: var(--motion-easing-decelerate);
+  --ds-motion-easing-accelerate: var(--motion-easing-accelerate);
 
-  /* Elevation */
-  --ds-elevation-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
-  --ds-elevation-md: 0 4px 8px rgba(0, 0, 0, 0.08);
-  --ds-elevation-lg: 0 12px 24px rgba(0, 0, 0, 0.12);
+  /* Elevation — foundation ships shadows as layered primitives
+     (--elevation-N-*), so each level is composed from those parts
+     rather than aliased from one variable. */
+  --ds-elevation-sm: var(--elevation-1-offset-x) var(--elevation-1-offset-y) var(--elevation-1-blur)
+    var(--elevation-1-spread) var(--elevation-1-color);
+  --ds-elevation-md:
+    var(--elevation-3-1-offset-x) var(--elevation-3-1-offset-y) var(--elevation-3-1-blur)
+      var(--elevation-3-1-spread) var(--elevation-3-1-color),
+    var(--elevation-3-2-offset-x) var(--elevation-3-2-offset-y) var(--elevation-3-2-blur)
+      var(--elevation-3-2-spread) var(--elevation-3-2-color);
+  --ds-elevation-lg:
+    var(--elevation-5-1-offset-x) var(--elevation-5-1-offset-y) var(--elevation-5-1-blur)
+      var(--elevation-5-1-spread) var(--elevation-5-1-color),
+    var(--elevation-5-2-offset-x) var(--elevation-5-2-offset-y) var(--elevation-5-2-blur)
+      var(--elevation-5-2-spread) var(--elevation-5-2-color);
 
-  /* Z-index */
-  --ds-z-index-dropdown: 1000;
-  --ds-z-index-overlay: 1100;
-  --ds-z-index-modal: 1200;
-  --ds-z-index-toast: 1300;
-  --ds-z-index-tooltip: 1400;
-}
-
-[data-ds-theme='dark'] {
-  --ds-color-surface-primary: #111111;
-  --ds-color-surface-secondary: #1c1c1c;
-  --ds-color-surface-inverse: #ffffff;
-
-  --ds-color-text-primary: #f5f5f5;
-  --ds-color-text-secondary: #b3b3b3;
-  --ds-color-text-inverse: #111111;
-  --ds-color-text-disabled: #6b6b6b;
-
-  --ds-color-border-primary: #333333;
+  /* Z-index — semantic layer order matches; absolute numbers differ from
+     the old placeholder scale, which is fine since nothing else in this
+     app depended on the specific numbers. */
+  --ds-z-index-dropdown: var(--z-index-dropdown);
+  --ds-z-index-overlay: var(--z-index-overlay);
+  --ds-z-index-modal: var(--z-index-modal);
+  --ds-z-index-toast: var(--z-index-toast);
+  --ds-z-index-tooltip: var(--z-index-tooltip);
 }
 
 @media (prefers-reduced-motion: reduce) {

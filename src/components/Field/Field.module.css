@@ -1,0 +1,33 @@
+.field {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-xs);
+}
+
+.label {
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  font-weight: var(--ds-font-weight-medium);
+  color: var(--ds-color-text-primary);
+}
+
+.field[data-disabled='true'] .label {
+  color: var(--ds-color-text-disabled);
+}
+
+.required {
+  color: var(--ds-color-status-danger);
+}
+
+.helperText {
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-xs);
+  color: var(--ds-color-text-secondary);
+}
+
+.errorMessage {
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-xs);
+  color: var(--ds-color-status-danger);
+}

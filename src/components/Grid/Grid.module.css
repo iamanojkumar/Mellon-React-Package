@@ -1,0 +1,5 @@
+.grid {
+  display: grid;
+  box-sizing: border-box;
+  min-width: 0;
+}

@@ -1,0 +1,8 @@
+/*
+  Base typography (font-size/weight/color/align via data-* attributes)
+  comes from Text.module.css's `.text` class, applied alongside this one —
+  see Heading.tsx. This file is for heading-only overrides.
+*/
+.heading {
+  box-sizing: border-box;
+}

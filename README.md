@@ -1,9 +1,10 @@
 # react-design-system
 
-Production-grade React + TypeScript component library. Built now against
-placeholder CSS-variable design tokens so component APIs, accessibility,
-and DX can mature ahead of the separate Design System Foundation package
-(`@company/tokens-web`). Full scope and rationale: [docs/SPEC.md](./docs/SPEC.md).
+Production-grade React + TypeScript component library, styled entirely
+through `--ds-*` CSS variables backed by the Design System Foundation
+package (`@mellon/tokens-web`, currently linked in locally from the sibling
+`mellon_designsystem_foundation` repo ahead of its npm publish). Full scope
+and rationale: [docs/SPEC.md](./docs/SPEC.md).
 
 ## Getting started
 
@@ -21,9 +22,9 @@ pnpm build             # Vite library build -> dist/
 ```text
 src/
 ├── components/   # One folder per component: impl, styles, tests, stories, exports
-├── hooks/        # Reusable hooks (useDisclosure, useControllableState, ...)
-├── contexts/     # React Contexts (Theme, Toast, Direction, ...)
-├── providers/    # ThemeProvider, PortalProvider, ToastProvider, ...
+├── hooks/        # Reusable hooks (useTheme, useDisclosure, useControllableState, ...)
+├── contexts/     # React Contexts (ThemeContext done; Toast, Direction, ...)
+├── providers/    # ThemeProvider done; PortalProvider, ToastProvider, ...
 ├── styles/       # Global CSS variables, reset, base styles — no component styling here
 ├── utilities/    # mergeClasses, composeRefs, a11y/DOM helpers
 ├── icons/        # Individually importable, tree-shakeable icons
@@ -41,17 +42,18 @@ so components render correctly today:
 padding: var(--ds-space-md, 1rem);
 ```
 
-When `@company/tokens-web` ships, only `src/styles/variables.css` changes —
-component logic and markup do not.
+When `@mellon/tokens-web` is published for real, only
+`src/styles/variables.css` changes — component logic and markup do not.
 
 ## Build order
 
 New components are built in dependency order, not alphabetically:
 
-1. **Core Primitives** — `Box` (done), `Flex`, `Grid`, `Stack`, `Text`, `Heading`, `Portal`
+1. **Core Primitives** — `Box`, `Flex`, `Grid`, `Stack`, `Text`, `Heading`, `Portal` — done
 2. **Foundation Components** — `Button`, `Input`, `Field`, `Card`
 3. **Composite Components** — `Tabs`, `Dialog`, `Dropdown`, `Table`, `DatePicker`
 
+Scaffold a new component with `pnpm generate:component <Category> <Name>`.
 See the full component inventory and per-component checklist in
 [docs/SPEC.md](./docs/SPEC.md).
 

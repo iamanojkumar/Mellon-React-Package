@@ -1,0 +1,30 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ds-color-surface-overlay);
+  z-index: var(--ds-z-index-modal);
+  padding: var(--ds-space-md);
+}
+
+.panel {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 480px;
+  max-height: calc(100vh - var(--ds-space-xl) * 2);
+  overflow-y: auto;
+  background: var(--ds-color-surface-primary);
+  border-radius: var(--ds-radius-lg);
+  box-shadow: var(--ds-elevation-lg);
+  padding: var(--ds-space-lg);
+}
+
+.title {
+  margin: 0 0 var(--ds-space-md);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-lg);
+  font-weight: var(--ds-font-weight-bold);
+  color: var(--ds-color-text-primary);
+}
