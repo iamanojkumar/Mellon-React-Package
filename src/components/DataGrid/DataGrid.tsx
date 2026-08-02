@@ -1,8 +1,12 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from '../Table/Table';
 import { Checkbox } from '../Checkbox/Checkbox';
+import { Input } from '../Input/Input';
 import { useControllableState } from '../../hooks/useControllableState';
+import { useAI } from '../../hooks/useAI';
+import { useAIAction } from '../../hooks/useAIAction';
+import { AISuggestionPopover } from '../AISuggestionPopover/AISuggestionPopover';
 import { mergeClasses } from '../../utilities/mergeClasses';
 import styles from './DataGrid.module.css';
 
@@ -45,6 +49,71 @@ export interface DataGridProps<T> {
   /** Shown in place of rows when `data` is empty. Defaults to `'No data'`. */
   emptyState?: ReactNode;
   className?: string;
+  /**
+   * Adds an "Ask with AI" toolbar above the table for natural-language
+   * questions about the (sorted) data. Off by default, and a no-op even
+   * when `true` unless an ancestor `AIProvider` is mounted — the rendered
+   * output is byte-identical to today's whenever this doesn't apply.
+   */
+  aiTableQuery?: boolean;
+  /** Builds the prompt sent to the AI client from the query and the current (sorted) data. Defaults to a generic "answer this question about the data" instruction. */
+  buildTableQueryPrompt?: (query: string, data: T[]) => string;
+  /**
+   * Adds a per-row "Explain with AI" trigger in a trailing column. Off by
+   * default, and a no-op even when `true` unless an ancestor `AIProvider`
+   * is mounted.
+   */
+  aiRowExplain?: boolean;
+  /** Builds the prompt sent to the AI client from a single row. Defaults to a generic "explain this row" instruction. */
+  buildRowExplainPrompt?: (row: T) => string;
+}
+
+function defaultBuildTableQueryPrompt<T>(query: string, data: T[]): string {
+  return `Given this table data (as JSON):\n${JSON.stringify(data)}\n\nAnswer this question about it: ${query}`;
+}
+
+function defaultBuildRowExplainPrompt<T>(row: T): string {
+  return `Explain this table row in plain language:\n\n${JSON.stringify(row)}`;
+}
+
+interface DataGridRowAIActionProps<T> {
+  row: T;
+  triggerLabel: string;
+  buildPrompt: (row: T) => string;
+  className?: string;
+}
+
+/**
+ * Hooks can't be called inside `.map` — one `useAIAction()` instance per
+ * row is extracted into its own (internal, not exported) component instead,
+ * the same reason the shared `AISuggestionPopover` itself never calls the
+ * hook and leaves that to its owner.
+ */
+function DataGridRowAIAction<T>({
+  row,
+  triggerLabel,
+  buildPrompt,
+  className,
+}: DataGridRowAIActionProps<T>) {
+  const aiAction = useAIAction();
+  return (
+    <TableCell className={className}>
+      <AISuggestionPopover
+        triggerLabel={triggerLabel}
+        status={aiAction.status}
+        result={aiAction.result}
+        error={aiAction.error}
+        onOpenChange={(open) => {
+          if (open) {
+            aiAction.trigger({ prompt: buildPrompt(row) });
+          } else {
+            aiAction.reset();
+          }
+        }}
+        onRetry={() => aiAction.trigger({ prompt: buildPrompt(row) })}
+      />
+    </TableCell>
+  );
 }
 
 const ChevronIcon = (
@@ -102,6 +171,10 @@ export function DataGrid<T>({
   caption,
   emptyState = 'No data',
   className,
+  aiTableQuery = false,
+  buildTableQueryPrompt = defaultBuildTableQueryPrompt,
+  aiRowExplain = false,
+  buildRowExplainPrompt = defaultBuildRowExplainPrompt,
 }: DataGridProps<T>) {
   const [activeSort, setActiveSort] = useControllableState<DataGridSort | null>({
     value: sort,
@@ -113,6 +186,12 @@ export function DataGrid<T>({
     defaultValue: defaultSelectedRowIds,
     onChange: onSelectionChange,
   });
+  const [tableQueryText, setTableQueryText] = useState('');
+
+  const aiClient = useAI();
+  const tableQueryAction = useAIAction();
+  const showTableQuery = aiTableQuery && !!aiClient;
+  const showRowExplain = aiRowExplain && !!aiClient;
 
   const sortedData = useMemo(() => {
     if (!activeSort) return data;
@@ -153,9 +232,9 @@ export function DataGrid<T>({
     );
   }
 
-  const columnCount = columns.length + (selectable ? 1 : 0);
+  const columnCount = columns.length + (selectable ? 1 : 0) + (showRowExplain ? 1 : 0);
 
-  return (
+  const table = (
     <Table className={mergeClasses(styles.dataGrid, className)}>
       {caption && <caption className={styles.caption}>{caption}</caption>}
       <TableHead>
@@ -210,6 +289,7 @@ export function DataGrid<T>({
               </TableHeaderCell>
             );
           })}
+          {showRowExplain && <TableHeaderCell className={styles.aiHeaderCell} aria-label="AI" />}
         </TableRow>
       </TableHead>
       <TableBody>
@@ -241,12 +321,55 @@ export function DataGrid<T>({
                     {column.accessor(row)}
                   </TableCell>
                 ))}
+                {showRowExplain && (
+                  <DataGridRowAIAction
+                    row={row}
+                    triggerLabel={`Explain ${rowLabel} with AI`}
+                    buildPrompt={buildRowExplainPrompt}
+                    className={styles.aiCell}
+                  />
+                )}
               </TableRow>
             );
           })
         )}
       </TableBody>
     </Table>
+  );
+
+  if (!showTableQuery) return table;
+
+  return (
+    <div className={styles.gridRoot}>
+      <div className={styles.toolbar}>
+        <Input
+          aria-label="Ask a question about this table"
+          value={tableQueryText}
+          onChange={(event) => setTableQueryText(event.target.value)}
+          placeholder="Ask a question about this table…"
+          className={styles.toolbarInput}
+        />
+        <AISuggestionPopover
+          triggerLabel="Ask with AI"
+          status={tableQueryAction.status}
+          result={tableQueryAction.result}
+          error={tableQueryAction.error}
+          onOpenChange={(open) => {
+            if (open) {
+              tableQueryAction.trigger({
+                prompt: buildTableQueryPrompt(tableQueryText, sortedData),
+              });
+            } else {
+              tableQueryAction.reset();
+            }
+          }}
+          onRetry={() =>
+            tableQueryAction.trigger({ prompt: buildTableQueryPrompt(tableQueryText, sortedData) })
+          }
+        />
+      </div>
+      {table}
+    </div>
   );
 }
 

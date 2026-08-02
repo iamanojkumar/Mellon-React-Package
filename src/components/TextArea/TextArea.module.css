@@ -3,3 +3,24 @@
   min-height: 5.5em;
   line-height: var(--ds-line-height-base);
 }
+
+.aiWrapper {
+  position: relative;
+  display: inline-flex;
+  width: 100%;
+}
+
+/*
+  `.aiWrapper .hasAITrigger.hasAITrigger` to reliably beat Input.module.css's
+  `.input[data-size='...']` rule regardless of import order — same doubled-
+  specificity fix as `PasswordField`/`SearchField`.
+*/
+.aiWrapper .hasAITrigger.hasAITrigger {
+  padding-right: calc(var(--ds-space-md) + 2em);
+}
+
+.aiTrigger {
+  position: absolute;
+  top: var(--ds-space-xs);
+  right: var(--ds-space-xs);
+}

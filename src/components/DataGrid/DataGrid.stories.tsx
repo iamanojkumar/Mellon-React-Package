@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { DataGrid } from './DataGrid';
 import type { DataGridColumn } from './DataGrid';
 import { Text } from '../Text/Text';
+import { AIProvider } from '../../providers/AIProvider';
+import type { AIClient } from '../../contexts/AIContext';
 
 interface User {
   id: string;
@@ -155,6 +157,41 @@ export const Uncontrolled: Story = {
       getRowLabel={(row) => row.name}
       caption="Users"
       selectable
+    />
+  ),
+};
+
+const mockAIClient: AIClient = {
+  complete: async ({ prompt }) => {
+    if (prompt.includes('Explain this table row')) {
+      return 'This user joined recently and has an active engineering role.';
+    }
+    return '3 users are currently active; Katherine Johnson is the only one still invited.';
+  },
+};
+
+/**
+ * Both `aiTableQuery` and `aiRowExplain` are no-ops without an ancestor
+ * `AIProvider` — this story wraps a deterministic mock client so the
+ * toolbar and per-row triggers actually appear.
+ */
+export const WithAIFeatures: Story = {
+  decorators: [
+    (Story) => (
+      <AIProvider client={mockAIClient}>
+        <Story />
+      </AIProvider>
+    ),
+  ],
+  render: () => (
+    <DataGrid
+      columns={baseColumns}
+      data={users}
+      getRowId={(row) => row.id}
+      getRowLabel={(row) => row.name}
+      caption="Users"
+      aiTableQuery
+      aiRowExplain
     />
   ),
 };

@@ -25,6 +25,26 @@ export interface CommandPaletteGroup {
   items: CommandPaletteItem[];
 }
 
+export interface CommandPaletteAISearchOptions {
+  /**
+   * Resolves the current query into real, executable items. Runs entirely
+   * outside this component's own AI plumbing — turning freeform AI text
+   * into safely-executable actions is app-specific, so `CommandPalette`
+   * never calls `AIClient`/`useAIAction` itself; the consumer's own
+   * `onQuery` may do that internally (or drive an LLM function-calling
+   * flow), and just needs to resolve to `CommandPaletteItem[]`.
+   */
+  onQuery: (query: string) => Promise<CommandPaletteItem[]>;
+  /** Only calls `onQuery` once local filtering yields zero matches. Defaults to `true`. */
+  onlyWhenNoMatches?: boolean;
+  /** Debounce before calling `onQuery`, in ms. Defaults to `300`. */
+  debounceMs?: number;
+  /** Shown in place of results while `onQuery` is in flight. Defaults to `'Thinking…'`. */
+  loadingLabel?: ReactNode;
+  /** Heading for the synthesized group holding `onQuery`'s results. Defaults to `'Suggested'`. */
+  groupHeading?: ReactNode;
+}
+
 export interface CommandPaletteProps {
   open?: boolean;
   defaultOpen?: boolean;
@@ -41,6 +61,8 @@ export interface CommandPaletteProps {
   hotkey?: boolean;
   /** Defaults to `'Command palette'`. */
   'aria-label'?: string;
+  /** Adds a debounced, AI-resolved group of suggested commands. Off by default; a no-op when omitted. */
+  aiSearch?: CommandPaletteAISearchOptions;
 }
 
 function defaultFilterItems(items: CommandPaletteItem[], query: string): CommandPaletteItem[] {
@@ -90,6 +112,7 @@ export function CommandPalette({
   filterItems = defaultFilterItems,
   hotkey = true,
   'aria-label': ariaLabel = 'Command palette',
+  aiSearch,
 }: CommandPaletteProps) {
   const [isOpen, setIsOpen] = useControllableState<boolean>({
     value: open,
@@ -98,9 +121,20 @@ export function CommandPalette({
   });
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
+  const [aiItems, setAiItems] = useState<CommandPaletteItem[]>([]);
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
+  const aiRequestIdRef = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listboxRef = useRef<HTMLDivElement>(null);
   const listboxId = useId();
+
+  const {
+    onQuery: aiOnQuery,
+    onlyWhenNoMatches: aiOnlyWhenNoMatches = true,
+    debounceMs: aiDebounceMs = 300,
+    loadingLabel: aiLoadingLabel = 'Thinking…',
+    groupHeading: aiGroupHeading = 'Suggested',
+  } = aiSearch ?? {};
 
   useEffect(() => {
     if (!hotkey) return;
@@ -115,7 +149,12 @@ export function CommandPalette({
   }, [hotkey, isOpen, setIsOpen]);
 
   useEffect(() => {
-    if (!isOpen) setQuery('');
+    if (!isOpen) {
+      setQuery('');
+      setAiItems([]);
+      setIsLoadingAI(false);
+      aiRequestIdRef.current += 1; // invalidate any in-flight onQuery
+    }
   }, [isOpen]);
 
   const resolvedGroups = useMemo<CommandPaletteGroup[]>(
@@ -123,7 +162,7 @@ export function CommandPalette({
     [groups, items],
   );
 
-  const filteredGroups = useMemo(
+  const localFilteredGroups = useMemo(
     () =>
       resolvedGroups
         .map((group) => ({ ...group, items: filterItems(group.items, query) }))
@@ -131,7 +170,56 @@ export function CommandPalette({
     [resolvedGroups, query, filterItems],
   );
 
+  const showAIGroup =
+    !!aiSearch && aiItems.length > 0 && (!aiOnlyWhenNoMatches || localFilteredGroups.length === 0);
+
+  const filteredGroups = useMemo(() => {
+    if (!showAIGroup) return localFilteredGroups;
+    return [...localFilteredGroups, { id: '_ai', heading: aiGroupHeading, items: aiItems }];
+  }, [localFilteredGroups, showAIGroup, aiGroupHeading, aiItems]);
+
   const flatItems = useMemo(() => filteredGroups.flatMap((group) => group.items), [filteredGroups]);
+
+  useEffect(() => {
+    if (!aiSearch || !aiOnQuery || !isOpen) return;
+    if (aiOnlyWhenNoMatches && localFilteredGroups.length > 0) {
+      setAiItems([]);
+      setIsLoadingAI(false);
+      return;
+    }
+    const trimmed = query.trim();
+    if (!trimmed) {
+      setAiItems([]);
+      setIsLoadingAI(false);
+      return;
+    }
+
+    const requestId = (aiRequestIdRef.current += 1);
+    setIsLoadingAI(true);
+    const timer = setTimeout(() => {
+      aiOnQuery(trimmed)
+        .then((resolvedItems) => {
+          if (aiRequestIdRef.current !== requestId) return;
+          setAiItems(resolvedItems);
+          setIsLoadingAI(false);
+        })
+        .catch(() => {
+          if (aiRequestIdRef.current !== requestId) return;
+          setAiItems([]);
+          setIsLoadingAI(false);
+        });
+    }, aiDebounceMs);
+
+    return () => clearTimeout(timer);
+  }, [
+    aiSearch,
+    isOpen,
+    query,
+    aiOnlyWhenNoMatches,
+    localFilteredGroups.length,
+    aiOnQuery,
+    aiDebounceMs,
+  ]);
 
   useEffect(() => {
     setActiveIndex(0);
@@ -219,7 +307,9 @@ export function CommandPalette({
         className={mergeClasses(comboboxStyles.listbox, styles.listbox)}
       >
         {flatItems.length === 0 ? (
-          <div className={comboboxStyles.noResults}>{emptyLabel}</div>
+          <div className={comboboxStyles.noResults}>
+            {isLoadingAI ? aiLoadingLabel : emptyLabel}
+          </div>
         ) : (
           filteredGroups.map((group) => {
             const headingId = group.heading ? `${listboxId}-${group.id}-heading` : undefined;

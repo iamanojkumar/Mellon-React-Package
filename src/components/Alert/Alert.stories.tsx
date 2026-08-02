@@ -2,6 +2,8 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
 import { Alert } from './Alert';
 import { Stack } from '../Stack/Stack';
+import { AIProvider } from '../../providers/AIProvider';
+import type { AIClient } from '../../contexts/AIContext';
 
 const meta: Meta<typeof Alert> = {
   title: 'Feedback/Alert',
@@ -57,5 +59,32 @@ export const Dismissible: Story = {
       );
     }
     return <Demo />;
+  },
+};
+
+const mockAIClient: AIClient = {
+  complete: async () =>
+    'This happens when the upstream service takes too long to respond. It usually resolves itself — try again in a moment, or check the status page if it persists.',
+};
+
+/**
+ * `aiExplain` is a no-op without an ancestor `AIProvider` — this story
+ * wraps a deterministic mock client so the "Explain with AI" trigger
+ * actually appears. Unlike the rewrite/search flagships, this is read-only:
+ * no accept/reject actions, just an explanation.
+ */
+export const WithAIExplain: Story = {
+  decorators: [
+    (Story) => (
+      <AIProvider client={mockAIClient}>
+        <Story />
+      </AIProvider>
+    ),
+  ],
+  args: {
+    variant: 'danger',
+    title: 'Request failed',
+    children: 'The request timed out after 30 seconds.',
+    aiExplain: true,
   },
 };

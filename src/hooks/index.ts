@@ -1,5 +1,8 @@
 export { useTheme } from './useTheme';
 export { useToast } from './useToast';
+export { useAI } from './useAI';
+export { useAIAction } from './useAIAction';
+export type { AIActionStatus, UseAIActionOptions, UseAIActionResult } from './useAIAction';
 export { useControllableState } from './useControllableState';
 export type { UseControllableStateProps } from './useControllableState';
 export { useFieldContext } from './useFieldContext';

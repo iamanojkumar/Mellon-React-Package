@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
 import { CommandPalette } from './CommandPalette';
-import type { CommandPaletteGroup } from './CommandPalette';
+import type { CommandPaletteGroup, CommandPaletteItem } from './CommandPalette';
 import { Button } from '../Button/Button';
 import { Text } from '../Text/Text';
 
@@ -46,36 +46,76 @@ const groups: CommandPaletteGroup[] = [
 ];
 
 /**
- * `defaultOpen` for demo purposes — in real usage the palette starts
- * closed and opens via the Cmd/Ctrl+K hotkey (`hotkey`, default `true`) or
- * your own trigger calling `onOpenChange`.
+ * Starts closed and opens via a trigger button — like every other
+ * `Dialog`-based story in this codebase (see `Dialog.stories.tsx`), not
+ * `defaultOpen`. `CommandPalette`'s `Dialog` renders a full-viewport
+ * Portal-ed backdrop; autodocs pages mount every story's demo
+ * simultaneously, so `defaultOpen` on multiple stories stacked several
+ * full-viewport backdrops on top of each other.
  */
 export const Default: Story = {
-  render: () => <CommandPalette groups={groups} defaultOpen hotkey={false} />,
+  render: () => {
+    function Demo() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <Button size="sm" onClick={() => setOpen(true)}>
+            Open command palette
+          </Button>
+          <CommandPalette groups={groups} open={open} onOpenChange={setOpen} hotkey={false} />
+        </>
+      );
+    }
+    return <Demo />;
+  },
 };
 
 export const FlatItems: Story = {
-  render: () => (
-    <CommandPalette
-      items={[
-        { id: 'copy', label: 'Copy', shortcut: '⌘C', onSelect: () => {} },
-        { id: 'paste', label: 'Paste', shortcut: '⌘V', onSelect: () => {} },
-        { id: 'duplicate', label: 'Duplicate', shortcut: '⌘D', onSelect: () => {} },
-      ]}
-      defaultOpen
-      hotkey={false}
-    />
-  ),
+  render: () => {
+    function Demo() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <Button size="sm" onClick={() => setOpen(true)}>
+            Open command palette
+          </Button>
+          <CommandPalette
+            items={[
+              { id: 'copy', label: 'Copy', shortcut: '⌘C', onSelect: () => {} },
+              { id: 'paste', label: 'Paste', shortcut: '⌘V', onSelect: () => {} },
+              { id: 'duplicate', label: 'Duplicate', shortcut: '⌘D', onSelect: () => {} },
+            ]}
+            open={open}
+            onOpenChange={setOpen}
+            hotkey={false}
+          />
+        </>
+      );
+    }
+    return <Demo />;
+  },
 };
 
 export const Empty: Story = {
-  render: () => (
-    <CommandPalette
-      items={[{ id: 'x', label: 'Something', onSelect: () => {} }]}
-      defaultOpen
-      hotkey={false}
-    />
-  ),
+  render: () => {
+    function Demo() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <Button size="sm" onClick={() => setOpen(true)}>
+            Open command palette
+          </Button>
+          <CommandPalette
+            items={[{ id: 'x', label: 'Something', onSelect: () => {} }]}
+            open={open}
+            onOpenChange={setOpen}
+            hotkey={false}
+          />
+        </>
+      );
+    }
+    return <Demo />;
+  },
 };
 
 /** Press Cmd+K (or Ctrl+K) anywhere in this story to open the palette. */
@@ -94,7 +134,20 @@ export const HotkeyTrigger: Story = {
 };
 
 export const Accessibility: Story = {
-  render: () => <CommandPalette groups={groups} defaultOpen hotkey={false} />,
+  render: () => {
+    function Demo() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <Button size="sm" onClick={() => setOpen(true)}>
+            Open command palette
+          </Button>
+          <CommandPalette groups={groups} open={open} onOpenChange={setOpen} hotkey={false} />
+        </>
+      );
+    }
+    return <Demo />;
+  },
 };
 
 export const Controlled: Story = {
@@ -123,13 +176,71 @@ export const Controlled: Story = {
 
 export const Uncontrolled: Story = {
   render: () => {
-    return (
-      <>
-        <Text size="sm" style={{ marginBottom: 8 }}>
-          Manages its own open state — press Escape to close after opening below.
-        </Text>
-        <CommandPalette groups={groups} defaultOpen hotkey={false} />
-      </>
-    );
+    /**
+     * Mounted (with `defaultOpen`, no `open`/`onOpenChange`) only once the
+     * trigger is clicked — demonstrates the uncontrolled path without
+     * relying on `defaultOpen` at initial page render, which would open
+     * multiple palettes at once on the autodocs page.
+     */
+    function Demo() {
+      const [mounted, setMounted] = useState(false);
+      return (
+        <>
+          <Text size="sm" style={{ marginBottom: 8 }}>
+            Manages its own open state — press Escape to close after opening below.
+          </Text>
+          {mounted ? (
+            <CommandPalette groups={groups} defaultOpen hotkey={false} />
+          ) : (
+            <Button size="sm" onClick={() => setMounted(true)}>
+              Open command palette
+            </Button>
+          )}
+        </>
+      );
+    }
+    return <Demo />;
+  },
+};
+
+/**
+ * `aiSearch` never calls `AIClient`/`useAIAction` itself — turning freeform
+ * AI text into safely-executable actions is app-specific, so `onQuery` is
+ * entirely the consumer's own function resolving to real
+ * `CommandPaletteItem[]`. Type something that doesn't match any local item
+ * (e.g. "deploy") to see the synthesized "Suggested" group appear after a
+ * short debounce.
+ */
+export const WithAISearch: Story = {
+  render: () => {
+    async function onQuery(query: string): Promise<CommandPaletteItem[]> {
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      return [
+        {
+          id: 'ai-1',
+          label: `Run "${query}"`,
+          description: 'AI-suggested command based on your query',
+          onSelect: () => {},
+        },
+      ];
+    }
+    function Demo() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <Button size="sm" onClick={() => setOpen(true)}>
+            Open command palette
+          </Button>
+          <CommandPalette
+            groups={groups}
+            open={open}
+            onOpenChange={setOpen}
+            hotkey={false}
+            aiSearch={{ onQuery }}
+          />
+        </>
+      );
+    }
+    return <Demo />;
   },
 };

@@ -3,6 +3,9 @@ import type { ChangeEvent, ComponentPropsWithoutRef } from 'react';
 import { mergeClasses } from '../../utilities/mergeClasses';
 import { useControllableState } from '../../hooks/useControllableState';
 import { useFieldContext } from '../../hooks/useFieldContext';
+import { useAI } from '../../hooks/useAI';
+import { useAIAction } from '../../hooks/useAIAction';
+import { AISuggestionPopover } from '../AISuggestionPopover/AISuggestionPopover';
 import inputStyles from '../Input/Input.module.css';
 import styles from './TextArea.module.css';
 
@@ -14,6 +17,18 @@ export interface TextAreaOwnProps {
   value?: string;
   defaultValue?: string;
   onChange?: (event: ChangeEvent<HTMLTextAreaElement>) => void;
+  /**
+   * Adds an AI-powered rewrite affordance — a corner trigger button that
+   * opens an `AISuggestionPopover` with a rewritten version of the current
+   * text. Off by default, and a no-op even when `true` unless an ancestor
+   * `AIProvider` is mounted (`useAI()` returns `undefined`) — the rendered
+   * output is byte-identical to today's whenever this doesn't apply.
+   */
+  aiRewrite?: boolean;
+  /** Builds the prompt sent to the AI client from the current value. Defaults to a generic rewrite instruction. */
+  buildAIPrompt?: (value: string) => string;
+  /** Accessible label for the AI trigger button. Defaults to `'Rewrite with AI'`. */
+  aiTriggerLabel?: string;
 }
 
 export type TextAreaProps = Omit<
@@ -21,6 +36,10 @@ export type TextAreaProps = Omit<
   'value' | 'defaultValue' | 'onChange'
 > &
   TextAreaOwnProps;
+
+function defaultBuildAIPrompt(value: string): string {
+  return `Improve the writing, fix any grammar issues, and keep the original meaning:\n\n${value}`;
+}
 
 /**
  * Multi-line sibling of `Input` — same `useFieldContext`/
@@ -42,6 +61,9 @@ export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(function 
     value: valueProp,
     defaultValue,
     onChange,
+    aiRewrite = false,
+    buildAIPrompt = defaultBuildAIPrompt,
+    aiTriggerLabel = 'Rewrite with AI',
     ...rest
   },
   ref,
@@ -63,11 +85,34 @@ export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(function 
     onChange?.(event);
   }
 
-  return (
+  /**
+   * Applies AI-accepted text through the exact same path a real keystroke
+   * takes: `setValue` alone is a no-op when controlled (its `onChange`
+   * config was never wired — this component's own `handleChange` is what
+   * forwards to the consumer), so a controlled consumer only sees the new
+   * value if `onChange` fires too. There's no real DOM event here, so a
+   * minimal synthetic one carrying just `target.value` (the only field any
+   * `onChange` in this codebase reads) stands in for it.
+   */
+  function applyAIText(text: string) {
+    setValue(text);
+    onChange?.({ target: { value: text } } as ChangeEvent<HTMLTextAreaElement>);
+  }
+
+  const aiClient = useAI();
+  const aiAction = useAIAction();
+  const showAI = aiRewrite && !!aiClient;
+
+  const textareaElement = (
     <textarea
       ref={ref}
       id={resolvedId}
-      className={mergeClasses(inputStyles.input, styles.textarea, className)}
+      className={mergeClasses(
+        inputStyles.input,
+        styles.textarea,
+        showAI && styles.hasAITrigger,
+        !showAI && className,
+      )}
       data-size={size}
       data-invalid={resolvedInvalid || undefined}
       aria-invalid={resolvedInvalid || undefined}
@@ -78,6 +123,32 @@ export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(function 
       onChange={handleChange}
       {...rest}
     />
+  );
+
+  if (!showAI) return textareaElement;
+
+  return (
+    <div className={mergeClasses(styles.aiWrapper, className)}>
+      {textareaElement}
+      <div className={styles.aiTrigger}>
+        <AISuggestionPopover
+          triggerLabel={aiTriggerLabel}
+          status={aiAction.status}
+          result={aiAction.result}
+          error={aiAction.error}
+          onOpenChange={(open) => {
+            if (open) {
+              aiAction.trigger({ prompt: buildAIPrompt(value ?? '') });
+            } else {
+              aiAction.reset();
+            }
+          }}
+          onAccept={applyAIText}
+          onReject={() => aiAction.reset()}
+          onRetry={() => aiAction.trigger({ prompt: buildAIPrompt(value ?? '') })}
+        />
+      </div>
+    </div>
   );
 });
 

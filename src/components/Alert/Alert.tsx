@@ -1,9 +1,18 @@
 import { forwardRef } from 'react';
 import type { ComponentPropsWithoutRef, ReactNode } from 'react';
 import { mergeClasses } from '../../utilities/mergeClasses';
+import { useAI } from '../../hooks/useAI';
+import { useAIAction } from '../../hooks/useAIAction';
+import { AISuggestionPopover } from '../AISuggestionPopover/AISuggestionPopover';
 import styles from './Alert.module.css';
 
 export type AlertVariant = 'info' | 'success' | 'warning' | 'danger';
+
+export interface AlertBuildAIPromptProps {
+  variant: AlertVariant;
+  title?: ReactNode;
+  children?: ReactNode;
+}
 
 export interface AlertOwnProps {
   variant?: AlertVariant;
@@ -13,6 +22,20 @@ export interface AlertOwnProps {
   /** Accessible label for the dismiss button. Defaults to "Dismiss". */
   dismissLabel?: string;
   children?: ReactNode;
+  /**
+   * Adds an AI-powered "Explain with AI" affordance next to the dismiss
+   * button — a trigger opening an `AISuggestionPopover` with the likely
+   * cause/impact/fix. Off by default, and a no-op even when `true` unless
+   * an ancestor `AIProvider` is mounted — the rendered output is
+   * byte-identical to today's whenever this doesn't apply. Read-only: no
+   * accept/reject, since an explanation isn't something to replace the
+   * alert's own content with.
+   */
+  aiExplain?: boolean;
+  /** Builds the prompt sent to the AI client from this alert's variant/title/children. Defaults to a generic cause/impact/fix instruction. */
+  buildAIPrompt?: (props: AlertBuildAIPromptProps) => string;
+  /** Accessible label for the AI trigger button. Defaults to `'Explain with AI'`. */
+  aiExplainLabel?: string;
 }
 
 export type AlertProps = Omit<ComponentPropsWithoutRef<'div'>, 'title'> & AlertOwnProps;
@@ -87,6 +110,20 @@ export function AlertVariantIcon({ variant }: { variant: AlertVariant }) {
   }
 }
 
+function nodeToText(node: ReactNode): string {
+  return typeof node === 'string' ? node : '';
+}
+
+function defaultBuildAIPrompt({ variant, title, children }: AlertBuildAIPromptProps): string {
+  const lines = [`Alert variant: ${variant}`];
+  const titleText = nodeToText(title);
+  const messageText = nodeToText(children);
+  if (titleText) lines.push(`Title: ${titleText}`);
+  if (messageText) lines.push(`Message: ${messageText}`);
+  lines.push('Explain the likely cause, the impact, and a suggested fix.');
+  return lines.join('\n');
+}
+
 /**
  * Static, inline feedback — not an overlay (no `Portal`, no backdrop; it
  * renders exactly where it's placed in the tree, like `Badge`/`Chip`).
@@ -99,9 +136,52 @@ export function AlertVariantIcon({ variant }: { variant: AlertVariant }) {
  * already made for its own `data-color="brand"`.
  */
 export const Alert = forwardRef<HTMLDivElement, AlertProps>(function Alert(
-  { className, variant = 'info', title, onDismiss, dismissLabel = 'Dismiss', children, ...rest },
+  {
+    className,
+    variant = 'info',
+    title,
+    onDismiss,
+    dismissLabel = 'Dismiss',
+    children,
+    aiExplain = false,
+    buildAIPrompt = defaultBuildAIPrompt,
+    aiExplainLabel = 'Explain with AI',
+    ...rest
+  },
   ref,
 ) {
+  const aiClient = useAI();
+  const aiAction = useAIAction();
+  const showAI = aiExplain && !!aiClient;
+
+  const dismissButton = onDismiss && (
+    <button
+      type="button"
+      className={styles.dismissButton}
+      aria-label={dismissLabel}
+      onClick={onDismiss}
+    >
+      ×
+    </button>
+  );
+
+  const aiTrigger = showAI && (
+    <AISuggestionPopover
+      triggerLabel={aiExplainLabel}
+      status={aiAction.status}
+      result={aiAction.result}
+      error={aiAction.error}
+      onOpenChange={(open) => {
+        if (open) {
+          aiAction.trigger({ prompt: buildAIPrompt({ variant, title, children }) });
+        } else {
+          aiAction.reset();
+        }
+      }}
+      onRetry={() => aiAction.trigger({ prompt: buildAIPrompt({ variant, title, children }) })}
+    />
+  );
+
   return (
     <div
       ref={ref}
@@ -117,15 +197,13 @@ export const Alert = forwardRef<HTMLDivElement, AlertProps>(function Alert(
         {title && <div className={styles.title}>{title}</div>}
         {children && <div className={styles.description}>{children}</div>}
       </div>
-      {onDismiss && (
-        <button
-          type="button"
-          className={styles.dismissButton}
-          aria-label={dismissLabel}
-          onClick={onDismiss}
-        >
-          ×
-        </button>
+      {showAI ? (
+        <div className={styles.actions}>
+          {aiTrigger}
+          {dismissButton}
+        </div>
+      ) : (
+        dismissButton
       )}
     </div>
   );

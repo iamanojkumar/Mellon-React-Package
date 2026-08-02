@@ -64,9 +64,14 @@ export function useFocusTrap<T extends HTMLElement>(
       }
     };
 
+    let redirecting = false;
+
     const handleFocusIn = (event: FocusEvent) => {
+      if (redirecting) return;
       if (!container.contains(event.target as Node)) {
+        redirecting = true;
         getFocusableElements(container)[0]?.focus();
+        redirecting = false;
       }
     };
 

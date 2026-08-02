@@ -98,3 +98,5 @@ export * from './CommandPalette';
 export * from './ColorPicker';
 export * from './FileUpload';
 export * from './Carousel';
+export * from './AITriggerButton';
+export * from './AISuggestionPopover';

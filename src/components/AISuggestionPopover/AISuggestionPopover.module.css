@@ -1,0 +1,33 @@
+/*
+ * Layout-only — `Popover.Content` already owns the box chrome (border/
+ * background/shadow/padding). Duplicating any of that here would repeat
+ * the Select/MultiSelect double-border bug documented in CLAUDE.md.
+ */
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-sm);
+  max-width: 20rem;
+}
+
+.resultText {
+  white-space: pre-wrap;
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  color: var(--ds-color-text-primary);
+}
+
+.error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ds-space-xs);
+  font-size: var(--ds-font-size-sm);
+  color: var(--ds-color-status-danger);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--ds-space-xs);
+}

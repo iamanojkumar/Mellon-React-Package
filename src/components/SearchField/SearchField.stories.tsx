@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { SearchField } from './SearchField';
 import { Stack } from '../Stack/Stack';
 import { Text } from '../Text/Text';
+import { AIProvider } from '../../providers/AIProvider';
+import type { AIClient } from '../../contexts/AIContext';
 
 const meta: Meta<typeof SearchField> = {
   title: 'Inputs/SearchField',
@@ -54,5 +56,29 @@ export const Controlled: Story = {
       );
     }
     return <Demo />;
+  },
+};
+
+const mockAIClient: AIClient = {
+  complete: async ({ prompt }) => `${prompt.split('\n\n')[1] ?? prompt} tutorial for beginners`,
+};
+
+/**
+ * `aiSearch` is a no-op without an ancestor `AIProvider` — this story wraps
+ * a deterministic mock client so the "Search with AI" trigger actually
+ * appears once there's a query. Click it to open the suggestion popover.
+ */
+export const WithAISearch: Story = {
+  decorators: [
+    (Story) => (
+      <AIProvider client={mockAIClient}>
+        <Story />
+      </AIProvider>
+    ),
+  ],
+  args: {
+    'aria-label': 'Search',
+    defaultValue: 'react hooks',
+    aiSearch: true,
   },
 };

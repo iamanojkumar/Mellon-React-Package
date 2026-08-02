@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { useState } from 'react';
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expectNoA11yViolations } from '../../../tests/axe';
 import { CommandPalette } from './CommandPalette';
@@ -169,5 +169,122 @@ describe('CommandPalette', () => {
     const spies = { newFile: vi.fn(), openFile: vi.fn(), deleteFile: vi.fn() };
     render(<CommandPalette items={makeItems(spies)} defaultOpen />);
     await expectNoA11yViolations(document.body);
+  });
+
+  describe('aiSearch', () => {
+    it('does not call onQuery when aiSearch is omitted', () => {
+      vi.useFakeTimers();
+      const spies = { newFile: vi.fn(), openFile: vi.fn(), deleteFile: vi.fn() };
+      render(<CommandPalette items={makeItems(spies)} defaultOpen />);
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'zzz' } });
+      vi.advanceTimersByTime(1000);
+      vi.useRealTimers();
+    });
+
+    it('debounces and calls onQuery only once local matches are empty (default onlyWhenNoMatches)', async () => {
+      vi.useFakeTimers();
+      const onQuery = vi.fn().mockResolvedValue([]);
+      const spies = { newFile: vi.fn(), openFile: vi.fn(), deleteFile: vi.fn() };
+      render(<CommandPalette items={makeItems(spies)} defaultOpen aiSearch={{ onQuery }} />);
+      const input = screen.getByRole('combobox');
+
+      // "create" matches "New File" locally — onQuery should not fire.
+      fireEvent.change(input, { target: { value: 'create' } });
+      await act(async () => {
+        vi.advanceTimersByTime(1000);
+      });
+      expect(onQuery).not.toHaveBeenCalled();
+
+      // "zzz" matches nothing locally — onQuery should fire after the debounce.
+      fireEvent.change(input, { target: { value: 'zzz' } });
+      await act(async () => {
+        vi.advanceTimersByTime(299);
+      });
+      expect(onQuery).not.toHaveBeenCalled();
+      await act(async () => {
+        vi.advanceTimersByTime(1);
+      });
+      expect(onQuery).toHaveBeenCalledWith('zzz');
+      vi.useRealTimers();
+    });
+
+    it('shows the loading label while onQuery is in flight, then the resolved AI group', async () => {
+      vi.useFakeTimers();
+      let resolvePromise: ((items: CommandPaletteItem[]) => void) | undefined;
+      const onQuery = vi.fn(
+        () =>
+          new Promise<CommandPaletteItem[]>((resolve) => {
+            resolvePromise = resolve;
+          }),
+      );
+      const onSelect = vi.fn();
+      render(
+        <CommandPalette
+          items={[{ id: 'a', label: 'Item A', onSelect: vi.fn() }]}
+          defaultOpen
+          aiSearch={{ onQuery }}
+        />,
+      );
+
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'zzz' } });
+      vi.advanceTimersByTime(300);
+      expect(screen.getByText('Thinking…')).toBeInTheDocument();
+
+      resolvePromise?.([{ id: 'ai-1', label: 'AI Suggested Command', onSelect }]);
+      vi.useRealTimers();
+      await waitFor(() =>
+        expect(screen.getByRole('option', { name: 'AI Suggested Command' })).toBeInTheDocument(),
+      );
+      expect(screen.getByText('Suggested')).toBeInTheDocument();
+
+      const user = userEvent.setup();
+      await user.click(screen.getByRole('option', { name: 'AI Suggested Command' }));
+      expect(onSelect).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('calls onQuery even with local matches when onlyWhenNoMatches is false', async () => {
+      vi.useFakeTimers();
+      const onQuery = vi.fn().mockResolvedValue([]);
+      const spies = { newFile: vi.fn(), openFile: vi.fn(), deleteFile: vi.fn() };
+      render(
+        <CommandPalette
+          items={makeItems(spies)}
+          defaultOpen
+          aiSearch={{ onQuery, onlyWhenNoMatches: false }}
+        />,
+      );
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'create' } });
+      await act(async () => {
+        vi.advanceTimersByTime(300);
+      });
+      expect(onQuery).toHaveBeenCalledWith('create');
+      vi.useRealTimers();
+    });
+
+    it('supports a custom loadingLabel and groupHeading', async () => {
+      vi.useFakeTimers();
+      let resolvePromise: ((items: CommandPaletteItem[]) => void) | undefined;
+      const onQuery = vi.fn(
+        () =>
+          new Promise<CommandPaletteItem[]>((resolve) => {
+            resolvePromise = resolve;
+          }),
+      );
+      render(
+        <CommandPalette
+          items={[]}
+          defaultOpen
+          aiSearch={{ onQuery, loadingLabel: 'Asking AI…', groupHeading: 'From AI' }}
+        />,
+      );
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'zzz' } });
+      vi.advanceTimersByTime(300);
+      expect(screen.getByText('Asking AI…')).toBeInTheDocument();
+
+      resolvePromise?.([{ id: 'ai-1', label: 'Suggestion', onSelect: vi.fn() }]);
+      vi.useRealTimers();
+      await waitFor(() => expect(screen.getByText('From AI')).toBeInTheDocument());
+    });
   });
 });

@@ -20,6 +20,17 @@
   padding-right: calc(var(--ds-space-md) + 1.5em);
 }
 
+.wrapper .input.input.hasClear.hasAI {
+  padding-right: calc(var(--ds-space-md) + 1.5em + 1.75em + var(--ds-space-xs));
+}
+
+.aiTrigger {
+  position: absolute;
+  top: 50%;
+  right: calc(var(--ds-space-sm) + 1.75em + var(--ds-space-xs));
+  transform: translateY(-50%);
+}
+
 .clear {
   position: absolute;
   top: 50%;

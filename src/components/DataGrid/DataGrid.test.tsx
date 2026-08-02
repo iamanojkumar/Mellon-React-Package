@@ -5,6 +5,8 @@ import userEvent from '@testing-library/user-event';
 import { expectNoA11yViolations } from '../../../tests/axe';
 import { DataGrid } from './DataGrid';
 import type { DataGridColumn } from './DataGrid';
+import { AIProvider } from '../../providers/AIProvider';
+import type { AIClient } from '../../contexts/AIContext';
 
 interface Person {
   id: string;
@@ -191,5 +193,93 @@ describe('DataGrid', () => {
       />,
     );
     await expectNoA11yViolations(container);
+  });
+
+  describe('aiTableQuery / aiRowExplain', () => {
+    it('renders no AI affordances when the flags are omitted', () => {
+      render(<DataGrid columns={columns} data={people} getRowId={(row) => row.id} />);
+      expect(screen.queryByRole('button', { name: 'Ask with AI' })).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/Explain .* with AI/)).not.toBeInTheDocument();
+    });
+
+    it('renders no AI affordances when the flags are true but no AIProvider is mounted', () => {
+      render(
+        <DataGrid
+          columns={columns}
+          data={people}
+          getRowId={(row) => row.id}
+          aiTableQuery
+          aiRowExplain
+        />,
+      );
+      expect(screen.queryByRole('button', { name: 'Ask with AI' })).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/Explain .* with AI/)).not.toBeInTheDocument();
+    });
+
+    it('renders the toolbar query trigger and per-row explain triggers when a provider is mounted', () => {
+      const client: AIClient = { complete: vi.fn() };
+      render(
+        <AIProvider client={client}>
+          <DataGrid
+            columns={columns}
+            data={people}
+            getRowId={(row) => row.id}
+            getRowLabel={(row) => row.name}
+            aiTableQuery
+            aiRowExplain
+          />
+        </AIProvider>,
+      );
+      expect(screen.getByLabelText('Ask a question about this table')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Ask with AI' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Explain Charlie with AI' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Explain Alice with AI' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Explain Bob with AI' })).toBeInTheDocument();
+    });
+
+    it('asking a table question sends the query and the sorted data to the AI client', async () => {
+      const user = userEvent.setup();
+      const client: AIClient = { complete: vi.fn().mockResolvedValue('Charlie is the oldest.') };
+      render(
+        <AIProvider client={client}>
+          <DataGrid columns={columns} data={people} getRowId={(row) => row.id} aiTableQuery />
+        </AIProvider>,
+      );
+
+      await user.type(
+        screen.getByLabelText('Ask a question about this table'),
+        'who is the oldest?',
+      );
+      await user.click(screen.getByRole('button', { name: 'Ask with AI' }));
+
+      expect(client.complete).toHaveBeenCalledWith(
+        expect.objectContaining({ prompt: expect.stringContaining('who is the oldest?') }),
+      );
+      await screen.findByText('Charlie is the oldest.');
+    });
+
+    it('explaining a row sends that row to the AI client', async () => {
+      const user = userEvent.setup();
+      const client: AIClient = {
+        complete: vi.fn().mockResolvedValue('Charlie is 35 years old.'),
+      };
+      render(
+        <AIProvider client={client}>
+          <DataGrid
+            columns={columns}
+            data={people}
+            getRowId={(row) => row.id}
+            getRowLabel={(row) => row.name}
+            aiRowExplain
+          />
+        </AIProvider>,
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Explain Charlie with AI' }));
+      expect(client.complete).toHaveBeenCalledWith(
+        expect.objectContaining({ prompt: expect.stringContaining('Charlie') }),
+      );
+      await screen.findByText('Charlie is 35 years old.');
+    });
   });
 });

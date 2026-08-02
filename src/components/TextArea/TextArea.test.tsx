@@ -4,6 +4,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expectNoA11yViolations } from '../../../tests/axe';
 import { TextArea } from './TextArea';
+import { AIProvider } from '../../providers/AIProvider';
+import type { AIClient } from '../../contexts/AIContext';
 
 describe('TextArea', () => {
   it('renders a native textarea element', () => {
@@ -69,5 +71,57 @@ describe('TextArea', () => {
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({ target: expect.objectContaining({ value: 'a' }) }),
     );
+  });
+
+  describe('aiRewrite', () => {
+    it('renders no AI trigger when aiRewrite is omitted', () => {
+      render(<TextArea aria-label="Bio" />);
+      expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    });
+
+    it('renders no AI trigger when aiRewrite is true but no AIProvider is mounted', () => {
+      render(<TextArea aria-label="Bio" aiRewrite />);
+      expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    });
+
+    it('renders the AI trigger when aiRewrite is true and an AIProvider is mounted', () => {
+      const client: AIClient = { complete: vi.fn().mockResolvedValue('rewritten') };
+      render(
+        <AIProvider client={client}>
+          <TextArea aria-label="Bio" aiRewrite defaultValue="a draft" />
+        </AIProvider>,
+      );
+      expect(screen.getByRole('button', { name: 'Rewrite with AI' })).toBeInTheDocument();
+    });
+
+    it('triggers the AI client on open and accepting replaces the value via the same setValue path', async () => {
+      const user = userEvent.setup();
+      const client: AIClient = { complete: vi.fn().mockResolvedValue('a polished draft') };
+
+      function Controlled() {
+        const [value, setValue] = useState('a draft');
+        return (
+          <AIProvider client={client}>
+            <TextArea
+              aria-label="Bio"
+              aiRewrite
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+            />
+          </AIProvider>
+        );
+      }
+      render(<Controlled />);
+
+      await user.click(screen.getByRole('button', { name: 'Rewrite with AI' }));
+      expect(client.complete).toHaveBeenCalledWith(
+        expect.objectContaining({ prompt: expect.stringContaining('a draft') }),
+      );
+
+      await screen.findByText('a polished draft');
+      await user.click(screen.getByRole('button', { name: 'Accept' }));
+
+      expect((screen.getByRole('textbox') as HTMLTextAreaElement).value).toBe('a polished draft');
+    });
   });
 });

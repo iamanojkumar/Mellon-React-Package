@@ -71,6 +71,13 @@
   color: var(--ds-color-text-secondary);
 }
 
+.actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: var(--ds-space-xs);
+}
+
 .dismissButton {
   flex-shrink: 0;
   display: inline-flex;

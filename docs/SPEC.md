@@ -142,8 +142,13 @@ Build in **dependency order, not alphabetical order**:
 15. **Data-Heavy Display** — `Accordion`, `Timeline`, `Calendar` ✅ shipped
 16. **Navigation Shell** — `Navbar`, `Sidebar`, `Breadcrumb`, `Pagination`, `Navigation Rail`, `Bottom Navigation` ✅ shipped
 17. **Dedicated Deep-Dive Sessions** — `Data Grid`, `Tree View`, `Command Palette`, `Color Picker`, `File Upload`/`Dropzone`, `Carousel` ✅ shipped
+18. **Mobile Gestures** — Pull To Refresh, Swipe Actions 🔲 backlog
+19. **Remaining Utilities & Media** — Scroll Area, Split Pane, Resizable, Infinite Scroll, Masonry, Video, Audio 🔲 backlog
+20. **AI Core Infra** — `AIContext`/`AIProvider`/`useAI`, `useAIAction`, `AITriggerButton`, `AISuggestionPopover` ✅ shipped
+21. **Flagship AI Components** — `TextArea` (`aiRewrite`), `SearchField` (`aiSearch`), `Alert` (`aiExplain`), `DataGrid` (`aiTableQuery`/`aiRowExplain`), `CommandPalette` (`aiSearch`), `EmptyState` (story only) ✅ shipped
+22. **AI Enhancement Backlog** — remaining ~85 components' AI opportunities 🔲 backlog
 
-**2 phases remain: Phase 18 through Phase 19** (see "Planned: Phase 18 and beyond" below).
+**3 phases remain, all backlog: 18, 19, and 22** (see "Backlog: Phase 18 and 19" and "Backlog: Phase 22" below). Phases 20-21 (AI integration) are an unrelated feature track that jumped ahead of 18-19 in build order — numbered to continue the existing sequence rather than interleave, with no dependency on Mobile Gestures/Remaining Utilities either direction.
 
 Phase 2 added the shared value/field plumbing later Form components build
 on: **`useControllableState`** (`src/hooks`) is the standard controlled/
@@ -188,107 +193,85 @@ Non-polymorphic, structural, or compound components (`Input`, `Portal`,
 generator's default is a polymorphic single-element leaf, which is right
 for most components but not all of them.
 
-### Shipped Phase Notes (Phases 4-17)
+### Shipped Phase Notes (Phases 4-17, 20-21) — condensed history
 
-Short summaries of each completed phase — components shipped and the one
-or two decisions worth remembering. Skip to "Planned: Phase 18 and beyond"
-below for the actual remaining roadmap.
+One line per phase: what shipped and the single decision worth
+remembering. Full prior write-ups (multi-paragraph rationale per phase)
+have been superseded by this condensed form — check `git log` on this
+file for the detailed version if deeper archaeology is ever needed.
 
-4. **Shared Infra** — `Popover` (compound trigger+panel primitive, click
-   or hover trigger modes), `usePointerDrag` (native Pointer Events, used
-   by every later drag-based control), `useRovingFocus` (generalized
-   roving-tabindex keyboard nav), `usePositioning` (gained virtual-element
-   support for click-point positioning), `src/utilities/dateGrid.ts`
-   (pure date math shared by `DatePicker`/`Calendar`), `HelperText`/
-   `ErrorMessage` (extracted out of `Field`'s inline rendering).
-5. **Presentational Fill-Ins** — 33 components, no state/overlay/drag:
-   `Inline`, `Spacer`, `Container`, `Center`, `AspectRatio`,
-   `VisuallyHidden`, `Display`, `Label`, `Paragraph`, `Caption`, `Code`,
-   `Link`, `Blockquote`, `List`, `ListItem`, `Avatar`, `AvatarGroup`,
-   `Badge`, `Chip`, `Tag`, `Statistic`, `EmptyState`, `KeyValueList`,
-   `Skeleton`, `Spinner`, `Progress`, `CircularProgress`, `Fieldset`,
-   `FormGroup`, `FormSection`, `Image`, `Figure`, `Divider`. Typography
-   leaves reuse `Text`'s CSS directly rather than composing `<Text>` as a
-   JSX child. `Badge`/`Chip`/`Tag` are three distinct components (static
-   pill / removable / linkable label), not one skin.
-6. **Popover + First Consumers** — `Tooltip` (reuses `Popover`'s
-   underlying hooks, not its JSX — a tooltip needs `aria-describedby`/
-   `role="tooltip"`, not `Popover.Trigger`'s popup semantics), `HoverCard`
-   (a thin `Popover` preset with `triggerMode="hover"`), `SplitButton`
-   (composes `Button` + `Dropdown` directly).
-7. **Menus & Roving-Focus Groups** — `IconButton`, `FloatingActionButton`
-   (both reuse `Button.module.css` directly), `ButtonGroup` (first real
-   `useRovingFocus` consumer), `ToggleButton`, `RadioGroup` (custom
-   `role="radio"` divs, automatic activation), `Menu`+`MenuItem` (real
-   roving tabindex, manual activation), `ContextMenu` (opens `Menu` at
-   click coordinates via `usePositioning`'s virtual-element support). Two
-   reusable gotchas found here: `Children.map`/`.toArray` don't unwrap a
-   literal `<>...</>` fragment (use `src/utilities/flattenChildren.ts`
-   instead), and an unmemoized virtual-element object recreated every
-   render can cause a runaway `usePositioning` re-subscribe loop.
+4. **Shared Infra** — `Popover`, `usePointerDrag`, `useRovingFocus`,
+   `usePositioning` (virtual-element support), `dateGrid.ts`,
+   `HelperText`/`ErrorMessage`. Everything later interactive/drag/date
+   work builds on this.
+5. **Presentational Fill-Ins** — 33 no-state/no-overlay leaves (`Inline`
+   through `Divider`). Typography leaves reuse `Text`'s CSS directly.
+   `Badge`/`Chip`/`Tag` stayed three distinct components, not one skin.
+6. **Popover + First Consumers** — `Tooltip` (reuses `Popover`'s hooks,
+   not its JSX — needs `role="tooltip"` not popup semantics), `HoverCard`
+   (`Popover` preset, `triggerMode="hover"`), `SplitButton`.
+7. **Menus & Roving-Focus Groups** — `IconButton`, `FloatingActionButton`,
+   `ButtonGroup` (first `useRovingFocus` consumer), `ToggleButton`,
+   `RadioGroup`, `Menu`/`MenuItem`, `ContextMenu`. Gotchas found:
+   `Children.map`/`.toArray` don't unwrap a literal fragment (use
+   `flattenChildren.ts`), and an unmemoized virtual-element object can
+   cause a runaway `usePositioning` re-subscribe loop.
 8. **Simple Field Controls** — `TextArea`, `PasswordField`, `SearchField`,
-   `NumberField`, `EmailField`, `PhoneField`, `Checkbox`, `Switch`. Native
-   `<input type="checkbox">`/`role="switch"` visually hidden via
-   `VisuallyHidden`, driven by sibling CSS selectors — the standard
-   pattern for custom-looking-but-native form controls here. `PhoneField`
-   later extended with a `Dropdown`-based country dial-code selector,
-   kept as separate controllable state from `value`/`onChange`.
-9. **Closed-Set Selects** — `Select` (ARIA "select-only combobox"
-   pattern, composes `Popover`), `MultiSelect` (`Select`'s sibling,
-   reuses its CSS), `TimePicker` (a thin `Select` wrapper generating a
-   time-of-day option list).
-10. **Combobox & Autocomplete** — `Combobox` (ARIA "combobox with list
-    autocomplete", `aria-activedescendant` + `activeIndex` instead of
-    `Select`'s roving-tabindex, since real focus must stay in the text
-    input), `Autocomplete` (thin wrapper fixing `allowFreeText=true`).
-11. **Drag-Based Inputs** — `Slider`/`RangeSlider` (real `role="slider"`
-    widgets, first real `usePointerDrag` consumers, position recomputed
-    fresh from `getBoundingClientRect()` on every move), `Rating`
-    (discrete click, not drag — sliding isn't real rating UX). Later
-    extended with a `showValue` value-bubble prop.
-12. **Segmented Inputs** — `OTPInput` (N single-char inputs sharing one
-    controllable string value; a focus-redirect guard prevents gaps in
-    the string), `PinInput` (thin wrapper, `mask=true`, `length=4`).
-13. **Overlay Family** — `Dialog` gained optional `Header`/`Body`/`Footer`
-    parts + a `size` prop + an on-by-default close button (covers what a
-    separate `Modal` would have been); `Drawer` (`Dialog`'s edge-anchored
-    sibling via a `placement` prop, covers Bottom Sheet and Action Sheet,
-    `placement="bottom"` gets swipe-to-dismiss via `usePointerDrag`).
-14. **Global Feedback Surfaces** — `Alert`/`Banner` (shared variant
-    language and icon dispatcher, deliberately two components not one),
-    `Toast`/`ToastProvider`/`useToast` (Context+Provider+Hook split,
-    covers Snackbar), `LoadingOverlay` (reuses `Spinner`, demoted to
-    decorative).
-15. **Data-Heavy Display** — `Accordion` (WAI-ARIA APG pattern,
-    `useRovingFocus` manual activation), `Timeline` (purely
-    presentational `<ol>`/`<li>`), `Calendar` (always-visible day grid,
-    reuses `dateGrid.ts` math and `DatePicker`'s CSS but not its JSX). A
-    real bug here: an effect that moved DOM focus by checking
-    `container.contains(document.activeElement)` broke across a keyed
-    grid rebuild (e.g. changing month) — fixed by tracking interaction
-    explicitly via a ref instead of inferring it from DOM containment.
-16. **Navigation Shell** — `Navbar` (presentational shell, no built-in
-    mobile drawer), `Sidebar` (`asDrawer` prop delegates to `Drawer` for
-    mobile collapse), `Breadcrumb`/`Pagination` (deliberately no
-    roving-tabindex — each link/button is an independent destination),
-    `Navigation Rail`/`Bottom Navigation` (share the same per-item shape
-    via cross-component CSS reuse, kept as two components per the
-    inventory's explicit listing).
-17. **Dedicated Deep-Dive Sessions** — all six built in one session:
-    `Data Grid` (Table-superset composing `Table`'s own subcomponents,
-    not a virtualized engine, deliberately not `role="grid"`), `Tree
-View` (data-driven recursive `nodes` prop; a real bug — the nested
-    `role="group"` inflated the parent's accessible name once expanded,
-    fixed with `aria-labelledby`), `Command Palette` (reuses `Dialog` for
-    the shell and `Combobox`'s interaction model, not its JSX, plus a
-    Cmd/Ctrl+K hotkey), `Color Picker` (HSV internally for the picker
-    square's math, full HEX/RGB/HSL/HSV conversions exported), `File
-Upload`/`Dropzone` (one `<label>`+`<input type="file">` is both
-    trigger and drop target, fully controlled), `Carousel` (W3C APG
-    Carousel pattern, autoplay respects `prefers-reduced-motion`, always
-    ships an explicit Play/Pause button per WCAG 2.2.2). Two contrast
-    issues were found and fixed in this phase's _story_ demo content
-    (not the components) — see "Known Issues" below.
+   `NumberField`, `EmailField`, `PhoneField`, `Checkbox`, `Switch`.
+   Custom-looking native controls hidden via `VisuallyHidden` + sibling
+   CSS selectors is the standard pattern here.
+9. **Closed-Set Selects** — `Select`, `MultiSelect`, `TimePicker` (thin
+   `Select` wrapper).
+10. **Combobox & Autocomplete** — `Combobox` (`aria-activedescendant`,
+    not roving-tabindex — focus must stay in the input), `Autocomplete`
+    (thin wrapper, `allowFreeText=true`).
+11. **Drag-Based Inputs** — `Slider`/`RangeSlider` (first real
+    `usePointerDrag` consumers), `Rating` (discrete click, not drag).
+12. **Segmented Inputs** — `OTPInput` (focus-redirect guard prevents gaps
+    in the shared string value), `PinInput` (thin wrapper).
+13. **Overlay Family** — `Dialog` gained `Header`/`Body`/`Footer` +
+    `size` + a default close button (covers `Modal`); `Drawer`
+    (`Dialog`'s edge-anchored sibling, covers Bottom Sheet/Action Sheet).
+14. **Global Feedback Surfaces** — `Alert`/`Banner` (two components, one
+    shared variant language), `Toast`/`ToastProvider`/`useToast` (covers
+    Snackbar), `LoadingOverlay`.
+15. **Data-Heavy Display** — `Accordion`, `Timeline`, `Calendar`. Real bug
+    fixed: focus-move logic that inferred state from DOM containment
+    broke across a keyed grid rebuild — track interaction via a ref
+    instead.
+16. **Navigation Shell** — `Navbar`, `Sidebar` (`asDrawer` → `Drawer` on
+    mobile), `Breadcrumb`/`Pagination` (no roving-tabindex — independent
+    destinations), `Navigation Rail`/`Bottom Navigation`.
+17. **Dedicated Deep-Dive Sessions** — `Data Grid`, `Tree View` (real bug:
+    nested `role="group"` inflated the parent's accessible name — fixed
+    with `aria-labelledby`), `Command Palette`, `Color Picker`, `File
+Upload`/`Dropzone`, `Carousel`. Two story-content contrast issues
+    found and fixed here (not the components) — see "Known Issues".
+18. **AI Core Infra** — `AIContext`/`AIProvider`/`useAI` (Context/
+    Provider/Hook split, `useAI` doesn't throw outside its provider —
+    AI is opt-in), `useAIAction` (adds `'streaming'` to `FileUpload`'s
+    status vocabulary, no global job queue by design), `AITriggerButton`,
+    `AISuggestionPopover`. **Confirmed with the user up front**: this
+    library never bundles a vendor SDK/API key/`fetch` — it defines only
+    an `AIClient` interface (`complete`/optional `stream`), consumer owns
+    transport. Real bug found: `Popover.Content` silently doesn't forward
+    `aria-label` (TS's `aria-*` excess-property exemption let it typecheck
+    while axe failed at runtime) — fixed by putting `role="dialog"` + the
+    accessible name on `AISuggestionPopover`'s own inner element.
+19. **Flagship AI Components** — `TextArea` (`aiRewrite`), `SearchField`
+    (`aiSearch`), `Alert` (`aiExplain`, read-only), `DataGrid`
+    (`aiTableQuery`/`aiRowExplain`), `CommandPalette` (`aiSearch.onQuery`
+    — the one flagship that skips `AISuggestionPopover`/`AITriggerButton`
+    entirely, since turning AI text into executable actions must stay
+    app-specific), `EmptyState` (story only, no code change — its
+    existing `action` slot already composes arbitrary UI). Real bug found
+    across three of these: `useControllableState`'s `setValue` is a
+    no-op when controlled (its `onChange` was never wired to the
+    consumer's outer `onChange`) — `TextArea`/`SearchField` each grew a
+    small `applyAIText`/`applySearchText` helper that calls `setValue`
+    **and** fires a minimal synthetic `onChange` event, worth checking
+    for in any future component applying a value without a real
+    keystroke.
 
 ### Known Issues
 
@@ -302,26 +285,19 @@ Re-confirmed present and unfixed across three phases' worth of
 verification runs (15, 16, 17) — worth a dedicated fix pass rather than
 continuing to re-note it.
 
-### Planned: Phase 18 and beyond
+### Backlog: Phase 18 and 19 (not started)
 
-Phases 1-17 above are ✅ shipped (see "Shipped Phase Notes" above for
-Phases 4-17's detailed rationale). Phases 18-19 below are the remaining
-dependency-ordered roadmap for the rest of the Component Inventory,
-written down so a future session can pick up any phase without
-re-deriving the ordering. Ordering principle: shared mechanisms before
-their consumers, cheap presentational leaves cleared early while that
-infra beds in, then outward through infra consumers in increasing
-complexity — with anything DatePicker-sized (see Phase 3 above) deferred
-to its own session regardless of alphabetical/category order.
+Phases 1-17 and 20-21 above are ✅ shipped. Phases 18-19 are 🔲 **backlog**
+— the remaining dependency-ordered roadmap for the rest of the Component
+Inventory, written down so a future session can pick either up without
+re-deriving the ordering. Neither depends on the other or on Phase 22.
 
-18. **Mobile Gestures** — deferred to its own session: Pull To Refresh,
-    Swipe Actions. Share the same touch-simulation testing gap (below),
-    verified via `pnpm test:storybook`'s real-browser pass, not
-    Vitest/jsdom.
-19. **Remaining Utilities & Media** — Scroll Area (thumb drag reuses
-    `usePointerDrag`), Split Pane, Resizable (both need `usePointerDrag`),
-    Infinite Scroll (needs a new `useIntersectionObserver` hook),
-    Masonry, Video, Audio (custom scrubber = pointer-drag again).
+18. **Mobile Gestures** (backlog) — Pull To Refresh, Swipe Actions.
+    Deferred to its own session; needs real-browser touch-simulation
+    verification via `pnpm test:storybook`, not Vitest/jsdom.
+19. **Remaining Utilities & Media** (backlog) — Scroll Area, Split Pane,
+    Resizable (all reuse `usePointerDrag`), Infinite Scroll (needs a new
+    `useIntersectionObserver` hook), Masonry, Video, Audio.
 
 **Testing/environment gaps to plan around**: jsdom has no real
 pointer-drag/touch physics, `IntersectionObserver`, or `ResizeObserver` —
@@ -331,6 +307,36 @@ assertions in Vitest; actual drag-math/scroll-trigger/gesture-threshold
 behavior needs verification via `pnpm test:storybook`'s real Playwright
 pass, the same split already documented above for `color-contrast` in
 `tests/axe.ts`.
+
+### Backlog: Phase 22 — AI Enhancement Backlog (not started)
+
+Phase 21 shipped AI features on 6 flagship components as a first wave,
+deliberately not all ~90 components in the inventory. The remaining
+opportunities are catalogued per-component in the cross-check table in
+`docs/COMPONENT_LIST.md`, not repeated here — pick a slice from there.
+Summary: most remaining components get either a "small trigger → popover
+with a text result" enhancement (rewrite/summarize/explain/suggest,
+reusing `AIContext`/`useAI`/`useAIAction`/`AITriggerButton`/
+`AISuggestionPopover` exactly as 4 of Phase 21's 6 components did), or —
+where the AI output must become a typed, executable action rather than
+display text (menus, tabs, tree selection, table queries) — the
+`CommandPalette` shape instead: no shared AI primitive, the consumer's own
+resolver function returns real, safe, executable items. Which shape
+applies is determined by that distinction, not a per-component judgment
+call.
+
+### Future: real AI backend wiring
+
+Deliberately **out of scope** for Phase 20/21 — every flagship component
+and Storybook story was built and tested against a mock/deterministic
+`AIClient`, per an explicit up-front scope decision with the user, so a
+production `AIClient` implementation and any real API key never touch
+this repo's own code or tests. A live demo (e.g. a real key wired into a
+Storybook-only `AIClient` via `AIProvider`) is a natural follow-up, but
+needs this repo's first-ever `.env`/env-var convention (currently zero
+`import.meta.env`/`process.env` usage anywhere in `src/`) — introduce that
+convention deliberately in its own session rather than folding it
+silently into a future phase.
 
 ## Component Inventory
 
@@ -376,6 +382,10 @@ Resizable, Masonry.
 
 Mobile: Bottom Navigation, Action Sheet (covers via `Drawer`
 `placement="bottom"` — see Build Order), Pull To Refresh, Swipe Actions.
+
+AI: AITriggerButton, AISuggestionPopover (shared primitives from Phase 20;
+`AIProvider`/`useAI`/`useAIAction` are infra in `src/providers`/`src/hooks`,
+not components, so aren't listed here — see Build Order Phase 20).
 
 ## Accessibility
 
