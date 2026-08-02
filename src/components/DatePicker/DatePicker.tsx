@@ -8,78 +8,25 @@ import { useClickOutside } from '../../hooks/useClickOutside';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { useFieldContext } from '../../hooks/useFieldContext';
 import { mergeClasses } from '../../utilities/mergeClasses';
+import {
+  addDays,
+  addMonths,
+  addYears,
+  buildMonthGrid,
+  formatFullDate,
+  formatMonth,
+  formatMonthYear,
+  isMonthOutOfRange,
+  isOutOfRange,
+  isSameDay,
+  isYearOutOfRange,
+  startOfDay,
+  startOfYearPage,
+  toDateKey,
+  WEEKDAY_LABELS,
+  YEAR_PAGE_SIZE,
+} from '../../utilities/dateGrid';
 import styles from './DatePicker.module.css';
-
-function startOfDay(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
-
-function addDays(date: Date, amount: number): Date {
-  const next = new Date(date);
-  next.setDate(next.getDate() + amount);
-  return next;
-}
-
-/** Clamps to the target month's last valid day (Jan 31 + 1 month -> Feb 28/29, not Mar 3). */
-function addMonths(date: Date, amount: number): Date {
-  const day = date.getDate();
-  const next = new Date(date.getFullYear(), date.getMonth(), 1);
-  next.setMonth(next.getMonth() + amount);
-  const lastDayOfTargetMonth = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
-  next.setDate(Math.min(day, lastDayOfTargetMonth));
-  return next;
-}
-
-function addYears(date: Date, amount: number): Date {
-  return addMonths(date, amount * 12);
-}
-
-function isSameDay(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
-
-function isOutOfRange(date: Date, min: Date | undefined, max: Date | undefined): boolean {
-  const day = startOfDay(date).getTime();
-  if (min && day < startOfDay(min).getTime()) return true;
-  if (max && day > startOfDay(max).getTime()) return true;
-  return false;
-}
-
-/** Always a 6-week (42-day) grid so month-to-month layout height never shifts. */
-function buildMonthGrid(anchor: Date): Date[] {
-  const firstOfMonth = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
-  const start = addDays(firstOfMonth, -firstOfMonth.getDay());
-  return Array.from({ length: 42 }, (_, i) => addDays(start, i));
-}
-
-/** Local (not UTC, unlike `toISOString`) date key — stable across timezones for the `key`/`data-date` attribute. */
-function toDateKey(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
-// Jan 1, 2023 was a Sunday - an arbitrary Sun-Sat week used only to read
-// locale weekday abbreviations in order, independent of the calendar's
-// actual dates.
-const WEEKDAY_LABELS = Array.from({ length: 7 }, (_, i) =>
-  new Intl.DateTimeFormat(undefined, { weekday: 'short' }).format(new Date(2023, 0, 1 + i)),
-);
-
-function formatMonthYear(date: Date): string {
-  return new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(date);
-}
-
-function formatFullDate(date: Date): string {
-  return new Intl.DateTimeFormat(undefined, {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(date);
-}
 
 function defaultFormatDate(date: Date): string {
   return new Intl.DateTimeFormat(undefined, {
@@ -89,10 +36,58 @@ function defaultFormatDate(date: Date): string {
   }).format(date);
 }
 
+/** The panel's current drill-down level: pick a day, a month (then day), or a year (then month). */
+type DatePickerView = 'day' | 'month' | 'year';
+
+export type DatePickerSelectionMode = 'single' | 'range';
+
+export interface DateRange {
+  start: Date;
+  end?: Date;
+}
+
+interface DaySelectionState {
+  isSelected: boolean;
+  isRangeStart: boolean;
+  isRangeEnd: boolean;
+  isInRange: boolean;
+}
+
+function getDaySelectionState(
+  date: Date,
+  selectionMode: DatePickerSelectionMode,
+  selected: Date | undefined,
+  range: DateRange | undefined,
+): DaySelectionState {
+  if (selectionMode === 'range') {
+    const isRangeStart = Boolean(range?.start && isSameDay(date, range.start));
+    const isRangeEnd = Boolean(range?.end && isSameDay(date, range.end));
+    const isInRange = Boolean(range?.start && range?.end && date > range.start && date < range.end);
+    return {
+      isSelected: isRangeStart || isRangeEnd || isInRange,
+      isRangeStart,
+      isRangeEnd,
+      isInRange,
+    };
+  }
+  return {
+    isSelected: selected ? isSameDay(date, selected) : false,
+    isRangeStart: false,
+    isRangeEnd: false,
+    isInRange: false,
+  };
+}
+
 export interface DatePickerProps {
+  /** `'single'` (default) selects one `Date`. `'range'` selects a `{start, end}` span — use `rangeValue`/`defaultRangeValue`/`onRangeChange` instead of `value`/`defaultValue`/`onChange` in that mode. */
+  selectionMode?: DatePickerSelectionMode;
   value?: Date;
   defaultValue?: Date;
   onChange?: (date: Date | undefined) => void;
+  /** Only used when `selectionMode="range"`. `end` is `undefined` while only the start of the range has been picked. */
+  rangeValue?: DateRange;
+  defaultRangeValue?: DateRange;
+  onRangeChange?: (range: DateRange | undefined) => void;
   open?: boolean;
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -104,7 +99,7 @@ export interface DatePickerProps {
   invalid?: boolean;
   id?: string;
   placeholder?: string;
-  /** Formats the trigger's label for the selected date. Defaults to a locale long date. */
+  /** Formats a single date for the trigger's label (and each endpoint of a range). Defaults to a locale long date. */
   formatDate?: (date: Date) => string;
   className?: string;
 }
@@ -119,15 +114,29 @@ export interface DatePickerProps {
  *
  * Reuses Phase 3's overlay infra directly: `usePositioning` for the panel,
  * `useClickOutside`/`useEscapeKey` to dismiss, and `useFocusTrap` to contain
- * Tab within the panel (prev/next month buttons + the one roving-tabindex
- * day cell) and restore focus to the trigger on close — the same mechanism
- * Dialog uses. `useFieldContext` wires the trigger up like `Input` does.
+ * Tab within the panel and restore focus to the trigger on close — the same
+ * mechanism Dialog uses. `useFieldContext` wires the trigger up like `Input`
+ * does.
  *
- * The day grid uses `role="gridcell"` on plain `<div>`s (not `<button>`s)
- * with a roving `tabIndex` (0 on the focused day, -1 on the rest): a real
- * `<button>` would match `useFocusTrap`'s focusable-element selector for
- * every day regardless of its `tabIndex`, breaking the roving-tabindex
- * pattern the grid depends on for arrow-key navigation.
+ * The panel drills down through three views — day grid (default), month
+ * grid, year grid — so jumping to a distant date doesn't mean clicking
+ * "previous month" dozens of times: clicking the heading (or Enter on it)
+ * goes up a level (day -> month -> year), clicking a month or year cell
+ * goes back down (year -> month -> day), each anchoring `focusedDate` to
+ * the chosen month/year along the way. All three grids use `role="gridcell"`
+ * on plain `<div>`s (not `<button>`s) with a roving `tabIndex` (0 on the
+ * focused cell, -1 on the rest): a real `<button>` would match
+ * `useFocusTrap`'s focusable-element selector for every cell regardless of
+ * `tabIndex`, breaking the roving-tabindex pattern each grid depends on for
+ * arrow-key navigation.
+ *
+ * `selectionMode="range"` reuses the same day grid: the first click sets
+ * `range.start` (panel stays open to pick the end), the next click sets
+ * `range.end` (swapping the two if it lands before `start`) and closes the
+ * panel — clicking again after a range is complete starts a new one. There
+ * is no live hover/focus preview of the in-progress range (only the
+ * committed `start`/`end` are highlighted) — a deliberate scope cut, same
+ * spirit as skipping free-text parsing.
  *
  * No `required` prop: unlike `Input`'s native `required` attribute, neither
  * `required` nor `aria-required` is valid on an element with the `button`
@@ -136,9 +145,13 @@ export interface DatePickerProps {
  * independently of this component.
  */
 export function DatePicker({
+  selectionMode = 'single',
   value,
   defaultValue,
   onChange,
+  rangeValue,
+  defaultRangeValue,
+  onRangeChange,
   open,
   defaultOpen = false,
   onOpenChange,
@@ -162,6 +175,11 @@ export function DatePicker({
     defaultValue,
     onChange,
   });
+  const [range, setRange] = useControllableState<DateRange | undefined>({
+    value: rangeValue,
+    defaultValue: defaultRangeValue,
+    onChange: onRangeChange,
+  });
   const [isOpen, setIsOpen] = useControllableState<boolean>({
     value: open,
     defaultValue: defaultOpen,
@@ -169,7 +187,10 @@ export function DatePicker({
   });
 
   const today = startOfDay(new Date());
-  const [focusedDate, setFocusedDate] = useState<Date>(() => selected ?? today);
+  const [focusedDate, setFocusedDate] = useState<Date>(
+    () => (selectionMode === 'range' ? range?.start : selected) ?? today,
+  );
+  const [view, setView] = useState<DatePickerView>('day');
 
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -187,7 +208,7 @@ export function DatePicker({
 
   useEffect(() => {
     if (isOpen) focusedCellRef.current?.focus();
-  }, [focusedDate, isOpen]);
+  }, [focusedDate, isOpen, view]);
 
   function toggleOpen() {
     if (!isOpen) {
@@ -195,18 +216,65 @@ export function DatePicker({
       // opens, synchronously with the click that opens it, so useFocusTrap's
       // initial-focus effect (which fires in the same commit) targets the
       // right cell instead of a stale one left over from a prior session.
-      setFocusedDate(selected ?? today);
+      setFocusedDate((selectionMode === 'range' ? range?.start : selected) ?? today);
+      setView('day');
     }
     setIsOpen(!isOpen);
   }
 
   function selectDate(date: Date) {
     if (isOutOfRange(date, min, max)) return;
-    setSelected(date);
+
+    if (selectionMode === 'single') {
+      setSelected(date);
+      setIsOpen(false);
+      return;
+    }
+
+    if (!range?.start || range.end) {
+      // Nothing picked yet, or the previous range was already complete - start a new one.
+      setRange({ start: date, end: undefined });
+      return;
+    }
+    // range.start is set and range.end isn't: this click sets the end (swapping if it lands before start).
+    setRange(
+      date < range.start ? { start: date, end: range.start } : { start: range.start, end: date },
+    );
     setIsOpen(false);
   }
 
-  function handleGridKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+  function activateMonth(monthDate: Date) {
+    if (isMonthOutOfRange(monthDate.getFullYear(), monthDate.getMonth(), min, max)) return;
+    setFocusedDate(monthDate);
+    setView('day');
+  }
+
+  function activateYear(year: number) {
+    if (isYearOutOfRange(year, min, max)) return;
+    const next = new Date(focusedDate);
+    next.setFullYear(year);
+    setFocusedDate(next);
+    setView('month');
+  }
+
+  function drillUp() {
+    if (view === 'day') setView('month');
+    else if (view === 'month') setView('year');
+  }
+
+  function navigatePrev() {
+    if (view === 'day') setFocusedDate(addMonths(focusedDate, -1));
+    else if (view === 'month') setFocusedDate(addYears(focusedDate, -1));
+    else setFocusedDate(addYears(focusedDate, -YEAR_PAGE_SIZE));
+  }
+
+  function navigateNext() {
+    if (view === 'day') setFocusedDate(addMonths(focusedDate, 1));
+    else if (view === 'month') setFocusedDate(addYears(focusedDate, 1));
+    else setFocusedDate(addYears(focusedDate, YEAR_PAGE_SIZE));
+  }
+
+  function handleDayGridKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     switch (event.key) {
       case 'ArrowRight':
         event.preventDefault();
@@ -250,8 +318,127 @@ export function DatePicker({
     }
   }
 
-  const grid = buildMonthGrid(focusedDate);
-  const weeks = Array.from({ length: 6 }, (_, week) => grid.slice(week * 7, week * 7 + 7));
+  function handleMonthGridKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    switch (event.key) {
+      case 'ArrowRight':
+        event.preventDefault();
+        setFocusedDate(addMonths(focusedDate, 1));
+        break;
+      case 'ArrowLeft':
+        event.preventDefault();
+        setFocusedDate(addMonths(focusedDate, -1));
+        break;
+      case 'ArrowDown':
+        event.preventDefault();
+        setFocusedDate(addMonths(focusedDate, 4));
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        setFocusedDate(addMonths(focusedDate, -4));
+        break;
+      case 'Home':
+        event.preventDefault();
+        setFocusedDate(addMonths(focusedDate, -focusedDate.getMonth()));
+        break;
+      case 'End':
+        event.preventDefault();
+        setFocusedDate(addMonths(focusedDate, 11 - focusedDate.getMonth()));
+        break;
+      case 'Enter':
+      case ' ':
+        event.preventDefault();
+        activateMonth(focusedDate);
+        break;
+      default:
+        break;
+    }
+  }
+
+  function handleYearGridKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    const offsetInPage = focusedDate.getFullYear() - startOfYearPage(focusedDate.getFullYear());
+    switch (event.key) {
+      case 'ArrowRight':
+        event.preventDefault();
+        setFocusedDate(addYears(focusedDate, 1));
+        break;
+      case 'ArrowLeft':
+        event.preventDefault();
+        setFocusedDate(addYears(focusedDate, -1));
+        break;
+      case 'ArrowDown':
+        event.preventDefault();
+        setFocusedDate(addYears(focusedDate, 4));
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        setFocusedDate(addYears(focusedDate, -4));
+        break;
+      case 'Home':
+        event.preventDefault();
+        setFocusedDate(addYears(focusedDate, -offsetInPage));
+        break;
+      case 'End':
+        event.preventDefault();
+        setFocusedDate(addYears(focusedDate, YEAR_PAGE_SIZE - 1 - offsetInPage));
+        break;
+      case 'Enter':
+      case ' ':
+        event.preventDefault();
+        activateYear(focusedDate.getFullYear());
+        break;
+      default:
+        break;
+    }
+  }
+
+  function handleGridKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (view === 'day') handleDayGridKeyDown(event);
+    else if (view === 'month') handleMonthGridKeyDown(event);
+    else handleYearGridKeyDown(event);
+  }
+
+  function getTriggerLabel(): string {
+    if (selectionMode === 'range') {
+      if (!range?.start) return placeholder;
+      if (!range.end) return formatDate(range.start);
+      return `${formatDate(range.start)} – ${formatDate(range.end)}`;
+    }
+    return selected ? formatDate(selected) : placeholder;
+  }
+
+  const dayGrid = view === 'day' ? buildMonthGrid(focusedDate) : [];
+  const dayWeeks = Array.from({ length: dayGrid.length / 7 }, (_, week) =>
+    dayGrid.slice(week * 7, week * 7 + 7),
+  );
+
+  const monthRows =
+    view === 'month'
+      ? Array.from({ length: 3 }, (_, row) =>
+          Array.from(
+            { length: 4 },
+            (_, col) => new Date(focusedDate.getFullYear(), row * 4 + col, 1),
+          ),
+        )
+      : [];
+
+  const yearPageStart = startOfYearPage(focusedDate.getFullYear());
+  const yearRows =
+    view === 'year'
+      ? Array.from({ length: 3 }, (_, row) =>
+          Array.from({ length: 4 }, (_, col) => yearPageStart + row * 4 + col),
+        )
+      : [];
+
+  const headingText =
+    view === 'day'
+      ? formatMonthYear(focusedDate)
+      : view === 'month'
+        ? String(focusedDate.getFullYear())
+        : `${yearPageStart}–${yearPageStart + YEAR_PAGE_SIZE - 1}`;
+
+  const prevLabel =
+    view === 'day' ? 'Previous month' : view === 'month' ? 'Previous year' : 'Previous years';
+  const nextLabel = view === 'day' ? 'Next month' : view === 'month' ? 'Next year' : 'Next years';
 
   return (
     <>
@@ -269,7 +456,7 @@ export function DatePicker({
         disabled={resolvedDisabled}
         onClick={toggleOpen}
       >
-        {selected ? formatDate(selected) : placeholder}
+        {getTriggerLabel()}
       </button>
       {isOpen && (
         <Portal>
@@ -284,20 +471,32 @@ export function DatePicker({
             <div className={styles.header}>
               <button
                 type="button"
-                aria-label="Previous month"
+                aria-label={prevLabel}
                 className={styles.navButton}
-                onClick={() => setFocusedDate(addMonths(focusedDate, -1))}
+                onClick={navigatePrev}
               >
                 ‹
               </button>
-              <span id={headingId} className={styles.heading}>
-                {formatMonthYear(focusedDate)}
-              </span>
+              {view === 'year' ? (
+                <span id={headingId} className={styles.heading}>
+                  {headingText}
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  id={headingId}
+                  className={mergeClasses(styles.heading, styles.headingButton)}
+                  aria-label={`${headingText}, choose ${view === 'day' ? 'month' : 'year'}`}
+                  onClick={drillUp}
+                >
+                  {headingText}
+                </button>
+              )}
               <button
                 type="button"
-                aria-label="Next month"
+                aria-label={nextLabel}
                 className={styles.navButton}
-                onClick={() => setFocusedDate(addMonths(focusedDate, 1))}
+                onClick={navigateNext}
               >
                 ›
               </button>
@@ -309,49 +508,123 @@ export function DatePicker({
               className={styles.grid}
               onKeyDown={handleGridKeyDown}
             >
-              <div role="row" className={styles.weekRow}>
-                {WEEKDAY_LABELS.map((label) => (
-                  <span key={label} role="columnheader" className={styles.weekday}>
-                    {label}
-                  </span>
-                ))}
-              </div>
-              {weeks.map((week, weekIndex) => (
-                <div role="row" className={styles.weekRow} key={weekIndex}>
-                  {week.map((date) => {
-                    const isFocused = isSameDay(date, focusedDate);
-                    const isSelected = selected ? isSameDay(date, selected) : false;
-                    const isToday = isSameDay(date, today);
-                    const isOutsideMonth = date.getMonth() !== focusedDate.getMonth();
-                    const isDisabled = isOutOfRange(date, min, max);
-
-                    return (
-                      // eslint-disable-next-line jsx-a11y/click-events-have-key-events -- Enter/Space are handled by the parent grid's onKeyDown, which sees them via bubbling from whichever cell holds the roving tabindex focus
-                      <div
-                        key={toDateKey(date)}
-                        ref={isFocused ? focusedCellRef : undefined}
-                        role="gridcell"
-                        tabIndex={isFocused ? 0 : -1}
-                        aria-selected={isSelected}
-                        aria-current={isToday ? 'date' : undefined}
-                        aria-disabled={isDisabled || undefined}
-                        aria-label={formatFullDate(date)}
-                        data-date={toDateKey(date)}
-                        data-outside-month={isOutsideMonth || undefined}
-                        data-today={isToday || undefined}
-                        data-disabled={isDisabled || undefined}
-                        className={styles.day}
-                        onClick={() => {
-                          setFocusedDate(date);
-                          selectDate(date);
-                        }}
-                      >
-                        {date.getDate()}
-                      </div>
-                    );
-                  })}
+              {view === 'day' && (
+                <div role="row" className={styles.weekRow}>
+                  {WEEKDAY_LABELS.map((label) => (
+                    <span key={label} role="columnheader" className={styles.weekday}>
+                      {label}
+                    </span>
+                  ))}
                 </div>
-              ))}
+              )}
+              {view === 'day' &&
+                dayWeeks.map((week, weekIndex) => (
+                  <div role="row" className={styles.weekRow} key={weekIndex}>
+                    {week.map((date) => {
+                      const isFocused = isSameDay(date, focusedDate);
+                      const isToday = isSameDay(date, today);
+                      const isOutsideMonth = date.getMonth() !== focusedDate.getMonth();
+                      const isDisabled = isOutOfRange(date, min, max);
+                      const { isSelected, isRangeStart, isRangeEnd, isInRange } =
+                        getDaySelectionState(date, selectionMode, selected, range);
+
+                      return (
+                        // eslint-disable-next-line jsx-a11y/click-events-have-key-events -- Enter/Space are handled by the parent grid's onKeyDown, which sees them via bubbling from whichever cell holds the roving tabindex focus
+                        <div
+                          key={toDateKey(date)}
+                          ref={isFocused ? focusedCellRef : undefined}
+                          role="gridcell"
+                          tabIndex={isFocused ? 0 : -1}
+                          aria-selected={isSelected}
+                          aria-current={isToday ? 'date' : undefined}
+                          aria-disabled={isDisabled || undefined}
+                          aria-label={formatFullDate(date)}
+                          data-date={toDateKey(date)}
+                          data-outside-month={isOutsideMonth || undefined}
+                          data-today={isToday || undefined}
+                          data-disabled={isDisabled || undefined}
+                          data-range-start={isRangeStart || undefined}
+                          data-range-end={isRangeEnd || undefined}
+                          data-in-range={isInRange || undefined}
+                          className={styles.day}
+                          onClick={() => {
+                            setFocusedDate(date);
+                            selectDate(date);
+                          }}
+                        >
+                          {date.getDate()}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              {view === 'month' &&
+                monthRows.map((row, rowIndex) => (
+                  <div role="row" className={styles.optionRow} key={rowIndex}>
+                    {row.map((monthDate) => {
+                      const isFocused =
+                        monthDate.getMonth() === focusedDate.getMonth() &&
+                        monthDate.getFullYear() === focusedDate.getFullYear();
+                      const isCurrent =
+                        monthDate.getMonth() === today.getMonth() &&
+                        monthDate.getFullYear() === today.getFullYear();
+                      const isDisabled = isMonthOutOfRange(
+                        monthDate.getFullYear(),
+                        monthDate.getMonth(),
+                        min,
+                        max,
+                      );
+
+                      return (
+                        // eslint-disable-next-line jsx-a11y/click-events-have-key-events -- see the day grid's identical comment above
+                        <div
+                          key={monthDate.getMonth()}
+                          ref={isFocused ? focusedCellRef : undefined}
+                          role="gridcell"
+                          tabIndex={isFocused ? 0 : -1}
+                          aria-current={isCurrent ? 'date' : undefined}
+                          aria-disabled={isDisabled || undefined}
+                          aria-label={`${formatMonth(monthDate)} ${monthDate.getFullYear()}`}
+                          data-today={isCurrent || undefined}
+                          data-disabled={isDisabled || undefined}
+                          className={styles.optionCell}
+                          onClick={() => activateMonth(monthDate)}
+                        >
+                          {formatMonth(monthDate)}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              {view === 'year' &&
+                yearRows.map((row, rowIndex) => (
+                  <div role="row" className={styles.optionRow} key={rowIndex}>
+                    {row.map((year) => {
+                      const isFocused = year === focusedDate.getFullYear();
+                      const isCurrent = year === today.getFullYear();
+                      const isDisabled = isYearOutOfRange(year, min, max);
+
+                      return (
+                        // eslint-disable-next-line jsx-a11y/click-events-have-key-events -- see the day grid's identical comment above
+                        <div
+                          key={year}
+                          ref={isFocused ? focusedCellRef : undefined}
+                          role="gridcell"
+                          tabIndex={isFocused ? 0 : -1}
+                          aria-current={isCurrent ? 'date' : undefined}
+                          aria-disabled={isDisabled || undefined}
+                          aria-label={String(year)}
+                          data-today={isCurrent || undefined}
+                          data-disabled={isDisabled || undefined}
+                          className={styles.optionCell}
+                          onClick={() => activateYear(year)}
+                        >
+                          {year}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
             </div>
           </div>
         </Portal>

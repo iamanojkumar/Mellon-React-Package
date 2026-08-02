@@ -1,0 +1,39 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-sm);
+}
+
+/*
+  Mirrors Checkbox.module.css's `.box`/`.checkmark` exactly, for visual
+  consistency with the standalone `Checkbox` component — this is
+  decorative only (aria-hidden; real selection state is `aria-selected`
+  on the `role="option"` row, since a `role="option"` can't validly
+  contain a real `<input type="checkbox">`), not a functional control.
+*/
+.checkbox {
+  box-sizing: border-box;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  background: var(--ds-color-surface-primary);
+  border: 1px solid var(--ds-color-border-primary);
+  border-radius: var(--ds-radius-sm);
+  color: var(--ds-color-text-inverse);
+}
+
+.checkmark {
+  display: none;
+}
+
+.checkbox[data-checked] {
+  background: var(--ds-color-brand-primary);
+  border-color: var(--ds-color-brand-primary);
+}
+
+.checkbox[data-checked] .checkmark {
+  display: block;
+}

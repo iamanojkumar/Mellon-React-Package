@@ -1,0 +1,3 @@
+.paragraph + .paragraph {
+  margin-top: var(--ds-space-md);
+}

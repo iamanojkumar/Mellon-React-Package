@@ -2,6 +2,8 @@ import { useId } from 'react';
 import type { ComponentPropsWithoutRef, ReactNode } from 'react';
 import { mergeClasses } from '../../utilities/mergeClasses';
 import { FieldContext } from '../../contexts/FieldContext';
+import { HelperText } from '../HelperText/HelperText';
+import { ErrorMessage } from '../ErrorMessage/ErrorMessage';
 import styles from './Field.module.css';
 
 export interface FieldOwnProps {
@@ -21,6 +23,9 @@ export type FieldProps = Omit<ComponentPropsWithoutRef<'div'>, 'children'> & Fie
  * Wires a label, a control, and helper/error text together via
  * `FieldContext` (not `cloneElement` — see docs/SPEC.md) so the control
  * gets the right `id`/`aria-describedby`/`aria-invalid` automatically.
+ * Renders the description via the standalone `HelperText`/`ErrorMessage`
+ * components rather than inlining that styling, so the same look is
+ * available to custom form layouts built outside `Field`.
  * No `ref` prop: there's no single element here to forward one to — get a
  * ref on the control itself (e.g. `<Input ref={...} />`) if you need one.
  */
@@ -57,11 +62,12 @@ export function Field({
       <FieldContext.Provider value={{ id, invalid, disabled, required, describedById }}>
         {children}
       </FieldContext.Provider>
-      {hasDescription && (
-        <div id={describedById} className={invalid ? styles.errorMessage : styles.helperText}>
-          {invalid ? errorMessage : helperText}
-        </div>
-      )}
+      {hasDescription &&
+        (invalid ? (
+          <ErrorMessage id={describedById}>{errorMessage}</ErrorMessage>
+        ) : (
+          <HelperText id={describedById}>{helperText}</HelperText>
+        ))}
     </div>
   );
 }

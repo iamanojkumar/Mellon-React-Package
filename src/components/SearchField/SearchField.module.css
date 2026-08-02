@@ -1,0 +1,50 @@
+.wrapper {
+  position: relative;
+  display: inline-flex;
+  width: 100%;
+}
+
+.input::-webkit-search-decoration,
+.input::-webkit-search-cancel-button,
+.input::-webkit-search-results-button,
+.input::-webkit-search-results-decoration {
+  display: none;
+}
+
+/*
+  `.wrapper .input.input` to reliably beat Input.module.css's
+  `.input[data-size='...']` rule regardless of import order — same
+  doubled-specificity fix as `PasswordField`.
+*/
+.wrapper .input.input.hasClear {
+  padding-right: calc(var(--ds-space-md) + 1.5em);
+}
+
+.clear {
+  position: absolute;
+  top: 50%;
+  right: var(--ds-space-sm);
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75em;
+  height: 1.75em;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--ds-color-text-secondary);
+  font-size: var(--ds-font-size-lg);
+  line-height: 1;
+  cursor: pointer;
+  border-radius: var(--ds-radius-sm);
+}
+
+.clear:hover {
+  color: var(--ds-color-text-primary);
+}
+
+.clear:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-color-border-focus);
+}

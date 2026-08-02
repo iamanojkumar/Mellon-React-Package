@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
 import { DatePicker } from './DatePicker';
+import type { DateRange } from './DatePicker';
 import { Field } from '../Field/Field';
 
 const meta: Meta<typeof DatePicker> = {
@@ -70,4 +71,42 @@ export const InsideField: Story = {
  */
 export const KeyboardNavigation: Story = {
   render: () => <DatePicker defaultValue={new Date(2026, 7, 15)} />,
+};
+
+/**
+ * Click the "August 2026" heading to jump up to a 12-month grid for the
+ * year, click it again for a 12-year grid — pick a year to drop back into
+ * months, pick a month to drop back into days. Solves picking a distant
+ * date (e.g. a birth year) without clicking "next month" dozens of times.
+ * Works with the same Home/End/Arrow keys at every level, and Enter drills
+ * down just like a click.
+ */
+export const DrillDownMonthYear: Story = {
+  render: () => <DatePicker defaultValue={new Date(2026, 7, 15)} />,
+};
+
+/**
+ * `selectionMode="range"` swaps `value`/`onChange` for `rangeValue`/
+ * `onRangeChange` (shape `{ start, end? }`). The first click sets `start`
+ * and keeps the panel open; the second sets `end` (swapping the two if it
+ * lands earlier) and closes the panel. Clicking again after a range is
+ * complete starts a new one.
+ */
+export const RangeSelection: Story = {
+  render: () => {
+    function Demo() {
+      const [range, setRange] = useState<DateRange | undefined>(undefined);
+      return <DatePicker selectionMode="range" rangeValue={range} onRangeChange={setRange} />;
+    }
+    return <Demo />;
+  },
+};
+
+export const RangeSelectionWithDefaultValue: Story = {
+  render: () => (
+    <DatePicker
+      selectionMode="range"
+      defaultRangeValue={{ start: new Date(2026, 7, 17), end: new Date(2026, 7, 22) }}
+    />
+  ),
 };

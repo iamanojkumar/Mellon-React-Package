@@ -1,0 +1,175 @@
+.viewport {
+  position: fixed;
+  z-index: var(--ds-z-index-toast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-sm);
+  width: 360px;
+  max-width: calc(100vw - var(--ds-space-lg) * 2);
+  padding: var(--ds-space-md);
+  pointer-events: none;
+}
+
+.viewport[data-position^='top'] {
+  top: 0;
+  /*
+    Newest toast is always last in `toasts` (and so last in DOM order).
+    Anchored at the top, the newest one should render closest to that top
+    edge — `column-reverse` lays the last DOM child first, which is what
+    achieves that without re-sorting the array itself.
+  */
+  flex-direction: column-reverse;
+}
+.viewport[data-position^='bottom'] {
+  bottom: 0;
+  /* Anchored at the bottom, plain `column` order already lands the newest
+     (last-in-DOM) toast closest to the bottom edge — no reversal needed. */
+  flex-direction: column;
+}
+
+.viewport[data-position$='left'] {
+  left: 0;
+  align-items: flex-start;
+}
+.viewport[data-position$='right'] {
+  right: 0;
+  align-items: flex-end;
+}
+.viewport[data-position$='center'] {
+  left: 50%;
+  transform: translateX(-50%);
+  align-items: center;
+}
+
+.toast {
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ds-space-sm);
+  width: 100%;
+  padding: var(--ds-space-md);
+  border: 1px solid var(--ds-color-border-primary);
+  border-left-width: 4px;
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-color-surface-secondary);
+  box-shadow: var(--ds-elevation-md);
+  pointer-events: auto;
+  animation: toast-in var(--ds-motion-duration-medium) var(--ds-motion-easing-decelerate);
+}
+
+.toast[data-variant='info'] {
+  border-left-color: var(--ds-color-brand-primary);
+}
+.toast[data-variant='success'] {
+  border-left-color: var(--ds-color-status-success);
+}
+.toast[data-variant='warning'] {
+  border-left-color: var(--ds-color-status-warning);
+}
+.toast[data-variant='danger'] {
+  border-left-color: var(--ds-color-status-danger);
+}
+
+.icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  line-height: 0;
+}
+
+.toast[data-variant='info'] .icon {
+  color: var(--ds-color-brand-primary);
+}
+.toast[data-variant='success'] .icon {
+  color: var(--ds-color-status-success);
+}
+.toast[data-variant='warning'] .icon {
+  color: var(--ds-color-status-warning);
+}
+.toast[data-variant='danger'] .icon {
+  color: var(--ds-color-status-danger);
+}
+
+.content {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.title {
+  margin-bottom: var(--ds-space-xs);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-md);
+  font-weight: var(--ds-font-weight-bold);
+  color: var(--ds-color-text-primary);
+}
+
+.description {
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  color: var(--ds-color-text-secondary);
+}
+
+.action {
+  flex-shrink: 0;
+  padding: var(--ds-space-xs) var(--ds-space-sm);
+  border: 1px solid var(--ds-color-border-primary);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-color-surface-primary);
+  color: var(--ds-color-text-primary);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  font-weight: var(--ds-font-weight-bold);
+  cursor: pointer;
+}
+
+.action:hover {
+  background: var(--ds-color-surface-secondary);
+}
+
+.action:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-color-border-focus);
+}
+
+.dismissButton {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5em;
+  height: 1.5em;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--ds-color-text-secondary);
+  font-size: var(--ds-font-size-md);
+  line-height: 1;
+  cursor: pointer;
+  border-radius: var(--ds-radius-sm);
+}
+
+.dismissButton:hover {
+  color: var(--ds-color-text-primary);
+  background: var(--ds-color-surface-primary);
+}
+
+.dismissButton:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-color-border-focus);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--ds-space-sm));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation-duration: 1ms;
+  }
+}

@@ -1,0 +1,158 @@
+/*
+  `Dialog.module.css`'s `.backdrop` centers its (block) panel via flex —
+  harmless here since Drawer's panel is absolutely positioned and so isn't
+  part of that flex flow, but its `padding` isn't harmless: an absolutely
+  positioned child's `top`/`right`/`bottom`/`left` resolve against the
+  nearest positioned ancestor's *padding* box, so that padding would push
+  the drawer in from the viewport edge instead of sitting flush against
+  it. `.backdrop.backdrop` (doubled class) reliably overrides it
+  regardless of which CSS module happens to load first — see CLAUDE.md.
+*/
+.backdrop.backdrop {
+  padding: 0;
+}
+
+.panel {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  background: var(--ds-color-surface-primary);
+  box-shadow: var(--ds-elevation-lg);
+  padding: var(--ds-space-lg);
+  overflow-y: auto;
+}
+
+.panel[data-placement='right'] {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  height: 100%;
+  border-top-left-radius: var(--ds-radius-lg);
+  border-bottom-left-radius: var(--ds-radius-lg);
+  animation: drawer-in-right var(--ds-motion-duration-medium) var(--ds-motion-easing-decelerate);
+}
+.panel[data-placement='left'] {
+  top: 0;
+  left: 0;
+  bottom: 0;
+  height: 100%;
+  border-top-right-radius: var(--ds-radius-lg);
+  border-bottom-right-radius: var(--ds-radius-lg);
+  animation: drawer-in-left var(--ds-motion-duration-medium) var(--ds-motion-easing-decelerate);
+}
+.panel[data-placement='top'] {
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  border-bottom-left-radius: var(--ds-radius-lg);
+  border-bottom-right-radius: var(--ds-radius-lg);
+  animation: drawer-in-top var(--ds-motion-duration-medium) var(--ds-motion-easing-decelerate);
+}
+.panel[data-placement='bottom'] {
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  border-top-left-radius: var(--ds-radius-lg);
+  border-top-right-radius: var(--ds-radius-lg);
+  padding-top: var(--ds-space-xl);
+  animation: drawer-in-bottom var(--ds-motion-duration-medium) var(--ds-motion-easing-decelerate);
+}
+
+.panel[data-placement='left'][data-size='sm'],
+.panel[data-placement='right'][data-size='sm'] {
+  width: 280px;
+  max-width: 100%;
+}
+.panel[data-placement='left'][data-size='md'],
+.panel[data-placement='right'][data-size='md'] {
+  width: 360px;
+  max-width: 100%;
+}
+.panel[data-placement='left'][data-size='lg'],
+.panel[data-placement='right'][data-size='lg'] {
+  width: 480px;
+  max-width: 100%;
+}
+.panel[data-placement='left'][data-size='full'],
+.panel[data-placement='right'][data-size='full'] {
+  width: 100%;
+}
+
+.panel[data-placement='top'][data-size='sm'],
+.panel[data-placement='bottom'][data-size='sm'] {
+  height: 200px;
+  max-height: 100%;
+}
+.panel[data-placement='top'][data-size='md'],
+.panel[data-placement='bottom'][data-size='md'] {
+  height: 320px;
+  max-height: 100%;
+}
+.panel[data-placement='top'][data-size='lg'],
+.panel[data-placement='bottom'][data-size='lg'] {
+  height: 480px;
+  max-height: 100%;
+}
+.panel[data-placement='top'][data-size='full'],
+.panel[data-placement='bottom'][data-size='full'] {
+  height: 100%;
+}
+
+.grabber {
+  position: absolute;
+  top: var(--ds-space-sm);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36px;
+  height: 4px;
+  border-radius: var(--ds-radius-full);
+  background: var(--ds-color-border-primary);
+  cursor: grab;
+  touch-action: none;
+}
+
+.grabber:active {
+  cursor: grabbing;
+}
+
+@keyframes drawer-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes drawer-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes drawer-in-top {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes drawer-in-bottom {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    animation-duration: 1ms;
+  }
+}

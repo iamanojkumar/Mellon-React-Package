@@ -1,0 +1,17 @@
+.splitButton {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: stretch;
+}
+
+.splitButton .primary {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.splitButton .chevron {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left: 1px solid var(--ds-color-border-primary);
+  padding-inline: var(--ds-space-sm);
+}

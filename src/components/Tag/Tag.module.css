@@ -1,0 +1,31 @@
+.tag {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--ds-radius-sm);
+  border: 1px solid var(--ds-color-border-primary);
+  padding: 0.1em 0.6em;
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-xs);
+  font-weight: var(--ds-font-weight-medium);
+  color: var(--ds-color-text-secondary);
+  text-decoration: none;
+  line-height: 1.4;
+}
+
+.tag[data-color='brand'] {
+  border-color: var(--ds-color-brand-primary);
+  color: var(--ds-color-brand-primary);
+}
+.tag[data-color='success'] {
+  border-color: var(--ds-color-status-success);
+  color: var(--ds-color-status-success);
+}
+.tag[data-color='warning'] {
+  border-color: var(--ds-color-status-warning);
+  color: var(--ds-color-status-warning);
+}
+.tag[data-color='danger'] {
+  border-color: var(--ds-color-status-danger);
+  color: var(--ds-color-status-danger);
+}

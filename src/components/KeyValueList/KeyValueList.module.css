@@ -1,0 +1,27 @@
+.list {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-sm);
+  margin: 0;
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--ds-space-md);
+}
+
+.label {
+  margin: 0;
+  color: var(--ds-color-text-secondary);
+}
+
+.value {
+  margin: 0;
+  color: var(--ds-color-text-primary);
+  font-weight: var(--ds-font-weight-medium);
+  text-align: end;
+}

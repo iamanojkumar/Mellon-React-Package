@@ -1,0 +1,90 @@
+/*
+  `.trigger.trigger` (doubled class) to reliably beat Input.module.css's
+  `.input[data-size='...']` regardless of import order — same fix as
+  PasswordField/SearchField/PhoneField.
+*/
+.trigger.trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-sm);
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.trigger.trigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  background: var(--ds-color-surface-secondary);
+}
+
+.value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.placeholder {
+  color: var(--ds-color-text-secondary);
+}
+
+.chevron {
+  flex-shrink: 0;
+  font-size: 0.7em;
+  color: var(--ds-color-text-secondary);
+}
+
+/*
+  `Popover.Content` already renders the full bordered/background/shadow/
+  padded box (`Popover.module.css`'s `.content`) — `HoverCard` relies on
+  that default as-is, so it can't be stripped globally. `.content.content`
+  (doubled class) only tightens the padding for this listbox use case,
+  reliably beating `Popover.module.css`'s single-class `.content` rule
+  regardless of import order (same fix as `IconButton`/`SplitButton`).
+  `.listbox` itself must stay bare (no border/background/shadow/padding of
+  its own) — giving it the same box styling `Popover.Content` already
+  provides is what caused a visible double border/shadow, a "dropdown
+  inside a dropdown" nested-box artifact (see docs/SPEC.md's Phase 9 notes
+  and CLAUDE.md).
+*/
+.content.content {
+  min-width: 200px;
+  padding: var(--ds-space-xs);
+}
+
+.listbox {
+  box-sizing: border-box;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.option {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-sm);
+  padding: var(--ds-space-sm) var(--ds-space-md);
+  border-radius: var(--ds-radius-sm);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-md);
+  color: var(--ds-color-text-primary);
+  cursor: pointer;
+}
+
+.option[aria-selected='true'] {
+  background: var(--ds-color-surface-secondary);
+  font-weight: var(--ds-font-weight-medium);
+}
+
+.option:hover:not([aria-disabled='true']),
+.option:focus-visible {
+  background: var(--ds-color-surface-secondary);
+  outline: none;
+}
+
+.option[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}

@@ -1,0 +1,138 @@
+.wrapper {
+  display: inline-flex;
+  align-items: center;
+}
+
+.wrapper[data-orientation='vertical'] {
+  height: 160px;
+}
+
+.wrapper[data-orientation='horizontal'] {
+  width: 100%;
+  min-width: 160px;
+}
+
+.wrapper[data-disabled='true'] {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.track {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--ds-radius-full);
+  background: var(--ds-color-surface-secondary);
+  cursor: pointer;
+  touch-action: none;
+}
+
+.track[data-orientation='horizontal'][data-size='sm'] {
+  height: 4px;
+}
+.track[data-orientation='horizontal'][data-size='md'] {
+  height: 8px;
+}
+.track[data-orientation='horizontal'][data-size='lg'] {
+  height: 12px;
+}
+
+.track[data-orientation='vertical'][data-size='sm'] {
+  width: 4px;
+}
+.track[data-orientation='vertical'][data-size='md'] {
+  width: 8px;
+}
+.track[data-orientation='vertical'][data-size='lg'] {
+  width: 12px;
+}
+
+.fill {
+  position: absolute;
+  border-radius: var(--ds-radius-full);
+  background: var(--ds-color-brand-primary);
+}
+
+.track[data-orientation='horizontal'] .fill {
+  top: 0;
+  left: 0;
+  bottom: 0;
+}
+.track[data-orientation='vertical'] .fill {
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.thumb {
+  position: absolute;
+  box-sizing: border-box;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--ds-radius-full);
+  background: var(--ds-color-surface-primary);
+  border: 2px solid var(--ds-color-brand-primary);
+  box-shadow: var(--ds-elevation-sm);
+  cursor: grab;
+  touch-action: none;
+}
+
+.track[data-orientation='horizontal'] .thumb {
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+.track[data-orientation='vertical'] .thumb {
+  left: 50%;
+  transform: translate(-50%, 50%);
+}
+
+.thumb:active {
+  cursor: grabbing;
+}
+
+.thumb:focus-visible {
+  outline: none;
+  box-shadow:
+    var(--ds-elevation-sm),
+    0 0 0 2px var(--ds-color-border-focus);
+}
+
+.thumb[aria-disabled='true'] {
+  cursor: not-allowed;
+}
+
+.thumb[aria-invalid='true'] {
+  border-color: var(--ds-color-status-danger);
+}
+
+/*
+  A child of `.thumb`, which is already `position: absolute` — any
+  positioned element is a containing block for its own absolutely-
+  positioned descendants, so this resolves relative to the thumb's own
+  box with no separate positioning math needed.
+*/
+.valueBubble {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translate(-50%, calc(-1 * var(--ds-space-xs)));
+  box-sizing: border-box;
+  padding: var(--ds-space-xs) var(--ds-space-sm);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-color-surface-inverse);
+  color: var(--ds-color-text-inverse);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  line-height: var(--ds-line-height-tight);
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: var(--ds-elevation-sm);
+}
+
+.valueBubble[data-orientation='vertical'] {
+  bottom: auto;
+  left: 100%;
+  top: 50%;
+  transform: translate(var(--ds-space-xs), -50%);
+}

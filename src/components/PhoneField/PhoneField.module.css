@@ -1,0 +1,74 @@
+.wrapper {
+  display: inline-flex;
+  align-items: stretch;
+  width: 100%;
+}
+
+.trigger {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-xs);
+  flex-shrink: 0;
+  padding: 0 var(--ds-space-sm);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-md);
+  color: var(--ds-color-text-primary);
+  background: var(--ds-color-surface-secondary);
+  border: 1px solid var(--ds-color-border-primary);
+  border-right: none;
+  border-radius: var(--ds-radius-md) 0 0 var(--ds-radius-md);
+  cursor: pointer;
+}
+
+.trigger:hover:not(:disabled) {
+  background: var(--ds-color-surface-primary);
+}
+
+.trigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.trigger:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--ds-color-border-focus);
+}
+
+.chevron {
+  font-size: 0.7em;
+  color: var(--ds-color-text-secondary);
+}
+
+/*
+  `.wrapper .input.input` (descendant + doubled class) to reliably beat
+  Input.module.css's `.input[data-size='...']` regardless of import
+  order — same fix as PasswordField/SearchField.
+*/
+.wrapper .input.input {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.menu {
+  max-height: 280px;
+  overflow-y: auto;
+  min-width: 220px;
+}
+
+/*
+  `.option.option` (doubled class) to reliably beat Dropdown.module.css's
+  `.item` rule (`display: block`) regardless of import order.
+*/
+.option.option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-sm);
+}
+
+.optionDialCode {
+  color: var(--ds-color-text-secondary);
+}

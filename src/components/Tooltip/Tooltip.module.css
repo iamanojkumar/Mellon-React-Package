@@ -1,0 +1,13 @@
+.content {
+  box-sizing: border-box;
+  max-width: 240px;
+  background: var(--ds-color-surface-inverse);
+  color: var(--ds-color-text-inverse);
+  border-radius: var(--ds-radius-sm);
+  padding: var(--ds-space-xs) var(--ds-space-sm);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-xs);
+  line-height: var(--ds-line-height-tight);
+  box-shadow: var(--ds-elevation-sm);
+  z-index: var(--ds-z-index-tooltip);
+}

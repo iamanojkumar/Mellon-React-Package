@@ -1,0 +1,45 @@
+.row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-xs);
+  cursor: pointer;
+  font-size: var(--ds-font-size-xl);
+  border-radius: var(--ds-radius-sm);
+}
+
+.row[data-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.row:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-color-border-focus);
+}
+
+.star {
+  position: relative;
+  display: inline-flex;
+}
+
+.starOutline {
+  display: flex;
+  color: var(--ds-color-border-primary);
+}
+
+.starFillClip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: hidden;
+}
+
+.starFilled {
+  display: flex;
+  color: var(--ds-color-brand-primary);
+}
+
+.row[aria-invalid='true'] .starOutline {
+  color: var(--ds-color-status-danger);
+}

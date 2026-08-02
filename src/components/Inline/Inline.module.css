@@ -1,0 +1,9 @@
+.inline {
+  box-sizing: border-box;
+  display: inline-flex;
+  flex-wrap: nowrap;
+}
+
+.inline[data-wrap] {
+  flex-wrap: wrap;
+}

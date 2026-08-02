@@ -1,0 +1,21 @@
+.group {
+  display: inline-flex;
+  gap: var(--ds-space-sm);
+}
+
+.group[data-disabled='true'] {
+  opacity: 0.6;
+}
+
+/*
+  `.segment.segment` (doubled class) to reliably beat Input.module.css's
+  `.input[data-size='...']` regardless of import order — same fix as
+  PasswordField/SearchField/PhoneField/Select.
+*/
+.segment.segment {
+  width: 2.5em;
+  padding-left: 0;
+  padding-right: 0;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}

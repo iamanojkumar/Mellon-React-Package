@@ -1,0 +1,16 @@
+.code {
+  box-sizing: border-box;
+  font-family: var(--ds-font-family-mono);
+  font-size: var(--ds-font-size-sm);
+  color: var(--ds-color-text-primary);
+  background: var(--ds-color-surface-secondary);
+  border-radius: var(--ds-radius-sm);
+  padding: 0.15em 0.4em;
+}
+
+.code[data-block] {
+  display: block;
+  padding: var(--ds-space-sm) var(--ds-space-md);
+  overflow-x: auto;
+  white-space: pre;
+}

@@ -52,6 +52,23 @@
   color: var(--ds-color-text-primary);
 }
 
+.headingButton {
+  border: none;
+  background: transparent;
+  border-radius: var(--ds-radius-sm);
+  padding: var(--ds-space-xs) var(--ds-space-sm);
+  cursor: pointer;
+}
+
+.headingButton:hover {
+  background: var(--ds-color-surface-secondary);
+}
+
+.headingButton:focus-visible {
+  outline: 2px solid var(--ds-color-border-focus);
+  outline-offset: 2px;
+}
+
 .navButton {
   box-sizing: border-box;
   display: inline-flex;
@@ -125,6 +142,14 @@
   color: var(--ds-color-text-inverse);
 }
 
+/* Declared after [aria-selected='true'] so it wins for in-between range days,
+   which also carry aria-selected="true" (the whole span is "selected" for
+   assistive tech) but should read visually lighter than the two endpoints. */
+.day[data-in-range] {
+  background: var(--ds-color-surface-secondary);
+  color: var(--ds-color-text-primary);
+}
+
 .day:hover:not([data-disabled]) {
   background: var(--ds-color-surface-secondary);
 }
@@ -135,6 +160,42 @@
 }
 
 .day[data-disabled] {
+  color: var(--ds-color-text-disabled);
+  cursor: not-allowed;
+}
+
+.optionRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+}
+
+.optionCell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  border-radius: var(--ds-radius-sm);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  color: var(--ds-color-text-primary);
+  cursor: pointer;
+}
+
+.optionCell[data-today] {
+  font-weight: var(--ds-font-weight-bold);
+}
+
+.optionCell:hover:not([data-disabled]) {
+  background: var(--ds-color-surface-secondary);
+}
+
+.optionCell:focus-visible {
+  outline: 2px solid var(--ds-color-border-focus);
+  outline-offset: 2px;
+}
+
+.optionCell[data-disabled] {
   color: var(--ds-color-text-disabled);
   cursor: not-allowed;
 }

@@ -1,0 +1,19 @@
+.image {
+  box-sizing: border-box;
+  display: block;
+  max-width: 100%;
+}
+
+.image[data-fit='cover'] {
+  object-fit: cover;
+}
+.image[data-fit='contain'] {
+  object-fit: contain;
+}
+.image[data-fit='fill'] {
+  object-fit: fill;
+}
+
+.image[data-rounded] {
+  border-radius: var(--ds-radius-md);
+}

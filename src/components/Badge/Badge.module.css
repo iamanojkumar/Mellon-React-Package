@@ -1,0 +1,55 @@
+.badge {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--ds-radius-full);
+  padding: 0.1em 0.6em;
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-xs);
+  font-weight: var(--ds-font-weight-medium);
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+/* "subtle" (default): a neutral surface with colored text - this design
+   system's token set has no separate tinted-background scale per status
+   color, only the full-strength ones used by "solid" below. */
+.badge[data-variant='subtle'] {
+  background: var(--ds-color-surface-secondary);
+}
+
+.badge[data-variant='subtle'][data-color='neutral'] {
+  color: var(--ds-color-text-secondary);
+}
+.badge[data-variant='subtle'][data-color='brand'] {
+  color: var(--ds-color-brand-primary);
+}
+.badge[data-variant='subtle'][data-color='success'] {
+  color: var(--ds-color-status-success);
+}
+.badge[data-variant='subtle'][data-color='warning'] {
+  color: var(--ds-color-status-warning);
+}
+.badge[data-variant='subtle'][data-color='danger'] {
+  color: var(--ds-color-status-danger);
+}
+
+.badge[data-variant='solid'] {
+  color: var(--ds-color-text-inverse);
+}
+
+.badge[data-variant='solid'][data-color='neutral'] {
+  background: var(--ds-color-text-secondary);
+}
+.badge[data-variant='solid'][data-color='brand'] {
+  background: var(--ds-color-brand-primary);
+}
+.badge[data-variant='solid'][data-color='success'] {
+  background: var(--ds-color-status-success);
+}
+.badge[data-variant='solid'][data-color='warning'] {
+  background: var(--ds-color-status-warning);
+}
+.badge[data-variant='solid'][data-color='danger'] {
+  background: var(--ds-color-status-danger);
+}

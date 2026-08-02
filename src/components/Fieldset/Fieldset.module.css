@@ -1,0 +1,18 @@
+.fieldset {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-md);
+  border: 1px solid var(--ds-color-border-primary);
+  border-radius: var(--ds-radius-md);
+  padding: var(--ds-space-md);
+  margin: 0;
+}
+
+.legend {
+  padding: 0 var(--ds-space-xs);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  font-weight: var(--ds-font-weight-bold);
+  color: var(--ds-color-text-primary);
+}

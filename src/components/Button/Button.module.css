@@ -65,7 +65,7 @@
   border: 2px solid currentColor;
   border-right-color: transparent;
   border-radius: var(--ds-radius-full);
-  animation: button-spin var(--ds-motion-duration-slow, 400ms) linear infinite;
+  animation: button-spin var(--ds-motion-duration-slow) linear infinite;
 }
 
 @keyframes button-spin {

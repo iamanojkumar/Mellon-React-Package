@@ -1,0 +1,49 @@
+.chip {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-xs);
+  border-radius: var(--ds-radius-full);
+  background: var(--ds-color-surface-secondary);
+  color: var(--ds-color-text-primary);
+  padding: var(--ds-space-xs) var(--ds-space-sm);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+}
+
+.chip[data-disabled] {
+  color: var(--ds-color-text-disabled);
+}
+
+.label {
+  line-height: 1.4;
+}
+
+.removeButton {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: var(--ds-radius-full);
+  background: transparent;
+  color: inherit;
+  font-size: var(--ds-font-size-sm);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.removeButton:hover:not(:disabled) {
+  background: var(--ds-color-surface-primary);
+}
+
+.removeButton:focus-visible {
+  outline: 2px solid var(--ds-color-border-focus);
+  outline-offset: 1px;
+}
+
+.removeButton:disabled {
+  cursor: not-allowed;
+}

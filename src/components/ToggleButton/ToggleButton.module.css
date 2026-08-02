@@ -1,0 +1,8 @@
+/* Repeats `.toggleButton` to outrank Button.module.css's equal-specificity
+   `.button[data-variant='...']` rule regardless of CSS-module import
+   order — see IconButton.module.css's comment for the full rationale. */
+
+.toggleButton.toggleButton[data-pressed='true'] {
+  background: var(--ds-color-brand-primary);
+  color: var(--ds-color-text-inverse);
+}

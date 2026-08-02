@@ -1,0 +1,56 @@
+.trigger.trigger {
+  width: 100%;
+}
+
+/*
+  `Popover.Content` already renders the full bordered/background/shadow/
+  padded box — see `Select.module.css`'s identical comment and
+  CLAUDE.md's "no nested overlay boxes" rule. `.content.content` (doubled
+  class) only tightens the padding for this listbox use case, reliably
+  beating `Popover.module.css`'s single-class `.content` rule regardless
+  of import order.
+*/
+.content.content {
+  min-width: 240px;
+  padding: var(--ds-space-xs);
+}
+
+.listbox {
+  box-sizing: border-box;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.option {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-sm);
+  padding: var(--ds-space-sm) var(--ds-space-md);
+  border-radius: var(--ds-radius-sm);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-md);
+  color: var(--ds-color-text-primary);
+  cursor: pointer;
+}
+
+.option[aria-selected='true'] {
+  font-weight: var(--ds-font-weight-medium);
+}
+
+.option[data-active='true'] {
+  background: var(--ds-color-surface-secondary);
+}
+
+.option[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.noResults {
+  padding: var(--ds-space-sm) var(--ds-space-md);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-md);
+  color: var(--ds-color-text-secondary);
+}

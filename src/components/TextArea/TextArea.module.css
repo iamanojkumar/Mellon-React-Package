@@ -1,0 +1,5 @@
+.textarea {
+  resize: vertical;
+  min-height: 5.5em;
+  line-height: var(--ds-line-height-base);
+}

@@ -1,0 +1,37 @@
+.banner {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-sm);
+  width: 100%;
+  padding: var(--ds-space-sm) var(--ds-space-md);
+  border-bottom: 1px solid var(--ds-color-border-primary);
+  background: var(--ds-color-surface-secondary);
+}
+
+.icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  line-height: 0;
+}
+
+.banner[data-variant='info'] .icon {
+  color: var(--ds-color-brand-primary);
+}
+.banner[data-variant='success'] .icon {
+  color: var(--ds-color-status-success);
+}
+.banner[data-variant='warning'] .icon {
+  color: var(--ds-color-status-warning);
+}
+.banner[data-variant='danger'] .icon {
+  color: var(--ds-color-status-danger);
+}
+
+.content {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  color: var(--ds-color-text-primary);
+}

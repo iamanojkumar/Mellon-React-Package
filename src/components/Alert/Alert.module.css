@@ -1,0 +1,99 @@
+/*
+  A neutral surface with a colored left border + colored icon/title accent
+  — this design system's token set has no separate tinted-background scale
+  per status color, only the full-strength ones (`--ds-color-status-*`
+  themselves). Same reasoning `Badge`'s "subtle" variant already
+  documented for the identical constraint; a computed tint via CSS
+  `color-mix()` was considered and rejected — it isn't backed by any
+  design token, which is exactly what CLAUDE.md's token-strictness rule
+  exists to prevent.
+*/
+.alert {
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ds-space-sm);
+  padding: var(--ds-space-md);
+  border: 1px solid var(--ds-color-border-primary);
+  border-left-width: 4px;
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-color-surface-secondary);
+}
+
+.alert[data-variant='info'] {
+  border-left-color: var(--ds-color-brand-primary);
+}
+.alert[data-variant='success'] {
+  border-left-color: var(--ds-color-status-success);
+}
+.alert[data-variant='warning'] {
+  border-left-color: var(--ds-color-status-warning);
+}
+.alert[data-variant='danger'] {
+  border-left-color: var(--ds-color-status-danger);
+}
+
+.icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  line-height: 0;
+}
+
+.alert[data-variant='info'] .icon {
+  color: var(--ds-color-brand-primary);
+}
+.alert[data-variant='success'] .icon {
+  color: var(--ds-color-status-success);
+}
+.alert[data-variant='warning'] .icon {
+  color: var(--ds-color-status-warning);
+}
+.alert[data-variant='danger'] .icon {
+  color: var(--ds-color-status-danger);
+}
+
+.content {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.title {
+  margin-bottom: var(--ds-space-xs);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-md);
+  font-weight: var(--ds-font-weight-bold);
+  color: var(--ds-color-text-primary);
+}
+
+.description {
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  color: var(--ds-color-text-secondary);
+}
+
+.dismissButton {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5em;
+  height: 1.5em;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--ds-color-text-secondary);
+  font-size: var(--ds-font-size-md);
+  line-height: 1;
+  cursor: pointer;
+  border-radius: var(--ds-radius-sm);
+}
+
+.dismissButton:hover {
+  color: var(--ds-color-text-primary);
+  background: var(--ds-color-surface-secondary);
+}
+
+.dismissButton:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-color-border-focus);
+}

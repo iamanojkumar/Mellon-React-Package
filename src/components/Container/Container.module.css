@@ -1,0 +1,25 @@
+.container {
+  box-sizing: border-box;
+  width: 100%;
+  margin-inline: auto;
+}
+
+.container[data-max-width='sm'] {
+  max-width: 640px;
+}
+
+.container[data-max-width='md'] {
+  max-width: 768px;
+}
+
+.container[data-max-width='lg'] {
+  max-width: 1024px;
+}
+
+.container[data-max-width='xl'] {
+  max-width: 1280px;
+}
+
+.container[data-max-width='full'] {
+  max-width: none;
+}

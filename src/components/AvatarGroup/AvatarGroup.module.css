@@ -1,0 +1,16 @@
+.group {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+}
+
+.item {
+  display: inline-flex;
+  border-radius: var(--ds-radius-full);
+  border: 2px solid var(--ds-color-surface-primary);
+  margin-inline-start: -8px;
+}
+
+.item:first-child {
+  margin-inline-start: 0;
+}

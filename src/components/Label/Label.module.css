@@ -1,0 +1,7 @@
+.label {
+  display: inline-block;
+}
+
+.required {
+  color: var(--ds-color-status-danger);
+}

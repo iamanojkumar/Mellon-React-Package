@@ -24,6 +24,19 @@ function Demo({ active }: { active: boolean }) {
   );
 }
 
+function VirtualDemo({ active }: { active: boolean }) {
+  const floatingRef = useRef<HTMLDivElement>(null);
+  const virtualReference = {
+    getBoundingClientRect: () => new DOMRect(10, 20, 0, 0),
+  };
+  const position = usePositioning(virtualReference, floatingRef, { active });
+  return (
+    <div ref={floatingRef} data-testid="floating" data-x={position.x} data-y={position.y}>
+      floating
+    </div>
+  );
+}
+
 describe('usePositioning', () => {
   it('renders without throwing when inactive', () => {
     expect(() => render(<Demo active={false} />)).not.toThrow();
@@ -31,6 +44,11 @@ describe('usePositioning', () => {
 
   it('renders without throwing when active, and unmounts cleanly', () => {
     const { unmount } = render(<Demo active />);
+    expect(() => unmount()).not.toThrow();
+  });
+
+  it('accepts a virtual reference (getBoundingClientRect only, no element) without throwing', () => {
+    const { unmount } = render(<VirtualDemo active />);
     expect(() => unmount()).not.toThrow();
   });
 });

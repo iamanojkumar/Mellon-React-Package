@@ -1,0 +1,31 @@
+.emptyState {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--ds-space-sm);
+  padding: var(--ds-space-xl);
+  font-family: var(--ds-font-family-base);
+}
+
+.icon {
+  font-size: calc(var(--ds-font-size-xl) * 1.5);
+  color: var(--ds-color-text-disabled);
+}
+
+.title {
+  font-size: var(--ds-font-size-md);
+  font-weight: var(--ds-font-weight-bold);
+  color: var(--ds-color-text-primary);
+}
+
+.description {
+  font-size: var(--ds-font-size-sm);
+  color: var(--ds-color-text-secondary);
+  max-width: 40ch;
+}
+
+.action {
+  margin-top: var(--ds-space-sm);
+}

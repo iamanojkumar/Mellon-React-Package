@@ -1,0 +1,34 @@
+/* Repeats `.fab` to outrank Button.module.css's equal-specificity
+   `.button`/`.button[data-size='...']` rules regardless of CSS-module
+   import order — see IconButton.module.css's comment for the full
+   rationale. */
+
+.fab.fab {
+  padding: 0;
+  flex-shrink: 0;
+  border-radius: var(--ds-radius-full);
+  box-shadow: var(--ds-elevation-md);
+}
+
+.fab.fab[data-size='md'] {
+  width: 40px;
+  height: 40px;
+  font-size: var(--ds-font-size-lg);
+}
+
+.fab.fab[data-size='lg'] {
+  width: 56px;
+  height: 56px;
+  font-size: var(--ds-font-size-xl);
+}
+
+.fab.fab[data-fixed] {
+  position: fixed;
+  right: var(--ds-space-lg);
+  bottom: var(--ds-space-lg);
+  z-index: var(--ds-z-index-overlay);
+}
+
+.fab.fab:hover:not(:disabled):not([aria-disabled='true']) {
+  box-shadow: var(--ds-elevation-lg);
+}

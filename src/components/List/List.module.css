@@ -1,0 +1,13 @@
+.list {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding-inline-start: var(--ds-space-lg);
+  font-family: var(--ds-font-family-base);
+}
+
+.list[data-unstyled] {
+  list-style: none;
+  padding-inline-start: 0;
+}

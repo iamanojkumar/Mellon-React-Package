@@ -1,0 +1,15 @@
+.display {
+  line-height: var(--ds-line-height-tight);
+}
+
+.display[data-display-size='sm'] {
+  font-size: calc(var(--ds-font-size-xl) * 1.25);
+}
+
+.display[data-display-size='md'] {
+  font-size: calc(var(--ds-font-size-xl) * 1.75);
+}
+
+.display[data-display-size='lg'] {
+  font-size: calc(var(--ds-font-size-xl) * 2.5);
+}

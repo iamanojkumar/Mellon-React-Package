@@ -1,0 +1,3 @@
+.panel {
+  z-index: var(--ds-z-index-dropdown);
+}

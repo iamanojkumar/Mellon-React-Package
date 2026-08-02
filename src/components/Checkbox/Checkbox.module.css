@@ -1,0 +1,79 @@
+.wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-sm);
+  cursor: pointer;
+}
+
+.wrapper[data-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/*
+  No visual rules of its own (the box below is the visible element) — this
+  class exists only so `.input:focus-visible + .box` has something scoped
+  to this module to select on, since the input's other class
+  (`VisuallyHidden`'s) lives in a different CSS module.
+*/
+.input {
+}
+
+.box {
+  box-sizing: border-box;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: var(--ds-color-surface-primary);
+  border: 1px solid var(--ds-color-border-primary);
+  border-radius: var(--ds-radius-sm);
+  color: var(--ds-color-text-inverse);
+  transition:
+    background var(--ds-motion-duration-fast) var(--ds-motion-easing-standard),
+    border-color var(--ds-motion-duration-fast) var(--ds-motion-easing-standard);
+}
+
+.checkmark,
+.dash {
+  display: none;
+}
+
+.box[data-checked='true'] .checkmark {
+  display: block;
+}
+
+.box[data-indeterminate='true'] .checkmark {
+  display: none;
+}
+
+.box[data-indeterminate='true'] .dash {
+  display: block;
+  width: 8px;
+  height: 2px;
+  background: currentColor;
+  border-radius: 1px;
+}
+
+.box[data-checked='true'],
+.box[data-indeterminate='true'] {
+  background: var(--ds-color-brand-primary);
+  border-color: var(--ds-color-brand-primary);
+}
+
+.box[data-invalid='true'] {
+  border-color: var(--ds-color-status-danger);
+}
+
+.input:focus-visible + .box {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-color-border-focus);
+}
+
+.label {
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-md);
+  color: var(--ds-color-text-primary);
+}

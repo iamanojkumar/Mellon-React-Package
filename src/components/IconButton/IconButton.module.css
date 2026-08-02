@@ -1,0 +1,36 @@
+/*
+  Selectors here repeat `.iconButton` (e.g. `.iconButton.iconButton`) to
+  outrank Button.module.css's `.button[data-size='...']`/`.button` rules,
+  which share the same class+attribute specificity — a single `.iconButton`
+  selector would only win by accident of which CSS module's <style> tag
+  happens to be injected into the document later, not reliably. Same fix
+  as SplitButton's `.splitButton .primary` (there, nesting two classes
+  under a wrapper did the same job naturally).
+*/
+
+.iconButton.iconButton {
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.iconButton.iconButton[data-size='sm'] {
+  width: 32px;
+  height: 32px;
+  font-size: var(--ds-font-size-md);
+}
+
+.iconButton.iconButton[data-size='md'] {
+  width: 40px;
+  height: 40px;
+  font-size: var(--ds-font-size-lg);
+}
+
+.iconButton.iconButton[data-size='lg'] {
+  width: 48px;
+  height: 48px;
+  font-size: var(--ds-font-size-xl);
+}
+
+.iconButton.iconButton[data-shape='circle'] {
+  border-radius: var(--ds-radius-full);
+}

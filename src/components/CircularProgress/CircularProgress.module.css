@@ -1,0 +1,35 @@
+.circularProgress {
+  box-sizing: border-box;
+  display: inline-block;
+  line-height: 0;
+}
+
+.circularProgress svg {
+  transform: rotate(-90deg);
+}
+
+.track {
+  stroke: var(--ds-color-surface-secondary);
+}
+
+.indicator {
+  stroke: var(--ds-color-brand-primary);
+  stroke-linecap: round;
+  transition: stroke-dashoffset var(--ds-motion-duration-medium) var(--ds-motion-easing-standard);
+}
+
+.circularProgress[data-indeterminate] svg {
+  animation: rotate var(--ds-motion-duration-slow) linear infinite;
+}
+
+@keyframes rotate {
+  to {
+    transform: rotate(270deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .circularProgress[data-indeterminate] svg {
+    animation-duration: 2.5s;
+  }
+}
