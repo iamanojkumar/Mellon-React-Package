@@ -1,0 +1,49 @@
+.calendar {
+  box-sizing: border-box;
+  width: 280px;
+  background: var(--ds-color-surface-primary);
+  border: 1px solid var(--ds-color-border-primary);
+  border-radius: var(--ds-radius-md);
+  padding: var(--ds-space-sm);
+}
+
+/* Mostly additive (position/layout) on top of DatePicker.module.css's
+   imported `.day` rule, see this component's cross-component CSS reuse
+   note - `.dayCell.dayCell` doubles the selector only for `height`, which
+   both rules declare, so this reliably wins regardless of import order. */
+.dayCell {
+  position: relative;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dayCell.dayCell {
+  height: 38px;
+}
+
+.indicator {
+  width: 4px;
+  height: 4px;
+  border-radius: var(--ds-radius-full);
+  background: var(--ds-color-text-secondary);
+}
+
+.indicator[data-color='neutral'] {
+  background: var(--ds-color-text-secondary);
+}
+.indicator[data-color='brand'] {
+  background: var(--ds-color-brand-primary);
+}
+.indicator[data-color='success'] {
+  background: var(--ds-color-status-success);
+}
+.indicator[data-color='warning'] {
+  background: var(--ds-color-status-warning);
+}
+.indicator[data-color='danger'] {
+  background: var(--ds-color-status-danger);
+}
+
+.dayCell[aria-selected='true'] .indicator {
+  background: var(--ds-color-text-inverse);
+}

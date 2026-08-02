@@ -1,0 +1,22 @@
+.bottomNav {
+  box-sizing: border-box;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: stretch;
+  padding: var(--ds-space-xs);
+  background: var(--ds-color-surface-primary);
+  border-top: 1px solid var(--ds-color-border-primary);
+  z-index: var(--ds-z-index-dropdown);
+}
+
+/* Additive only - NavigationRail.module.css's imported `.item` rule never
+   declares `flex`, so no doubled-class override is needed here (see
+   docs/SPEC.md's cross-component CSS reuse note on when that trick is and
+   isn't required). Everything else about `.item` (icon/label stacking,
+   hover/active colors) is inherited as-is. */
+.item {
+  flex: 1;
+}

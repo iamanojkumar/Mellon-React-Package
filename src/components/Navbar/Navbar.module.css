@@ -1,0 +1,40 @@
+.navbar {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-md);
+  padding: var(--ds-space-sm) var(--ds-space-lg);
+  background: var(--ds-color-surface-primary);
+  border-bottom: 1px solid var(--ds-color-border-primary);
+}
+
+.navbar[data-sticky] {
+  position: sticky;
+  top: 0;
+  z-index: var(--ds-z-index-dropdown);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-lg);
+  font-weight: var(--ds-font-weight-bold);
+  color: var(--ds-color-text-primary);
+}
+
+.content {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-md);
+  flex: 1;
+  min-width: 0;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-sm);
+  flex-shrink: 0;
+}

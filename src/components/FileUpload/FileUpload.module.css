@@ -1,0 +1,108 @@
+.fileUpload {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-md);
+}
+
+.dropzone {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ds-space-xs);
+  padding: var(--ds-space-xl);
+  border: 2px dashed var(--ds-color-border-primary);
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-color-surface-primary);
+  text-align: center;
+  cursor: pointer;
+  transition:
+    border-color var(--ds-motion-duration-fast) var(--ds-motion-easing-standard),
+    background var(--ds-motion-duration-fast) var(--ds-motion-easing-standard);
+}
+
+.dropzone:has(input:focus-visible) {
+  outline: 2px solid var(--ds-color-border-focus);
+  outline-offset: 2px;
+}
+
+.dropzone[data-dragging-over] {
+  border-color: var(--ds-color-brand-primary);
+  background: var(--ds-color-surface-secondary);
+}
+
+.dropzone[data-disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.instructions {
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-md);
+  color: var(--ds-color-text-primary);
+}
+
+.instructions strong {
+  color: var(--ds-color-brand-primary);
+  font-weight: var(--ds-font-weight-medium);
+}
+
+.hint {
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-xs);
+  color: var(--ds-color-text-secondary);
+}
+
+.fileList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-sm);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.fileRow {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-sm);
+  padding: var(--ds-space-sm) var(--ds-space-md);
+  border: 1px solid var(--ds-color-border-primary);
+  border-radius: var(--ds-radius-md);
+}
+
+.fileInfo {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 40%;
+  min-width: 0;
+}
+
+.fileName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  color: var(--ds-color-text-primary);
+}
+
+.fileSize {
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-xs);
+  color: var(--ds-color-text-secondary);
+}
+
+.fileProgress {
+  flex: 1;
+}
+
+.errorText {
+  flex: 1;
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  color: var(--ds-color-status-danger);
+}

@@ -1,0 +1,93 @@
+/*
+  Reuses Dialog.module.css's own `.panel` box (border-radius/shadow/max-
+  height/overflow) via Dialog's `className` prop merge — this only trims
+  the default padding and repositions the panel near the top of the
+  viewport, spotlight-search style, instead of vertically centered. The
+  doubled `.panel.panel` selector reliably wins over Dialog.module.css's
+  single-class `.panel[data-size]` padding rule regardless of import order
+  (see docs/SPEC.md's CSS reuse note).
+*/
+.panel.panel {
+  align-self: flex-start;
+  margin-top: 10vh;
+  padding: 0;
+  overflow: hidden;
+}
+
+.input {
+  box-sizing: border-box;
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid var(--ds-color-border-primary);
+  padding: var(--ds-space-md);
+  background: transparent;
+  color: var(--ds-color-text-primary);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-lg);
+}
+
+.input:focus {
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--ds-color-text-secondary);
+}
+
+.listbox.listbox {
+  max-height: 360px;
+  padding: var(--ds-space-xs);
+}
+
+.group:not(:last-child) {
+  margin-bottom: var(--ds-space-xs);
+}
+
+.groupHeading {
+  padding: var(--ds-space-xs) var(--ds-space-md);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-xs);
+  font-weight: var(--ds-font-weight-bold);
+  color: var(--ds-color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.option {
+  justify-content: flex-start;
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--ds-color-text-secondary);
+}
+
+.itemText {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.description {
+  font-size: var(--ds-font-size-xs);
+  color: var(--ds-color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shortcut {
+  flex-shrink: 0;
+  color: var(--ds-color-text-secondary);
+  font-size: var(--ds-font-size-xs);
+  font-family: var(--ds-font-family-mono);
+}

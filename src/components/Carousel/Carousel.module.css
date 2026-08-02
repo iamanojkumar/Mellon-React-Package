@@ -1,0 +1,97 @@
+.carousel {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-sm);
+}
+
+.viewport {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--ds-radius-md);
+  touch-action: pan-y;
+  cursor: grab;
+}
+
+.track {
+  display: flex;
+  width: 100%;
+  transition: transform var(--ds-motion-duration-medium) var(--ds-motion-easing-standard);
+}
+
+.slide {
+  flex: 0 0 100%;
+  min-width: 0;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ds-space-sm);
+}
+
+.navButton,
+.playButton {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--ds-radius-full);
+  background: var(--ds-color-surface-secondary);
+  color: var(--ds-color-text-primary);
+  font-size: var(--ds-font-size-lg);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.navButton:hover:not(:disabled),
+.playButton:hover {
+  background: var(--ds-color-surface-primary);
+  box-shadow: var(--ds-elevation-sm);
+}
+
+.navButton:focus-visible,
+.playButton:focus-visible {
+  outline: 2px solid var(--ds-color-border-focus);
+  outline-offset: 2px;
+}
+
+.navButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.indicators {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ds-space-xs);
+}
+
+.indicator {
+  box-sizing: border-box;
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: none;
+  border-radius: var(--ds-radius-full);
+  background: var(--ds-color-border-primary);
+  cursor: pointer;
+}
+
+.indicator:hover {
+  background: var(--ds-color-text-secondary);
+}
+
+.indicator:focus-visible {
+  outline: 2px solid var(--ds-color-border-focus);
+  outline-offset: 2px;
+}
+
+.indicator[data-active] {
+  background: var(--ds-color-brand-primary);
+}

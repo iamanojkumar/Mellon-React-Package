@@ -1,0 +1,71 @@
+.rail {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--ds-space-xs);
+  width: 80px;
+  height: 100%;
+  padding: var(--ds-space-sm) var(--ds-space-xs);
+  background: var(--ds-color-surface-primary);
+  border-right: 1px solid var(--ds-color-border-primary);
+}
+
+.item {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ds-space-xs);
+  padding: var(--ds-space-sm) var(--ds-space-xs);
+  border-radius: var(--ds-radius-md);
+  color: var(--ds-color-text-secondary);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-xs);
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.item:hover {
+  background: var(--ds-color-surface-secondary);
+  color: var(--ds-color-text-primary);
+}
+
+.item:focus-visible {
+  outline: 2px solid var(--ds-color-border-focus);
+  outline-offset: -2px;
+}
+
+.item[data-active] {
+  color: var(--ds-color-brand-primary);
+  font-weight: var(--ds-font-weight-medium);
+}
+
+.iconWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.badge {
+  position: absolute;
+  top: -4px;
+  right: -8px;
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}

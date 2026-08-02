@@ -1,0 +1,181 @@
+.colorPicker {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-sm);
+  width: 240px;
+}
+
+.colorPicker[data-disabled] {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.square {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: 160px;
+  border-radius: var(--ds-radius-md);
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.square:focus-visible {
+  outline: 2px solid var(--ds-color-border-focus);
+  outline-offset: 2px;
+}
+
+/*
+  White->transparent and black->transparent are color-science constants of
+  the HSV square (0% saturation / 0% brightness), not themeable decoration
+  — see this component's own doc comment for why CLAUDE.md's token rule
+  doesn't apply here.
+*/
+.squareWhiteLayer {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(to right, #fff, transparent);
+}
+
+.squareBlackLayer {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(to top, #000, transparent);
+}
+
+/* White border + dark ring (not `--ds-*` tokens): the thumb sits on top of
+   a background that's the arbitrary color currently being picked, not a
+   themeable surface — a token-based border could disappear against a
+   similarly-colored pick, so a fixed high-contrast white+black-ring
+   affordance (common across color pickers) stays legible regardless. */
+.squareThumb {
+  position: absolute;
+  box-sizing: border-box;
+  width: 14px;
+  height: 14px;
+  border: 2px solid white;
+  border-radius: var(--ds-radius-full);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 40%);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.hueTrack {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: 14px;
+  border-radius: var(--ds-radius-full);
+  cursor: pointer;
+  touch-action: none;
+  /* The rainbow hue spectrum is a color-science constant (0-360°), not a
+     themeable token — same exemption as the square's gradients above. */
+  background: linear-gradient(
+    to right,
+    hsl(0, 100%, 50%),
+    hsl(60, 100%, 50%),
+    hsl(120, 100%, 50%),
+    hsl(180, 100%, 50%),
+    hsl(240, 100%, 50%),
+    hsl(300, 100%, 50%),
+    hsl(360, 100%, 50%)
+  );
+}
+
+.hueTrack:focus-visible {
+  outline: 2px solid var(--ds-color-border-focus);
+  outline-offset: 2px;
+}
+
+.hueThumb {
+  position: absolute;
+  top: 50%;
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
+  border: 2px solid white;
+  border-radius: var(--ds-radius-full);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 40%);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: auto 2fr 1fr 1fr 1fr;
+  gap: var(--ds-space-xs);
+  align-items: end;
+}
+
+.preview {
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--ds-radius-sm);
+  border: 1px solid var(--ds-color-border-primary);
+}
+
+.fieldLabel {
+  display: block;
+  margin-bottom: var(--ds-space-xs);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-xs);
+  color: var(--ds-color-text-secondary);
+}
+
+.hexInput,
+.rgbInput {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid var(--ds-color-border-primary);
+  border-radius: var(--ds-radius-sm);
+  padding: var(--ds-space-xs) var(--ds-space-sm);
+  font-family: var(--ds-font-family-mono);
+  font-size: var(--ds-font-size-sm);
+  color: var(--ds-color-text-primary);
+  background: var(--ds-color-surface-primary);
+}
+
+.hexInput:focus-visible,
+.rgbInput:focus-visible {
+  outline: 2px solid var(--ds-color-border-focus);
+  outline-offset: 1px;
+}
+
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-space-xs);
+}
+
+.presetSwatch {
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--ds-color-border-primary);
+  border-radius: var(--ds-radius-sm);
+  cursor: pointer;
+  padding: 0;
+}
+
+.presetSwatch:hover:not(:disabled) {
+  transform: scale(1.1);
+}
+
+.presetSwatch:focus-visible {
+  outline: 2px solid var(--ds-color-border-focus);
+  outline-offset: 1px;
+}
+
+.presetSwatch[aria-pressed='true'] {
+  box-shadow:
+    0 0 0 2px var(--ds-color-surface-primary),
+    0 0 0 4px var(--ds-color-brand-primary);
+}
+
+.presetSwatch:disabled {
+  cursor: not-allowed;
+}

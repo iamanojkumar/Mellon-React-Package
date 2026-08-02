@@ -1,0 +1,70 @@
+.dataGrid {
+  box-sizing: border-box;
+}
+
+.caption {
+  text-align: left;
+  padding: var(--ds-space-sm) var(--ds-space-md);
+  font-weight: var(--ds-font-weight-bold);
+  color: var(--ds-color-text-primary);
+}
+
+.selectCell {
+  width: 1px;
+  white-space: nowrap;
+}
+
+.headerCell[data-align='center'] {
+  text-align: center;
+}
+.headerCell[data-align='end'] {
+  text-align: right;
+}
+
+.cell[data-align='center'] {
+  text-align: center;
+}
+.cell[data-align='end'] {
+  text-align: right;
+}
+
+.sortButton {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-xs);
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.sortButton:hover {
+  color: var(--ds-color-text-primary);
+}
+
+.sortButton:focus-visible {
+  outline: 2px solid var(--ds-color-border-focus);
+  outline-offset: 2px;
+  border-radius: var(--ds-radius-sm);
+}
+
+.sortIcon {
+  display: inline-flex;
+  color: var(--ds-color-text-secondary);
+  transition: transform var(--ds-motion-duration-fast) var(--ds-motion-easing-standard);
+}
+
+.sortIcon[data-direction='desc'] {
+  transform: rotate(180deg);
+}
+
+.emptyCell {
+  text-align: center;
+  color: var(--ds-color-text-secondary);
+  padding: var(--ds-space-lg) var(--ds-space-md);
+}
