@@ -1,0 +1,14 @@
+.control {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-xs);
+}
+
+/* Repeats `.thumbButton` to outrank Button.module.css's/IconButton.module.css's
+   equal-specificity rules regardless of CSS-module import order — same
+   fix as ToggleButton's own `[data-pressed='true']` override. */
+.thumbButton.thumbButton[data-pressed] {
+  background: var(--ds-color-brand-primary);
+  color: var(--ds-color-text-inverse);
+}

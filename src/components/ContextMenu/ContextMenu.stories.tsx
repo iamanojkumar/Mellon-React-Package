@@ -58,3 +58,41 @@ export const Disabled: Story = {
     </ContextMenu>
   ),
 };
+
+/**
+ * `aiSuggest` is forwarded straight to the internal `Menu` — see `Menu`'s
+ * own `WithAISuggest` story for the shared shape. Resolved items get the
+ * same "also close the menu" wrapping every other item already gets.
+ */
+export const WithAISuggest: Story = {
+  render: () => (
+    <ContextMenu
+      menu={
+        <>
+          <MenuItem onSelect={() => console.log('Copy')}>Copy</MenuItem>
+          <MenuItem onSelect={() => console.log('Paste')}>Paste</MenuItem>
+        </>
+      }
+      aiSuggest={{
+        resolve: async () => [
+          { id: 'archive', label: 'Archive', onSelect: () => console.log('Archive') },
+        ],
+      }}
+    >
+      <div
+        style={{
+          width: 280,
+          height: 160,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          border: '1px dashed var(--ds-color-border-primary)',
+          borderRadius: 'var(--ds-radius-md)',
+          color: 'var(--ds-color-text-secondary)',
+        }}
+      >
+        Right-click anywhere in this box
+      </div>
+    </ContextMenu>
+  ),
+};

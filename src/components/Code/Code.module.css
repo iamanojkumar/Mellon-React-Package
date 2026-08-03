@@ -14,3 +14,19 @@
   overflow-x: auto;
   white-space: pre;
 }
+
+.aiWrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-xs);
+}
+
+.aiWrapper[data-block] {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.aiTrigger {
+  flex-shrink: 0;
+}

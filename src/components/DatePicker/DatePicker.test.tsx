@@ -4,6 +4,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expectNoA11yViolations } from '../../../tests/axe';
 import { DatePicker } from './DatePicker';
+import { AIProvider } from '../../providers/AIProvider';
+import type { AIClient } from '../../contexts/AIContext';
 
 // Aug 15, 2026 is a Saturday - fixed via `defaultValue`/`initialValue` (not
 // the system clock, which `usePositioning`'s `autoUpdate` loop depends on)
@@ -451,6 +453,102 @@ describe('DatePicker', () => {
         start: new Date(2026, 7, 1),
         end: new Date(2026, 7, 3),
       });
+    });
+  });
+
+  describe('aiParse', () => {
+    it('renders no AI field when aiParse is omitted', async () => {
+      const user = userEvent.setup();
+      render(<DatePicker aiParse={false} />);
+      await user.click(screen.getByRole('button'));
+      expect(screen.queryByRole('button', { name: 'Parse with AI' })).not.toBeInTheDocument();
+    });
+
+    it('renders no AI field when aiParse is true but no AIProvider is mounted', async () => {
+      const user = userEvent.setup();
+      render(<DatePicker aiParse />);
+      await user.click(screen.getByRole('button'));
+      expect(screen.queryByRole('button', { name: 'Parse with AI' })).not.toBeInTheDocument();
+    });
+
+    it('renders no AI field in range mode, even with a provider mounted', async () => {
+      const user = userEvent.setup();
+      const client: AIClient = { complete: vi.fn() };
+      render(
+        <AIProvider client={client}>
+          <DatePicker selectionMode="range" aiParse />
+        </AIProvider>,
+      );
+      await user.click(screen.getByRole('button'));
+      expect(screen.queryByRole('button', { name: 'Parse with AI' })).not.toBeInTheDocument();
+    });
+
+    it('renders the AI field when a provider is mounted in single mode', async () => {
+      const user = userEvent.setup();
+      const client: AIClient = { complete: vi.fn() };
+      render(
+        <AIProvider client={client}>
+          <DatePicker aiParse />
+        </AIProvider>,
+      );
+      await user.click(screen.getByRole('button'));
+      expect(screen.getByRole('button', { name: 'Parse with AI' })).toBeInTheDocument();
+      expect(screen.getByRole('textbox', { name: 'Describe a date in words' })).toBeInTheDocument();
+    });
+
+    it('parses a query, and accepting a valid result selects the date and closes the panel', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      const complete = vi.fn().mockResolvedValue('2026-08-21');
+      const client: AIClient = { complete };
+      render(
+        <AIProvider client={client}>
+          <DatePicker aiParse onChange={onChange} />
+        </AIProvider>,
+      );
+      await user.click(screen.getByRole('button'));
+      await user.type(
+        screen.getByRole('textbox', { name: 'Describe a date in words' }),
+        'next Friday',
+      );
+      await user.click(screen.getByRole('button', { name: 'Parse with AI' }));
+      expect(complete).toHaveBeenCalledWith(
+        expect.objectContaining({ prompt: expect.stringContaining('next Friday') }),
+      );
+      await user.click(await screen.findByRole('button', { name: 'Accept' }));
+      expect(onChange).toHaveBeenCalledWith(new Date(2026, 7, 21));
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('shows a parse-failure message and no accept action when the AI response is not a valid date', async () => {
+      const user = userEvent.setup();
+      const complete = vi.fn().mockResolvedValue('not a date');
+      const client: AIClient = { complete };
+      render(
+        <AIProvider client={client}>
+          <DatePicker aiParse />
+        </AIProvider>,
+      );
+      await user.click(screen.getByRole('button'));
+      await user.type(
+        screen.getByRole('textbox', { name: 'Describe a date in words' }),
+        'gibberish',
+      );
+      await user.click(screen.getByRole('button', { name: 'Parse with AI' }));
+      expect(await screen.findByText("Couldn't parse that as a date.")).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Accept' })).not.toBeInTheDocument();
+    });
+
+    it('has no accessibility violations with the AI field rendered', async () => {
+      const user = userEvent.setup();
+      const client: AIClient = { complete: vi.fn() };
+      render(
+        <AIProvider client={client}>
+          <DatePicker aiParse />
+        </AIProvider>,
+      );
+      await user.click(screen.getByRole('button'));
+      await expectNoA11yViolations(document.body);
     });
   });
 });

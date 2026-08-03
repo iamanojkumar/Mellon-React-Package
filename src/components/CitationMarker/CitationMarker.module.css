@@ -1,0 +1,31 @@
+.marker.marker {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.4em;
+  height: 1.4em;
+  padding: 0 0.35em;
+  border: none;
+  vertical-align: super;
+  font-size: var(--ds-font-size-xs);
+  line-height: 1.4em;
+  text-decoration: none;
+  cursor: default;
+}
+
+a.marker.marker,
+button.marker.marker {
+  cursor: pointer;
+}
+
+a.marker.marker:hover,
+button.marker.marker:hover {
+  text-decoration: underline;
+}
+
+button.marker.marker:focus-visible,
+a.marker.marker:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-color-border-focus);
+}

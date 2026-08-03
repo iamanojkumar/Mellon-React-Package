@@ -17,3 +17,15 @@
 .image[data-rounded] {
   border-radius: var(--ds-radius-md);
 }
+
+.aiWrapper {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.aiTrigger {
+  position: absolute;
+  top: var(--ds-space-xs);
+  right: var(--ds-space-xs);
+}

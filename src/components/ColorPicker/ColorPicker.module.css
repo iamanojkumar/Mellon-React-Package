@@ -145,6 +145,11 @@
   outline-offset: 1px;
 }
 
+.aiRow {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .presets {
   display: flex;
   flex-wrap: wrap;

@@ -115,3 +115,23 @@ export const Uncontrolled: Story = {
     />
   ),
 };
+
+/**
+ * `aiSearch` follows `Select`'s resolver shape — no shared AI primitive,
+ * `resolve` is entirely a consumer-owned function returning a node id.
+ * Its ancestors are auto-expanded and it's selected/focused. No
+ * `AIProvider` needed. The mock below always resolves to `Button.tsx`,
+ * nested two levels deep.
+ */
+export const WithAISearch: Story = {
+  render: () => (
+    <TreeView
+      nodes={fileTree}
+      aria-label="Project files"
+      aiSearch={{
+        resolve: async () => 'button',
+        placeholder: 'e.g. "the button component"',
+      }}
+    />
+  ),
+};

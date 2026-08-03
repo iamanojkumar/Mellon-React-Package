@@ -2,6 +2,8 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
 import { FileUpload } from './FileUpload';
 import type { FileUploadFile } from './FileUpload';
+import { AIProvider } from '../../providers/AIProvider';
+import type { AIClient } from '../../contexts/AIContext';
 
 const meta: Meta<typeof FileUpload> = {
   title: 'Inputs/FileUpload',
@@ -173,4 +175,40 @@ export const Uncontrolled: Story = {
       />
     );
   },
+};
+
+const mockAIClient: AIClient = {
+  complete: async () => 'A PNG image, likely a headshot or profile photo based on the file name.',
+};
+
+/**
+ * `aiDescribe` is a no-op without an ancestor `AIProvider` — this story
+ * wraps a deterministic mock client so each row's "Describe with AI"
+ * trigger actually appears. One `useAIAction()` per row (via the internal
+ * `FileUploadRow` component), so each file's status is independent.
+ * Read-only: no accept/reject, just a description.
+ */
+export const WithAIDescribe: Story = {
+  decorators: [
+    (Story) => (
+      <AIProvider client={mockAIClient}>
+        <Story />
+      </AIProvider>
+    ),
+  ],
+  render: () => (
+    <FileUpload
+      files={[
+        {
+          id: '1',
+          file: new File([new Uint8Array(1024 * 120)], 'headshot.png', { type: 'image/png' }),
+          status: 'done',
+          progress: 100,
+        },
+      ]}
+      onFilesAdded={() => {}}
+      onRemove={() => {}}
+      aiDescribe
+    />
+  ),
 };

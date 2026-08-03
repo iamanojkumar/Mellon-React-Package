@@ -59,6 +59,21 @@
   overflow-y: auto;
 }
 
+.aiSuggestRow {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-xs);
+  padding: var(--ds-space-xs) var(--ds-space-sm);
+  border-bottom: 1px solid var(--ds-color-border-primary);
+  margin-bottom: var(--ds-space-xs);
+}
+
+.aiSuggestError {
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  color: var(--ds-color-status-danger);
+}
+
 .option {
   box-sizing: border-box;
   display: flex;

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { act } from 'react';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expectNoA11yViolations } from '../../../tests/axe';
 import { TreeView } from './TreeView';
@@ -194,5 +194,54 @@ describe('TreeView', () => {
   it('has no accessibility violations', async () => {
     const { container } = render(<TreeView nodes={nodes} defaultExpandedIds={['fruits']} />);
     await expectNoA11yViolations(container);
+  });
+
+  describe('aiSearch', () => {
+    it('renders no AI search row when aiSearch is omitted', () => {
+      render(<TreeView nodes={nodes} />);
+      expect(screen.queryByRole('button', { name: 'Search with AI' })).not.toBeInTheDocument();
+    });
+
+    it('renders the AI search row when aiSearch is passed', () => {
+      render(<TreeView nodes={nodes} aiSearch={{ resolve: vi.fn() }} />);
+      expect(screen.getByRole('button', { name: 'Search with AI' })).toBeInTheDocument();
+      expect(screen.getByRole('textbox', { name: 'Ask AI to find a node' })).toBeInTheDocument();
+    });
+
+    it('resolving to a nested node expands its ancestors, selects it, and moves focus', async () => {
+      const user = userEvent.setup();
+      const onSelectedChange = vi.fn();
+      const resolve = vi.fn().mockResolvedValue('carrot');
+      render(<TreeView nodes={nodes} onSelectedChange={onSelectedChange} aiSearch={{ resolve }} />);
+      await user.type(screen.getByRole('textbox', { name: 'Ask AI to find a node' }), 'carrot');
+      await user.click(screen.getByRole('button', { name: 'Search with AI' }));
+      expect(resolve).toHaveBeenCalledWith('carrot');
+      await waitFor(() => expect(itemByName('Carrot')).toHaveFocus());
+      expect(itemByName('Carrot')).toHaveAttribute('aria-selected', 'true');
+      expect(onSelectedChange).toHaveBeenCalledWith('carrot');
+    });
+
+    it('resolving to an unmatched id leaves the tree unchanged', async () => {
+      const user = userEvent.setup();
+      const onSelectedChange = vi.fn();
+      const resolve = vi.fn().mockResolvedValue('does-not-exist');
+      render(<TreeView nodes={nodes} onSelectedChange={onSelectedChange} aiSearch={{ resolve }} />);
+      await user.click(screen.getByRole('button', { name: 'Search with AI' }));
+      await waitFor(() => expect(resolve).toHaveBeenCalled());
+      expect(onSelectedChange).not.toHaveBeenCalled();
+    });
+
+    it('shows an inline error when resolve rejects', async () => {
+      const user = userEvent.setup();
+      const resolve = vi.fn().mockRejectedValue(new Error('nope'));
+      render(<TreeView nodes={nodes} aiSearch={{ resolve }} />);
+      await user.click(screen.getByRole('button', { name: 'Search with AI' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't find a match.");
+    });
+
+    it('has no accessibility violations with the AI search row rendered', async () => {
+      const { container } = render(<TreeView nodes={nodes} aiSearch={{ resolve: vi.fn() }} />);
+      await expectNoA11yViolations(container);
+    });
   });
 });

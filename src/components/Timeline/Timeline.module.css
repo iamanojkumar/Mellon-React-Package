@@ -136,3 +136,13 @@
   color: var(--ds-color-text-secondary);
   margin-top: var(--ds-space-xs);
 }
+
+.aiWrapper {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ds-space-xs);
+}
+
+.aiTrigger {
+  flex-shrink: 0;
+}

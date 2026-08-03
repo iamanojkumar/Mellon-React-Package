@@ -17,3 +17,13 @@
 .card[data-variant='elevated'][data-elevation='lg'] {
   box-shadow: var(--ds-elevation-lg);
 }
+
+.aiWrapper {
+  position: relative;
+}
+
+.aiTrigger {
+  position: absolute;
+  top: var(--ds-space-xs);
+  right: var(--ds-space-xs);
+}

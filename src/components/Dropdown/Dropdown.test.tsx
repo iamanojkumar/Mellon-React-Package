@@ -133,4 +133,65 @@ describe('Dropdown', () => {
     );
     consoleError.mockRestore();
   });
+
+  describe('aiSuggest', () => {
+    function AIDropdown(props: {
+      resolve: () => Promise<{ id: string; label: string; onSelect: () => void }[]>;
+    }) {
+      return (
+        <Dropdown>
+          <Dropdown.Trigger>Options</Dropdown.Trigger>
+          <Dropdown.Menu aiSuggest={{ resolve: props.resolve }}>
+            <Dropdown.Item onSelect={() => {}}>Edit</Dropdown.Item>
+          </Dropdown.Menu>
+        </Dropdown>
+      );
+    }
+
+    it('renders no AI trigger item when aiSuggest is omitted', async () => {
+      const user = userEvent.setup();
+      render(<BasicDropdown />);
+      await user.click(screen.getByRole('button', { name: 'Options' }));
+      expect(screen.queryByRole('menuitem', { name: /Suggest with AI/ })).not.toBeInTheDocument();
+    });
+
+    it('renders an AI trigger item that does not close the menu when clicked', async () => {
+      const user = userEvent.setup();
+      const resolve = vi.fn().mockResolvedValue([]);
+      render(<AIDropdown resolve={resolve} />);
+      await user.click(screen.getByRole('button', { name: 'Options' }));
+      await user.click(screen.getByRole('menuitem', { name: 'Suggest with AI' }));
+      expect(resolve).toHaveBeenCalled();
+      expect(screen.getByRole('menu')).toBeInTheDocument();
+    });
+
+    it('resolved items render as real Dropdown.Items that close the menu on select', async () => {
+      const user = userEvent.setup();
+      const onSelect = vi.fn();
+      const resolve = vi.fn().mockResolvedValue([{ id: 'archive', label: 'Archive', onSelect }]);
+      render(<AIDropdown resolve={resolve} />);
+      await user.click(screen.getByRole('button', { name: 'Options' }));
+      await user.click(screen.getByRole('menuitem', { name: 'Suggest with AI' }));
+      expect(await screen.findByText('Suggested')).toBeInTheDocument();
+      await user.click(screen.getByRole('menuitem', { name: 'Archive' }));
+      expect(onSelect).toHaveBeenCalled();
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    });
+
+    it('shows an inline error when resolve rejects', async () => {
+      const user = userEvent.setup();
+      const resolve = vi.fn().mockRejectedValue(new Error('nope'));
+      render(<AIDropdown resolve={resolve} />);
+      await user.click(screen.getByRole('button', { name: 'Options' }));
+      await user.click(screen.getByRole('menuitem', { name: 'Suggest with AI' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't get suggestions.");
+    });
+
+    it('has no accessibility violations with the AI trigger item rendered', async () => {
+      const user = userEvent.setup();
+      render(<AIDropdown resolve={vi.fn()} />);
+      await user.click(screen.getByRole('button', { name: 'Options' }));
+      await expectNoA11yViolations(document.body);
+    });
+  });
 });

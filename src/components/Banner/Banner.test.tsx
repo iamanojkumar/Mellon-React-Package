@@ -4,6 +4,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expectNoA11yViolations } from '../../../tests/axe';
 import { Banner } from './Banner';
+import { AIProvider } from '../../providers/AIProvider';
+import type { AIClient } from '../../contexts/AIContext';
 
 describe('Banner', () => {
   it('renders children', () => {
@@ -45,5 +47,70 @@ describe('Banner', () => {
     render(<Banner onDismiss={onDismiss}>Message</Banner>);
     await user.click(screen.getByRole('button', { name: 'Dismiss' }));
     expect(onDismiss).toHaveBeenCalled();
+  });
+
+  describe('aiExplain', () => {
+    it('renders no AI trigger when aiExplain is omitted', () => {
+      render(<Banner variant="danger">Something broke.</Banner>);
+      expect(screen.queryByRole('button', { name: 'Explain with AI' })).not.toBeInTheDocument();
+    });
+
+    it('renders no AI trigger when aiExplain is true but no AIProvider is mounted', () => {
+      render(
+        <Banner variant="danger" aiExplain>
+          Something broke.
+        </Banner>,
+      );
+      expect(screen.queryByRole('button', { name: 'Explain with AI' })).not.toBeInTheDocument();
+    });
+
+    it('renders the AI trigger alongside the dismiss button when a provider is mounted', () => {
+      const client: AIClient = { complete: vi.fn() };
+      render(
+        <AIProvider client={client}>
+          <Banner variant="danger" aiExplain onDismiss={() => {}}>
+            Something broke.
+          </Banner>
+        </AIProvider>,
+      );
+      expect(screen.getByRole('button', { name: 'Explain with AI' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Dismiss' })).toBeInTheDocument();
+    });
+
+    it('triggers the AI client on open and has no accept/reject actions (read-only)', async () => {
+      const user = userEvent.setup();
+      const client: AIClient = {
+        complete: vi.fn().mockResolvedValue('This happens when the upstream service is slow.'),
+      };
+      render(
+        <AIProvider client={client}>
+          <Banner variant="danger" aiExplain>
+            The request timed out.
+          </Banner>
+        </AIProvider>,
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Explain with AI' }));
+      expect(client.complete).toHaveBeenCalledWith(
+        expect.objectContaining({ prompt: expect.stringContaining('The request timed out.') }),
+      );
+      expect(
+        await screen.findByText('This happens when the upstream service is slow.'),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Accept' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Discard' })).not.toBeInTheDocument();
+    });
+
+    it('has no accessibility violations with the AI trigger rendered', async () => {
+      const client: AIClient = { complete: vi.fn() };
+      const { container } = render(
+        <AIProvider client={client}>
+          <Banner variant="danger" aiExplain>
+            Something broke.
+          </Banner>
+        </AIProvider>,
+      );
+      await expectNoA11yViolations(container);
+    });
   });
 });

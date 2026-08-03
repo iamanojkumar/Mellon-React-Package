@@ -67,3 +67,21 @@ export const Controlled: Story = {
     return <Demo />;
   },
 };
+
+/**
+ * `aiSuggest` isn't reimplemented here — `TimePicker` spreads all its
+ * props straight through to `Select` (fixing only the generated `options`
+ * list), so this is `Select`'s own `aiSuggest` shape, inherited for free.
+ * No `AIProvider` needed — `resolve` is a plain consumer-owned function.
+ */
+export const WithAISuggest: Story = {
+  args: {
+    'aria-label': 'Time',
+    min: '09:00',
+    max: '17:00',
+    step: 30,
+    aiSuggest: {
+      resolve: async () => '14:30',
+    },
+  },
+};

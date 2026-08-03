@@ -37,3 +37,27 @@ export const StaticallyDisplayed: Story = {
     </Menu>
   ),
 };
+
+/**
+ * `aiSuggest` follows `Select`'s resolver shape — no shared AI primitive,
+ * `resolve` is entirely a consumer-owned function returning real,
+ * executable items. No `AIProvider` needed. The mock below stands in for
+ * "an LLM suggested a couple of contextual actions."
+ */
+export const WithAISuggest: Story = {
+  render: () => (
+    <Menu
+      aria-label="Actions"
+      style={{ width: 200 }}
+      aiSuggest={{
+        resolve: async () => [
+          { id: 'archive', label: 'Archive', onSelect: () => console.log('Archive selected') },
+          { id: 'star', label: 'Star', onSelect: () => console.log('Star selected') },
+        ],
+      }}
+    >
+      <MenuItem onSelect={() => console.log('Edit selected')}>Edit</MenuItem>
+      <MenuItem onSelect={() => console.log('Duplicate selected')}>Duplicate</MenuItem>
+    </Menu>
+  ),
+};

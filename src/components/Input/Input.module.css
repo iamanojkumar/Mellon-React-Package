@@ -41,3 +41,24 @@
   font-size: var(--ds-font-size-lg);
   padding: var(--ds-space-sm) var(--ds-space-lg);
 }
+
+.aiWrapper {
+  position: relative;
+  display: inline-flex;
+  width: 100%;
+}
+
+/* `.hasAITrigger.hasAITrigger` (doubled class) to reliably beat this
+   module's own `.input[data-size='...']` rule — a single class alone has
+   lower specificity than a class+attribute selector, same fix TextArea's
+   identical CSS uses. */
+.aiWrapper .hasAITrigger.hasAITrigger {
+  padding-right: calc(var(--ds-space-md) + 2em);
+}
+
+.aiTrigger {
+  position: absolute;
+  top: 50%;
+  right: var(--ds-space-xs);
+  transform: translateY(-50%);
+}

@@ -2,6 +2,8 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
 import { Banner } from './Banner';
 import { Stack } from '../Stack/Stack';
+import { AIProvider } from '../../providers/AIProvider';
+import type { AIClient } from '../../contexts/AIContext';
 
 const meta: Meta<typeof Banner> = {
   title: 'Feedback/Banner',
@@ -46,5 +48,31 @@ export const Dismissible: Story = {
       );
     }
     return <Demo />;
+  },
+};
+
+const mockAIClient: AIClient = {
+  complete: async () =>
+    'This happens when a background deploy finishes while you have the app open — refresh to pick up the new version.',
+};
+
+/**
+ * `aiExplain` is a no-op without an ancestor `AIProvider` — this story
+ * wraps a deterministic mock client so the "Explain with AI" trigger
+ * actually appears. Read-only, same shape as `Alert`'s `aiExplain`: no
+ * accept/reject, just an explanation.
+ */
+export const WithAIExplain: Story = {
+  decorators: [
+    (Story) => (
+      <AIProvider client={mockAIClient}>
+        <Story />
+      </AIProvider>
+    ),
+  ],
+  args: {
+    variant: 'info',
+    children: 'A new version of the app is available.',
+    aiExplain: true,
   },
 };

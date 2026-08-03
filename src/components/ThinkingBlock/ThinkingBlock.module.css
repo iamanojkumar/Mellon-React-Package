@@ -1,0 +1,27 @@
+/*
+  Overrides `Accordion`'s default full-width section-list look (top/bottom
+  rules, `md`-sized text) for the smaller, self-contained single item a
+  reasoning trace needs. Doubled classes to reliably outrank
+  Accordion.module.css's equal-specificity rules regardless of CSS-module
+  import order — same fix `IconButton`/`ToggleButton` already use.
+*/
+.block.block {
+  border-top: none;
+  border: 1px solid var(--ds-color-border-primary);
+  border-radius: var(--ds-radius-md);
+}
+
+.item.item {
+  border-bottom: none;
+}
+
+.trigger.trigger {
+  padding: var(--ds-space-xs) var(--ds-space-sm);
+  font-size: var(--ds-font-size-sm);
+  color: var(--ds-color-text-secondary);
+}
+
+.content.content {
+  padding: 0 var(--ds-space-sm) var(--ds-space-sm);
+  font-size: var(--ds-font-size-sm);
+}

@@ -1,0 +1,62 @@
+/*
+  This panel isn't rendered through `Popover.Content` (no trigger element
+  exists to anchor to — see the component's own doc comment on why it uses
+  `useFloatingListPicker`/`Portal` directly instead), but it's still the
+  same kind of floating box, so the component imports and reuses
+  `Popover.module.css`'s `.content` directly for the box chrome
+  (background/border/shadow/z-index) rather than duplicating those values
+  here — the same CLAUDE.md "no nested overlay boxes" box, just composed
+  without the `Popover` component itself. `.panel.panel` only tightens
+  layout for this listbox use case, doubled to reliably win regardless of
+  CSS-module import order — the same pattern `Combobox.module.css`'s
+  `.content.content` already uses against this identical `Popover` rule.
+*/
+.panel.panel {
+  box-sizing: border-box;
+  min-width: 220px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: var(--ds-space-xs);
+}
+
+.empty {
+  padding: var(--ds-space-sm) var(--ds-space-md);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  color: var(--ds-color-text-secondary);
+}
+
+.option {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-sm);
+  padding: var(--ds-space-sm) var(--ds-space-md);
+  border-radius: var(--ds-radius-sm);
+  cursor: pointer;
+}
+
+.option[data-active] {
+  background: var(--ds-color-surface-secondary);
+}
+
+.option[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.avatar {
+  flex-shrink: 0;
+}
+
+.text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.name {
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  color: var(--ds-color-text-primary);
+}

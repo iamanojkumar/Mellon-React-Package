@@ -1,0 +1,48 @@
+.card.card {
+  display: block;
+  box-sizing: border-box;
+  padding: var(--ds-space-sm) var(--ds-space-md);
+  color: var(--ds-color-text-primary);
+  text-decoration: none;
+}
+
+a.card.card:hover {
+  border-color: var(--ds-color-brand-primary);
+}
+
+a.card.card:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-color-border-focus);
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ds-space-xs);
+}
+
+.index {
+  flex-shrink: 0;
+  color: var(--ds-color-text-secondary);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-xs);
+}
+
+.title {
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  font-weight: var(--ds-font-weight-medium);
+  color: var(--ds-color-text-primary);
+}
+
+.source {
+  display: block;
+  margin-top: var(--ds-space-xs);
+}
+
+.snippet {
+  margin: var(--ds-space-xs) 0 0;
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  color: var(--ds-color-text-secondary);
+}

@@ -54,3 +54,27 @@
   font-size: var(--ds-font-size-md);
   color: var(--ds-color-text-secondary);
 }
+
+.aiSearchRow {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-xs);
+  padding: var(--ds-space-xs) var(--ds-space-sm);
+  border-bottom: 1px solid var(--ds-color-border-primary);
+  margin-bottom: var(--ds-space-xs);
+}
+
+.aiSearchError {
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  color: var(--ds-color-status-danger);
+}
+
+.aiGroupHeading {
+  padding: var(--ds-space-xs) var(--ds-space-md);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-xs);
+  font-weight: var(--ds-font-weight-medium);
+  color: var(--ds-color-text-secondary);
+  text-transform: uppercase;
+}

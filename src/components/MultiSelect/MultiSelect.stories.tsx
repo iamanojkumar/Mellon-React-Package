@@ -83,3 +83,21 @@ export const Controlled: Story = {
     return <Demo />;
   },
 };
+
+/**
+ * `aiSuggest` follows `Select`'s shape, not the popover flagships' —
+ * `resolve` is entirely a consumer-owned function, so this story doesn't
+ * need an `AIProvider`. Unlike `Select`, resolved values are merged into
+ * the existing selection rather than replacing it. The mock below stands
+ * in for "an LLM recommended a few ripe fruits."
+ */
+export const WithAISuggest: Story = {
+  args: {
+    'aria-label': 'Fruits',
+    options: FRUITS,
+    placeholder: 'Choose fruits…',
+    aiSuggest: {
+      resolve: async () => ['fig', 'grape'],
+    },
+  },
+};

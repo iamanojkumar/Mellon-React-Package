@@ -1,0 +1,24 @@
+.bar {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-sm);
+  padding: var(--ds-space-xs) var(--ds-space-sm);
+  background: var(--ds-color-surface-secondary);
+  border-top-left-radius: var(--ds-radius-sm);
+  border-top-right-radius: var(--ds-radius-sm);
+}
+
+.label {
+  font-family: var(--ds-font-family-mono);
+  font-size: var(--ds-font-size-xs);
+  color: var(--ds-color-text-secondary);
+}
+
+.actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-xs);
+  margin-left: auto;
+}

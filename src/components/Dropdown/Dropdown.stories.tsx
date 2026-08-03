@@ -71,3 +71,27 @@ export const KeyboardNavigation: Story = {
     </Dropdown>
   ),
 };
+
+/**
+ * `aiSuggest` follows `Menu`'s resolver shape — no shared AI primitive,
+ * `resolve` is entirely consumer-owned. Unlike a resolved item, the
+ * trigger item itself doesn't close the menu, so results stay visible.
+ */
+export const WithAISuggest: Story = {
+  render: () => (
+    <Dropdown>
+      <Dropdown.Trigger>Options</Dropdown.Trigger>
+      <Dropdown.Menu
+        aiSuggest={{
+          resolve: async () => [
+            { id: 'archive', label: 'Archive', onSelect: () => console.log('Archive') },
+            { id: 'star', label: 'Star', onSelect: () => console.log('Star') },
+          ],
+        }}
+      >
+        <Dropdown.Item onSelect={() => console.log('Edit')}>Edit</Dropdown.Item>
+        <Dropdown.Item onSelect={() => console.log('Duplicate')}>Duplicate</Dropdown.Item>
+      </Dropdown.Menu>
+    </Dropdown>
+  ),
+};

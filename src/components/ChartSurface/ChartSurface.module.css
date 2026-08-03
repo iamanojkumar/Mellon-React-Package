@@ -1,0 +1,42 @@
+.surface {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-xs);
+}
+
+.plot {
+  width: 100%;
+}
+
+.svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.bar {
+  fill: var(--ds-color-brand-primary);
+}
+
+.line {
+  fill: none;
+  stroke: var(--ds-color-brand-primary);
+  vector-effect: non-scaling-stroke;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.point {
+  fill: var(--ds-color-brand-primary);
+}
+
+.axis {
+  display: flex;
+}
+
+.axisLabel {
+  flex: 1;
+  text-align: center;
+}

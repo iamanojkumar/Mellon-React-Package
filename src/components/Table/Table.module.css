@@ -35,3 +35,20 @@
 .cell {
   padding: var(--ds-space-sm) var(--ds-space-md);
 }
+
+.tableWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-sm);
+}
+
+.aiToolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-xs);
+}
+
+.aiToolbarInput.aiToolbarInput {
+  flex: 1;
+  width: auto;
+}

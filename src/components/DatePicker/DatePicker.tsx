@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import type { KeyboardEvent } from 'react';
+import type { ChangeEvent, KeyboardEvent } from 'react';
 import { Portal } from '../Portal/Portal';
 import { useControllableState } from '../../hooks/useControllableState';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -7,7 +7,12 @@ import { usePositioning } from '../../hooks/usePositioning';
 import { useClickOutside } from '../../hooks/useClickOutside';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { useFieldContext } from '../../hooks/useFieldContext';
+import { useAI } from '../../hooks/useAI';
+import { useAIAction } from '../../hooks/useAIAction';
+import { AITriggerButton } from '../AITriggerButton/AITriggerButton';
+import { Button } from '../Button/Button';
 import { mergeClasses } from '../../utilities/mergeClasses';
+import inputStyles from '../Input/Input.module.css';
 import {
   addDays,
   addMonths,
@@ -102,6 +107,30 @@ export interface DatePickerProps {
   /** Formats a single date for the trigger's label (and each endpoint of a range). Defaults to a locale long date. */
   formatDate?: (date: Date) => string;
   className?: string;
+  /**
+   * Adds a natural-language date entry field ("next Friday", "in two
+   * weeks") above the calendar grid. Off by default, and a no-op even
+   * when `true` unless an ancestor `AIProvider` is mounted — the rendered
+   * output is byte-identical to today's whenever this doesn't apply.
+   * Only applies in `selectionMode="single"` — a deliberate scope cut,
+   * the same kind `Select`'s "no typeahead" already accepted. The AI is
+   * asked to respond with a single `YYYY-MM-DD` date; a response that
+   * doesn't parse as a valid date is silently ignored, not applied. Does
+   * NOT reuse `AISuggestionPopover` — this panel is already `Popover`-like
+   * chrome, and nesting a second popover inside it would violate
+   * CLAUDE.md's "no nested overlay boxes" rule, so the accept/reject UI
+   * is hand-rolled directly into this panel instead.
+   */
+  aiParse?: boolean;
+  /** Builds the prompt sent to the AI client from the typed text. Defaults to a "parse this into YYYY-MM-DD" instruction anchored to today's date. */
+  buildAIPrompt?: (query: string) => string;
+  /** Accessible label for the AI trigger button. Defaults to `'Parse with AI'`. */
+  aiParseLabel?: string;
+}
+
+function defaultBuildAIParsePrompt(query: string): string {
+  const todayIso = new Date().toISOString().slice(0, 10);
+  return `Today's date is ${todayIso}. Parse the following into a single date. Respond with only the date in YYYY-MM-DD format, nothing else. Text: "${query}"`;
 }
 
 /**
@@ -163,6 +192,9 @@ export function DatePicker({
   placeholder = 'Select a date',
   formatDate = defaultFormatDate,
   className,
+  aiParse = false,
+  buildAIPrompt = defaultBuildAIParsePrompt,
+  aiParseLabel = 'Parse with AI',
 }: DatePickerProps) {
   const field = useFieldContext();
   const generatedId = useId();
@@ -209,6 +241,36 @@ export function DatePicker({
   useEffect(() => {
     if (isOpen) focusedCellRef.current?.focus();
   }, [focusedDate, isOpen, view]);
+
+  const aiClient = useAI();
+  const aiAction = useAIAction();
+  const showAIParse = aiParse && selectionMode === 'single' && !!aiClient;
+  const [aiQueryText, setAiQueryText] = useState('');
+  const aiParsedDate =
+    aiAction.status === 'done' && !Number.isNaN(new Date(aiAction.result).getTime())
+      ? startOfDay(new Date(aiAction.result))
+      : undefined;
+
+  useEffect(() => {
+    if (!isOpen) {
+      setAiQueryText('');
+      aiAction.reset();
+    }
+    // Only reset when the panel closes — not a dependency on `aiAction`
+    // itself, which is a fresh object every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  function handleAIParse() {
+    if (!aiQueryText.trim()) return;
+    aiAction.trigger({ prompt: buildAIPrompt(aiQueryText) });
+  }
+
+  function acceptAIParsedDate() {
+    if (aiParsedDate) selectDate(aiParsedDate);
+    aiAction.reset();
+    setAiQueryText('');
+  }
 
   function toggleOpen() {
     if (!isOpen) {
@@ -468,6 +530,57 @@ export function DatePicker({
             className={styles.panel}
             style={{ position: 'absolute', left: position.x, top: position.y }}
           >
+            {showAIParse && (
+              <div className={styles.aiParseRow}>
+                <div className={styles.aiParseInputRow}>
+                  <input
+                    type="text"
+                    aria-label="Describe a date in words"
+                    placeholder="e.g. next Friday"
+                    value={aiQueryText}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                      setAiQueryText(event.target.value)
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        handleAIParse();
+                      }
+                    }}
+                    className={mergeClasses(inputStyles.input, styles.aiParseInput)}
+                  />
+                  <AITriggerButton
+                    aria-label={aiParseLabel}
+                    status={aiAction.status}
+                    onClick={handleAIParse}
+                  />
+                </div>
+                {aiAction.status === 'error' && (
+                  <div role="alert" className={styles.aiParseError}>
+                    Couldn&apos;t parse that.
+                  </div>
+                )}
+                {aiAction.status === 'done' && (
+                  <div className={styles.aiParseResult}>
+                    {aiParsedDate ? (
+                      <>
+                        <span>Did you mean {formatDate(aiParsedDate)}?</span>
+                        <div className={styles.aiParseActions}>
+                          <Button variant="ghost" size="sm" onClick={() => aiAction.reset()}>
+                            Discard
+                          </Button>
+                          <Button variant="primary" size="sm" onClick={acceptAIParsedDate}>
+                            Accept
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <span role="alert">Couldn&apos;t parse that as a date.</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
             <div className={styles.header}>
               <button
                 type="button"

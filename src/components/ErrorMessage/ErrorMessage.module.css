@@ -3,3 +3,13 @@
   font-size: var(--ds-font-size-xs);
   color: var(--ds-color-status-danger);
 }
+
+.aiWrapper {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ds-space-xs);
+}
+
+.aiTrigger {
+  flex-shrink: 0;
+}

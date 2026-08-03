@@ -1,0 +1,31 @@
+/*
+  `Menu` already renders its own full box (background/border/radius/
+  padding) — it's designed to be usable standalone, not just inside an
+  overlay wrapper (see `Menu`'s own doc comment). Stacking it inside
+  `Popover.Content`'s own default box would double the border, the exact
+  "no nested overlay boxes" bug CLAUDE.md documents from `Select`/
+  `MultiSelect`'s history. Fix: strip `Popover.Content`'s box chrome down
+  to nothing via this doubled-class override (reliably wins regardless of
+  CSS-module import order) so `Menu`'s own box is the only one visible —
+  the inverse of `Combobox`'s fix (there, the *inner* content stays
+  layout-only; here, the *outer* wrapper does).
+*/
+.content.content {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.empty {
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  color: var(--ds-color-text-secondary);
+}
+
+.title {
+  display: block;
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-md);
+  color: var(--ds-color-text-primary);
+}

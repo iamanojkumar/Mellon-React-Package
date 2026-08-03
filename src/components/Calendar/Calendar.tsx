@@ -1,7 +1,10 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import type { KeyboardEvent } from 'react';
+import type { ChangeEvent, KeyboardEvent } from 'react';
 import { mergeClasses } from '../../utilities/mergeClasses';
 import { useControllableState } from '../../hooks/useControllableState';
+import { useAI } from '../../hooks/useAI';
+import { useAIAction } from '../../hooks/useAIAction';
+import { AISuggestionPopover } from '../AISuggestionPopover/AISuggestionPopover';
 import {
   addDays,
   addMonths,
@@ -16,7 +19,18 @@ import {
   WEEKDAY_LABELS,
 } from '../../utilities/dateGrid';
 import datePickerStyles from '../DatePicker/DatePicker.module.css';
+import inputStyles from '../Input/Input.module.css';
 import styles from './Calendar.module.css';
+
+export interface CalendarAIQueryContext {
+  query: string;
+  /** The currently-visible month/year, e.g. `"January 2026"`. */
+  month: string;
+}
+
+function defaultBuildAIPrompt({ query, month }: CalendarAIQueryContext): string {
+  return `You are looking at a calendar currently showing ${month}. Answer this question: ${query}`;
+}
 
 export type CalendarSelectionMode = 'single' | 'multiple' | 'range' | 'none';
 export type CalendarDayIndicatorColor = 'neutral' | 'brand' | 'success' | 'warning' | 'danger';
@@ -92,6 +106,22 @@ export interface CalendarProps {
   /** Returns a marker-dot color for a given day (e.g. days with events), or `undefined` for no marker. */
   dayIndicator?: (date: Date) => CalendarDayIndicatorColor | undefined;
   className?: string;
+  /**
+   * Adds a query field + "Ask AI" trigger to the header — natural-language
+   * questions about the currently-visible month (e.g. "what's on Friday").
+   * Off by default, and a no-op even when `true` unless an ancestor
+   * `AIProvider` is mounted — the rendered output is byte-identical to
+   * today's whenever this doesn't apply. Calendar has no events data of
+   * its own (only `dayIndicator`'s per-day marker), so the default prompt
+   * only has the visible month to go on — pass your own `buildAIPrompt`
+   * to include real event data. Read-only: no accept/reject, same shape
+   * as `Alert`'s `aiExplain`.
+   */
+  aiQuery?: boolean;
+  /** Builds the prompt sent to the AI client from the typed question and the visible month. Defaults to a generic instruction. */
+  buildAIPrompt?: (context: CalendarAIQueryContext) => string;
+  /** Accessible label for the AI trigger button. Defaults to `'Ask AI'`. */
+  aiQueryLabel?: string;
 }
 
 /**
@@ -132,6 +162,9 @@ export function Calendar({
   max,
   dayIndicator,
   className,
+  aiQuery = false,
+  buildAIPrompt = defaultBuildAIPrompt,
+  aiQueryLabel = 'Ask AI',
 }: CalendarProps) {
   const [selected, setSelected] = useControllableState<Date | undefined>({
     value,
@@ -161,6 +194,11 @@ export function Calendar({
   const gridRef = useRef<HTMLDivElement>(null);
   const focusedCellRef = useRef<HTMLDivElement>(null);
   const headingId = useId();
+
+  const aiClient = useAI();
+  const aiAction = useAIAction();
+  const showAIQuery = aiQuery && !!aiClient;
+  const [aiQueryText, setAiQueryText] = useState('');
   // Tracks whether the grid should keep DOM focus in sync with `focusedDate`.
   // Unlike DatePicker's identical-looking effect (gated on `isOpen`, so it
   // only ever fires right after a fresh open), Calendar is always mounted,
@@ -273,6 +311,41 @@ export function Calendar({
 
   return (
     <div className={mergeClasses(styles.calendar, className)}>
+      {showAIQuery && (
+        <div className={styles.aiQueryRow}>
+          <input
+            type="text"
+            aria-label="Ask a question about this calendar"
+            placeholder="Ask a question about this month…"
+            value={aiQueryText}
+            onChange={(event: ChangeEvent<HTMLInputElement>) => setAiQueryText(event.target.value)}
+            className={mergeClasses(inputStyles.input, styles.aiQueryInput)}
+          />
+          <AISuggestionPopover
+            triggerLabel={aiQueryLabel}
+            status={aiAction.status}
+            result={aiAction.result}
+            error={aiAction.error}
+            onOpenChange={(open) => {
+              if (open) {
+                aiAction.trigger({
+                  prompt: buildAIPrompt({
+                    query: aiQueryText,
+                    month: formatMonthYear(focusedDate),
+                  }),
+                });
+              } else {
+                aiAction.reset();
+              }
+            }}
+            onRetry={() =>
+              aiAction.trigger({
+                prompt: buildAIPrompt({ query: aiQueryText, month: formatMonthYear(focusedDate) }),
+              })
+            }
+          />
+        </div>
+      )}
       <div className={datePickerStyles.header}>
         <button
           type="button"

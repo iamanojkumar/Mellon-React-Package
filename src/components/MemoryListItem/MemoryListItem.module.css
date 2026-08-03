@@ -1,0 +1,20 @@
+.item {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-sm);
+  padding: var(--ds-space-sm) var(--ds-space-md);
+  border-radius: var(--ds-radius-sm);
+}
+
+.item:hover {
+  background: var(--ds-color-surface-secondary);
+}
+
+.text {
+  min-width: 0;
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  color: var(--ds-color-text-primary);
+}

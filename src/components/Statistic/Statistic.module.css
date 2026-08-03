@@ -35,3 +35,13 @@
 .trend[data-trend='neutral'] {
   color: var(--ds-color-text-secondary);
 }
+
+.aiWrapper {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--ds-space-xs);
+}
+
+.aiTrigger {
+  flex-shrink: 0;
+}

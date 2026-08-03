@@ -5,6 +5,8 @@ import { useControllableState } from '../../hooks/useControllableState';
 import { useFieldContext } from '../../hooks/useFieldContext';
 import { useRovingFocus } from '../../hooks/useRovingFocus';
 import { mergeClasses } from '../../utilities/mergeClasses';
+import { AITriggerButton } from '../AITriggerButton/AITriggerButton';
+import type { AIActionStatus } from '../../hooks/useAIAction';
 import inputStyles from '../Input/Input.module.css';
 import styles from './Select.module.css';
 
@@ -15,6 +17,17 @@ export interface SelectOption {
 }
 
 export type SelectSize = 'sm' | 'md' | 'lg';
+
+export interface SelectAISuggestOptions {
+  /**
+   * Resolves to the `value` of the option AI recommends given the current
+   * option list. Resolving to `undefined`, or to a value that doesn't match
+   * an enabled option, leaves the selection unchanged.
+   */
+  resolve: (options: SelectOption[]) => Promise<string | undefined>;
+  /** Accessible label for the AI trigger button. Defaults to `'Suggest with AI'`. */
+  triggerLabel?: string;
+}
 
 export interface SelectProps {
   options: SelectOption[];
@@ -30,6 +43,17 @@ export interface SelectProps {
   id?: string;
   className?: string;
   'aria-label'?: string;
+  /**
+   * Adds a "Suggest with AI" trigger inside the open panel. Off by default.
+   * Unlike the popover-based flagships (`TextArea`'s `aiRewrite`, `Alert`'s
+   * `aiExplain`), this follows `CommandPalette`'s `aiSearch` shape instead:
+   * no shared `AISuggestionPopover` primitive, `resolve` is entirely the
+   * consumer's own function — it may call `useAIAction`/an `AIClient`
+   * internally or not — and must resolve to one of `options`' `value`s,
+   * which becomes the new selection immediately. There's nothing to
+   * accept/reject; the resolved value *is* the result.
+   */
+  aiSuggest?: SelectAISuggestOptions;
 }
 
 /**
@@ -69,6 +93,7 @@ export function Select({
   id,
   className,
   'aria-label': ariaLabel,
+  aiSuggest,
 }: SelectProps) {
   const field = useFieldContext();
   const generatedId = useId();
@@ -87,8 +112,13 @@ export function Select({
   });
 
   const [isOpen, setIsOpen] = useState(false);
+  const [aiStatus, setAiStatus] = useState<AIActionStatus>('idle');
   const triggerRef = useRef<HTMLButtonElement>(null);
   const listboxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) setAiStatus('idle');
+  }, [isOpen]);
 
   const selectedIndex = options.findIndex((option) => option.value === value);
   const [activeIndex, setActiveIndex] = useState(() => {
@@ -112,6 +142,19 @@ export function Select({
     setValue(option.value);
     setIsOpen(false);
     triggerRef.current?.focus();
+  }
+
+  async function handleAISuggest() {
+    if (!aiSuggest) return;
+    setAiStatus('loading');
+    try {
+      const suggestedValue = await aiSuggest.resolve(options);
+      const option = options.find((o) => o.value === suggestedValue && !o.disabled);
+      setAiStatus('idle');
+      if (option) selectOption(option);
+    } catch {
+      setAiStatus('error');
+    }
   }
 
   const handleRovingKeyDown = useRovingFocus({
@@ -175,6 +218,20 @@ export function Select({
         </span>
       </Popover.Trigger>
       <Popover.Content className={styles.content}>
+        {aiSuggest && (
+          <div className={styles.aiSuggestRow}>
+            <AITriggerButton
+              aria-label={aiSuggest.triggerLabel ?? 'Suggest with AI'}
+              status={aiStatus}
+              onClick={handleAISuggest}
+            />
+            {aiStatus === 'error' && (
+              <span role="alert" className={styles.aiSuggestError}>
+                Couldn&apos;t get a suggestion.
+              </span>
+            )}
+          </div>
+        )}
         <div
           ref={listboxRef}
           role="listbox"

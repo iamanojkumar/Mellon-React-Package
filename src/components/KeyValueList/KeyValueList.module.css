@@ -25,3 +25,13 @@
   font-weight: var(--ds-font-weight-medium);
   text-align: end;
 }
+
+.aiWrapper {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ds-space-xs);
+}
+
+.aiTrigger {
+  flex-shrink: 0;
+}

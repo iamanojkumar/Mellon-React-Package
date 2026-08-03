@@ -3,6 +3,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expectNoA11yViolations } from '../../../tests/axe';
 import { Accordion } from './Accordion';
+import { AIProvider } from '../../providers/AIProvider';
+import type { AIClient } from '../../contexts/AIContext';
 
 function BasicAccordion(props: {
   type?: 'single' | 'multiple';
@@ -178,5 +180,68 @@ describe('Accordion', () => {
       ),
     ).toThrow('<Accordion.Trigger> must be used within <Accordion.Item>');
     consoleError.mockRestore();
+  });
+
+  describe('aiSummarize', () => {
+    function AIAccordion(props: { aiSummarize?: boolean }) {
+      return (
+        <Accordion defaultValue="one">
+          <Accordion.Item value="one">
+            <Accordion.Trigger>One</Accordion.Trigger>
+            <Accordion.Content aiSummarize={props.aiSummarize}>
+              This section explains the return policy in detail.
+            </Accordion.Content>
+          </Accordion.Item>
+        </Accordion>
+      );
+    }
+
+    it('renders no AI trigger when aiSummarize is omitted', () => {
+      render(<AIAccordion />);
+      expect(screen.queryByRole('button', { name: 'Summarize with AI' })).not.toBeInTheDocument();
+    });
+
+    it('renders no AI trigger when aiSummarize is true but no AIProvider is mounted', () => {
+      render(<AIAccordion aiSummarize />);
+      expect(screen.queryByRole('button', { name: 'Summarize with AI' })).not.toBeInTheDocument();
+    });
+
+    it('renders the AI trigger when a provider is mounted', () => {
+      const client: AIClient = { complete: vi.fn() };
+      render(
+        <AIProvider client={client}>
+          <AIAccordion aiSummarize />
+        </AIProvider>,
+      );
+      expect(screen.getByRole('button', { name: 'Summarize with AI' })).toBeInTheDocument();
+    });
+
+    it('triggers the AI client on open with the section text and has no accept/reject actions (read-only)', async () => {
+      const user = userEvent.setup();
+      const complete = vi.fn().mockResolvedValue('Returns are accepted within 30 days.');
+      const client: AIClient = { complete };
+      render(
+        <AIProvider client={client}>
+          <AIAccordion aiSummarize />
+        </AIProvider>,
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Summarize with AI' }));
+      const prompt = complete.mock.calls[0]?.[0].prompt as string;
+      expect(prompt).toContain('This section explains the return policy in detail.');
+      expect(await screen.findByText('Returns are accepted within 30 days.')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Accept' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Discard' })).not.toBeInTheDocument();
+    });
+
+    it('has no accessibility violations with the AI trigger rendered', async () => {
+      const client: AIClient = { complete: vi.fn() };
+      const { container } = render(
+        <AIProvider client={client}>
+          <AIAccordion aiSummarize />
+        </AIProvider>,
+      );
+      await expectNoA11yViolations(container);
+    });
   });
 });

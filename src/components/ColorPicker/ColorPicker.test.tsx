@@ -5,6 +5,8 @@ import userEvent from '@testing-library/user-event';
 import { expectNoA11yViolations } from '../../../tests/axe';
 import { ColorPicker } from './ColorPicker';
 import { hexToRgb, rgbToHex, rgbToHsl, hslToRgb, rgbToHsv, hsvToRgb } from './colorConversions';
+import { AIProvider } from '../../providers/AIProvider';
+import type { AIClient } from '../../contexts/AIContext';
 
 describe('color conversions', () => {
   it('hexToRgb parses 6-digit and 3-digit hex, with or without "#"', () => {
@@ -172,5 +174,73 @@ describe('ColorPicker', () => {
   it('has no accessibility violations', async () => {
     const { container } = render(<ColorPicker defaultValue="#3b82f6" presets={['#ff0000']} />);
     await expectNoA11yViolations(container);
+  });
+
+  describe('aiSuggest', () => {
+    it('renders no AI trigger when aiSuggest is omitted', () => {
+      render(<ColorPicker defaultValue="#3b82f6" />);
+      expect(screen.queryByRole('button', { name: 'Suggest with AI' })).not.toBeInTheDocument();
+    });
+
+    it('renders no AI trigger when aiSuggest is true but no AIProvider is mounted', () => {
+      render(<ColorPicker defaultValue="#3b82f6" aiSuggest />);
+      expect(screen.queryByRole('button', { name: 'Suggest with AI' })).not.toBeInTheDocument();
+    });
+
+    it('renders the AI trigger when a provider is mounted', () => {
+      const client: AIClient = { complete: vi.fn() };
+      render(
+        <AIProvider client={client}>
+          <ColorPicker defaultValue="#3b82f6" aiSuggest />
+        </AIProvider>,
+      );
+      expect(screen.getByRole('button', { name: 'Suggest with AI' })).toBeInTheDocument();
+    });
+
+    it('triggers the AI client on open with the current hex, and accepting applies a valid suggestion', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      const complete = vi.fn().mockResolvedValue('#ff8800');
+      const client: AIClient = { complete };
+      render(
+        <AIProvider client={client}>
+          <ColorPicker defaultValue="#3b82f6" onChange={onChange} aiSuggest />
+        </AIProvider>,
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Suggest with AI' }));
+      expect(complete).toHaveBeenCalledWith(
+        expect.objectContaining({ prompt: expect.stringContaining('#3b82f6') }),
+      );
+      await user.click(await screen.findByRole('button', { name: 'Accept' }));
+      expect(screen.getByLabelText('Hex')).toHaveValue('#ff8800');
+      expect(onChange).toHaveBeenCalledWith('#ff8800');
+    });
+
+    it('ignores an accepted suggestion that does not parse as a valid hex color', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      const complete = vi.fn().mockResolvedValue('not a color');
+      const client: AIClient = { complete };
+      render(
+        <AIProvider client={client}>
+          <ColorPicker defaultValue="#3b82f6" onChange={onChange} aiSuggest />
+        </AIProvider>,
+      );
+      await user.click(screen.getByRole('button', { name: 'Suggest with AI' }));
+      await user.click(await screen.findByRole('button', { name: 'Accept' }));
+      expect(screen.getByLabelText('Hex')).toHaveValue('#3b82f6');
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it('has no accessibility violations with the AI trigger rendered', async () => {
+      const client: AIClient = { complete: vi.fn() };
+      const { container } = render(
+        <AIProvider client={client}>
+          <ColorPicker defaultValue="#3b82f6" aiSuggest />
+        </AIProvider>,
+      );
+      await expectNoA11yViolations(container);
+    });
   });
 });

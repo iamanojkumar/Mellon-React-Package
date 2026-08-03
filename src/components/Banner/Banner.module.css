@@ -35,3 +35,10 @@
   font-size: var(--ds-font-size-sm);
   color: var(--ds-color-text-primary);
 }
+
+.actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: var(--ds-space-xs);
+}

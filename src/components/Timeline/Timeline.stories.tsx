@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { Timeline } from './Timeline';
 import { Text } from '../Text/Text';
+import { AIProvider } from '../../providers/AIProvider';
+import type { AIClient } from '../../contexts/AIContext';
 
 const meta: Meta<typeof Timeline> = {
   title: 'Data Display/Timeline',
@@ -132,6 +134,41 @@ export const Accessibility: Story = {
         </Text>
       </Timeline.Item>
       <Timeline.Item time="Jan 6, 2026" title="Delivered" color="success" />
+    </Timeline>
+  ),
+};
+
+const mockAIClient: AIClient = {
+  complete: async () =>
+    'The order was placed, processed, shipped, and delivered over 3 days with no delays.',
+};
+
+/**
+ * `aiSummarize` is a no-op without an ancestor `AIProvider` — this story
+ * wraps a deterministic mock client so the "Summarize with AI" trigger
+ * actually appears. Read-only: no accept/reject, just a summary. Only
+ * plain-string `Timeline.Item` content feeds the default prompt (not the
+ * `Text`-wrapped descriptions used elsewhere in this file).
+ */
+export const WithAISummarize: Story = {
+  decorators: [
+    (Story) => (
+      <AIProvider client={mockAIClient}>
+        <Story />
+      </AIProvider>
+    ),
+  ],
+  render: () => (
+    <Timeline aiSummarize>
+      <Timeline.Item time="Jan 3, 2026 · 9:02 AM" title="Order placed" color="brand">
+        Order #48213 was placed and payment was confirmed.
+      </Timeline.Item>
+      <Timeline.Item time="Jan 4, 2026 · 8:15 AM" title="Shipped" color="warning">
+        Carrier picked up the package.
+      </Timeline.Item>
+      <Timeline.Item time="Jan 6, 2026 · 11:30 AM" title="Delivered" color="success">
+        Left at the front door.
+      </Timeline.Item>
     </Timeline>
   ),
 };

@@ -113,4 +113,35 @@ describe('ContextMenu', () => {
     await user.keyboard('{ArrowDown}');
     expect(screen.getByRole('menuitem', { name: 'Paste' })).toHaveFocus();
   });
+
+  describe('aiSuggest', () => {
+    it('forwards aiSuggest to the internal Menu, rendering the AI trigger item', () => {
+      render(
+        <ContextMenu
+          menu={<MenuItem onSelect={() => {}}>Copy</MenuItem>}
+          aiSuggest={{ resolve: vi.fn() }}
+        >
+          <div style={{ width: 200, height: 100 }}>Right-click me</div>
+        </ContextMenu>,
+      );
+      fireEvent.contextMenu(screen.getByText('Right-click me'), { clientX: 50, clientY: 50 });
+      expect(screen.getByRole('menuitem', { name: 'Suggest with AI' })).toBeInTheDocument();
+    });
+
+    it('selecting a resolved AI item calls its onSelect and also closes the menu', async () => {
+      const user = userEvent.setup();
+      const onSelect = vi.fn();
+      const resolve = vi.fn().mockResolvedValue([{ id: 'archive', label: 'Archive', onSelect }]);
+      render(
+        <ContextMenu menu={<MenuItem onSelect={() => {}}>Copy</MenuItem>} aiSuggest={{ resolve }}>
+          <div style={{ width: 200, height: 100 }}>Right-click me</div>
+        </ContextMenu>,
+      );
+      fireEvent.contextMenu(screen.getByText('Right-click me'), { clientX: 50, clientY: 50 });
+      await user.click(screen.getByRole('menuitem', { name: 'Suggest with AI' }));
+      await user.click(await screen.findByRole('menuitem', { name: 'Archive' }));
+      expect(onSelect).toHaveBeenCalled();
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    });
+  });
 });

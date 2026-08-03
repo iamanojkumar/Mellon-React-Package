@@ -2,12 +2,15 @@ import { cloneElement, isValidElement, useEffect, useMemo, useRef, useState } fr
 import type { MouseEvent as ReactMouseEvent, ReactElement, ReactNode } from 'react';
 import { Portal } from '../Portal/Portal';
 import { Menu } from '../Menu/Menu';
+import type { MenuAISuggestOptions } from '../Menu/Menu';
 import { usePositioning } from '../../hooks/usePositioning';
 import { useClickOutside } from '../../hooks/useClickOutside';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { flattenChildren } from '../../utilities/flattenChildren';
 import { mergeClasses } from '../../utilities/mergeClasses';
 import styles from './ContextMenu.module.css';
+
+export type { MenuAISuggestItem, MenuAISuggestOptions } from '../Menu/Menu';
 
 export interface ContextMenuProps {
   /** The area that responds to right-click. */
@@ -19,6 +22,13 @@ export interface ContextMenuProps {
   menuLabel?: string;
   className?: string;
   menuClassName?: string;
+  /**
+   * Forwarded to the internal `Menu`'s own `aiSuggest` — see `Menu`'s doc
+   * comment for the shape. Resolved items' `onSelect` gets the same
+   * "also close the menu" wrapping every other item already gets, so
+   * consumers don't need to close it themselves.
+   */
+  aiSuggest?: MenuAISuggestOptions;
 }
 
 /**
@@ -45,6 +55,7 @@ export function ContextMenu({
   menuLabel = 'Context menu',
   className,
   menuClassName,
+  aiSuggest,
 }: ContextMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [clickPoint, setClickPoint] = useState({ x: 0, y: 0 });
@@ -99,6 +110,22 @@ export function ContextMenu({
     });
   });
 
+  // Same "also close the menu" wrapping `wrappedMenu` gives every static
+  // item, applied to whatever `aiSuggest.resolve` returns.
+  const wrappedAiSuggest: MenuAISuggestOptions | undefined = aiSuggest && {
+    ...aiSuggest,
+    resolve: async () => {
+      const resolved = await aiSuggest.resolve();
+      return resolved.map((item) => ({
+        ...item,
+        onSelect: () => {
+          item.onSelect();
+          setIsOpen(false);
+        },
+      }));
+    },
+  };
+
   return (
     <>
       <div onContextMenu={handleContextMenu} className={className}>
@@ -111,7 +138,9 @@ export function ContextMenu({
             className={mergeClasses(styles.panel, menuClassName)}
             style={{ position: 'absolute', left: position.x, top: position.y }}
           >
-            <Menu aria-label={menuLabel}>{wrappedMenu}</Menu>
+            <Menu aria-label={menuLabel} aiSuggest={wrappedAiSuggest}>
+              {wrappedMenu}
+            </Menu>
           </div>
         </Portal>
       )}

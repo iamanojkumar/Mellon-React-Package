@@ -38,6 +38,48 @@
   z-index: var(--ds-z-index-dropdown);
 }
 
+.aiParseRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-xs);
+  padding-bottom: var(--ds-space-sm);
+  margin-bottom: var(--ds-space-sm);
+  border-bottom: 1px solid var(--ds-color-border-primary);
+}
+
+.aiParseInputRow {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-xs);
+}
+
+.aiParseInput.aiParseInput {
+  flex: 1;
+  width: auto;
+}
+
+.aiParseError {
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  color: var(--ds-color-status-danger);
+}
+
+.aiParseResult {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-sm);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  color: var(--ds-color-text-primary);
+}
+
+.aiParseActions {
+  display: flex;
+  gap: var(--ds-space-xs);
+  flex-shrink: 0;
+}
+
 .header {
   display: flex;
   align-items: center;

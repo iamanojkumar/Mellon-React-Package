@@ -58,4 +58,18 @@ describe('TimePicker', () => {
     render(<TimePicker aria-label="Time" disabled />);
     expect(screen.getByRole('combobox')).toBeDisabled();
   });
+
+  describe('aiSuggest', () => {
+    it('inherits aiSuggest from Select (thin pass-through, not reimplemented)', async () => {
+      const user = userEvent.setup();
+      const resolve = vi.fn().mockResolvedValue('09:30');
+      render(
+        <TimePicker aria-label="Time" min="09:00" max="10:00" step={30} aiSuggest={{ resolve }} />,
+      );
+      await user.click(screen.getByRole('combobox'));
+      await user.click(screen.getByRole('button', { name: 'Suggest with AI' }));
+      expect(resolve).toHaveBeenCalled();
+      expect(screen.getByRole('combobox')).toHaveTextContent('9:30 AM');
+    });
+  });
 });

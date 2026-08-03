@@ -1,0 +1,31 @@
+.editor {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-sm);
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.empty {
+  margin: 0;
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  color: var(--ds-color-text-secondary);
+}
+
+.form {
+  display: flex;
+  gap: var(--ds-space-xs);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+}

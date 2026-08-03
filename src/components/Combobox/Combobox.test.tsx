@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { useState } from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expectNoA11yViolations } from '../../../tests/axe';
 import { Combobox } from './Combobox';
@@ -164,5 +164,76 @@ describe('Combobox', () => {
   it('is disabled when the disabled prop is set', () => {
     render(<Combobox aria-label="Fruit" options={FRUITS} disabled />);
     expect(screen.getByRole('combobox')).toBeDisabled();
+  });
+
+  describe('aiSearch', () => {
+    it('renders no AI trigger when aiSearch is omitted', async () => {
+      const user = userEvent.setup();
+      render(<Combobox aria-label="Fruit" options={FRUITS} />);
+      await user.click(screen.getByRole('combobox'));
+      expect(screen.queryByRole('button', { name: 'Search with AI' })).not.toBeInTheDocument();
+    });
+
+    it('renders the AI trigger when aiSearch is passed', async () => {
+      const user = userEvent.setup();
+      render(<Combobox aria-label="Fruit" options={FRUITS} aiSearch={{ resolve: vi.fn() }} />);
+      await user.click(screen.getByRole('combobox'));
+      expect(screen.getByRole('button', { name: 'Search with AI' })).toBeInTheDocument();
+    });
+
+    it('merges resolved options into the panel under a Suggested heading', async () => {
+      const user = userEvent.setup();
+      const resolve = vi.fn().mockResolvedValue([{ value: 'kiwi', label: 'Kiwi' }]);
+      render(<Combobox aria-label="Fruit" options={FRUITS} aiSearch={{ resolve }} />);
+      await user.click(screen.getByRole('combobox'));
+      await user.click(screen.getByRole('button', { name: 'Search with AI' }));
+      expect(resolve).toHaveBeenCalledWith('');
+      expect(await screen.findByText('Suggested')).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: 'Kiwi' })).toBeInTheDocument();
+    });
+
+    it('selecting a suggested option commits it like a regular option', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      const resolve = vi.fn().mockResolvedValue([{ value: 'kiwi', label: 'Kiwi' }]);
+      render(
+        <Combobox aria-label="Fruit" options={FRUITS} onChange={onChange} aiSearch={{ resolve }} />,
+      );
+      await user.click(screen.getByRole('combobox'));
+      await user.click(screen.getByRole('button', { name: 'Search with AI' }));
+      await user.click(await screen.findByRole('option', { name: 'Kiwi' }));
+      expect(onChange).toHaveBeenCalledWith('kiwi');
+      expect((screen.getByRole('combobox') as HTMLInputElement).value).toBe('Kiwi');
+    });
+
+    it('shows an inline error when resolve rejects', async () => {
+      const user = userEvent.setup();
+      const resolve = vi.fn().mockRejectedValue(new Error('nope'));
+      render(<Combobox aria-label="Fruit" options={FRUITS} aiSearch={{ resolve }} />);
+      await user.click(screen.getByRole('combobox'));
+      await user.click(screen.getByRole('button', { name: 'Search with AI' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't get suggestions.");
+    });
+
+    it('clears AI-suggested options when the panel closes', async () => {
+      const user = userEvent.setup();
+      const resolve = vi.fn().mockResolvedValue([{ value: 'kiwi', label: 'Kiwi' }]);
+      render(<Combobox aria-label="Fruit" options={FRUITS} aiSearch={{ resolve }} />);
+      await user.click(screen.getByRole('combobox'));
+      await user.click(screen.getByRole('button', { name: 'Search with AI' }));
+      await screen.findByRole('option', { name: 'Kiwi' });
+      await user.keyboard('{Escape}');
+      await user.click(screen.getByRole('combobox'));
+      await waitFor(() =>
+        expect(screen.queryByRole('option', { name: 'Kiwi' })).not.toBeInTheDocument(),
+      );
+    });
+
+    it('has no accessibility violations with the AI trigger rendered', async () => {
+      const user = userEvent.setup();
+      render(<Combobox aria-label="Fruit" options={FRUITS} aiSearch={{ resolve: vi.fn() }} />);
+      await user.click(screen.getByRole('combobox'));
+      await expectNoA11yViolations(document.body);
+    });
   });
 });

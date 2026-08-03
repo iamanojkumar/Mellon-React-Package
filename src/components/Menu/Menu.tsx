@@ -1,4 +1,4 @@
-import { cloneElement, isValidElement, useRef, useState } from 'react';
+import { cloneElement, isValidElement, useEffect, useRef, useState } from 'react';
 import type {
   ComponentPropsWithoutRef,
   FocusEvent,
@@ -9,11 +9,41 @@ import type {
 import { useRovingFocus } from '../../hooks/useRovingFocus';
 import { flattenChildren } from '../../utilities/flattenChildren';
 import { mergeClasses } from '../../utilities/mergeClasses';
+import { SparkleIcon } from '../AITriggerButton/AITriggerButton';
+import type { AIActionStatus } from '../../hooks/useAIAction';
 import styles from './Menu.module.css';
+
+export interface MenuAISuggestItem {
+  id: string;
+  label: ReactNode;
+  onSelect: () => void;
+}
+
+export interface MenuAISuggestOptions {
+  /**
+   * Resolves to real, executable items merged into the menu under a
+   * "Suggested" heading. No shared AI primitive — entirely consumer-owned,
+   * the same `CommandPalette`-resolver shape `Select`'s `aiSuggest` uses.
+   * Only called when the trigger item is explicitly activated, not on
+   * every render.
+   */
+  resolve: () => Promise<MenuAISuggestItem[]>;
+  /** Label for the trigger item. Defaults to `'Suggest with AI'`. */
+  triggerLabel?: ReactNode;
+  /** Heading shown above the AI-resolved items. Defaults to `'Suggested'`. */
+  groupHeading?: ReactNode;
+}
 
 export interface MenuOwnProps {
   /** `Menu.Item` elements. */
   children: ReactNode;
+  /**
+   * Adds a "Suggest with AI" item at the end of the menu. Off by default.
+   * Activating it resolves extra items, merged in under a "Suggested"
+   * heading and fully participating in the same roving-tabindex keyboard
+   * navigation as every other item.
+   */
+  aiSuggest?: MenuAISuggestOptions;
 }
 
 export type MenuProps = Omit<ComponentPropsWithoutRef<'div'>, 'children'> & MenuOwnProps;
@@ -39,7 +69,7 @@ export type MenuProps = Omit<ComponentPropsWithoutRef<'div'>, 'children'> & Menu
  * it themselves — see the future Context Menu, which queries for
  * `[role="menuitem"]` the same way `Dropdown.Menu` already does.
  */
-export function Menu({ className, children, ...rest }: MenuProps) {
+export function Menu({ className, children, aiSuggest, ...rest }: MenuProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const items = flattenChildren(children).filter(isValidElement) as ReactElement<{
     disabled?: boolean;
@@ -48,6 +78,28 @@ export function Menu({ className, children, ...rest }: MenuProps) {
     const firstEnabled = items.findIndex((item) => !item.props.disabled);
     return firstEnabled === -1 ? 0 : firstEnabled;
   });
+  const [aiItems, setAiItems] = useState<MenuAISuggestItem[]>([]);
+  const [aiStatus, setAiStatus] = useState<AIActionStatus>('idle');
+
+  useEffect(() => {
+    setAiItems([]);
+    setAiStatus('idle');
+    // Reset whenever the underlying resolver changes — a new `aiSuggest`
+    // means stale resolved items no longer make sense to keep around.
+  }, [aiSuggest]);
+
+  async function handleAISuggest() {
+    if (!aiSuggest) return;
+    setAiStatus('loading');
+    try {
+      const resolved = await aiSuggest.resolve();
+      setAiItems(resolved);
+      setAiStatus('idle');
+    } catch {
+      setAiItems([]);
+      setAiStatus('error');
+    }
+  }
 
   const handleRovingKeyDown = useRovingFocus({
     itemSelector: '[data-menu-item]:not([aria-disabled="true"])',
@@ -64,6 +116,56 @@ export function Menu({ className, children, ...rest }: MenuProps) {
     if (index !== -1) setActiveIndex(index);
   }
 
+  const regularCount = items.length;
+  const nodes: ReactNode[] = items.map((child, index) =>
+    cloneElement(child, {
+      key: index,
+      tabIndex: index === activeIndex ? 0 : -1,
+      'data-menu-item': '',
+    } as Partial<unknown>),
+  );
+
+  if (aiSuggest) {
+    nodes.push(
+      cloneElement(
+        <MenuItem onSelect={handleAISuggest} className={styles.aiMenuItem}>
+          <SparkleIcon />
+          <span>
+            {aiStatus === 'loading' ? 'Thinking…' : (aiSuggest.triggerLabel ?? 'Suggest with AI')}
+          </span>
+        </MenuItem>,
+        {
+          key: 'ai-trigger',
+          tabIndex: regularCount === activeIndex ? 0 : -1,
+          'data-menu-item': '',
+        } as Partial<unknown>,
+      ),
+    );
+    if (aiStatus === 'error') {
+      nodes.push(
+        <div key="ai-error" role="alert" className={styles.aiError}>
+          Couldn&apos;t get suggestions.
+        </div>,
+      );
+    }
+    if (aiItems.length > 0) {
+      nodes.push(
+        <div key="ai-heading" className={styles.aiGroupHeading}>
+          {aiSuggest.groupHeading ?? 'Suggested'}
+        </div>,
+      );
+      aiItems.forEach((item, index) => {
+        nodes.push(
+          cloneElement(<MenuItem onSelect={item.onSelect}>{item.label}</MenuItem>, {
+            key: `ai-item-${item.id}`,
+            tabIndex: regularCount + 1 + index === activeIndex ? 0 : -1,
+            'data-menu-item': '',
+          } as Partial<unknown>),
+        );
+      });
+    }
+  }
+
   return (
     <div
       ref={containerRef}
@@ -74,13 +176,7 @@ export function Menu({ className, children, ...rest }: MenuProps) {
       onFocus={handleFocus}
       {...rest}
     >
-      {items.map((child, index) =>
-        cloneElement(child, {
-          key: index,
-          tabIndex: index === activeIndex ? 0 : -1,
-          'data-menu-item': '',
-        } as Partial<unknown>),
-      )}
+      {nodes}
     </div>
   );
 }

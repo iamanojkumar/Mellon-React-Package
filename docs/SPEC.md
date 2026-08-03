@@ -146,9 +146,14 @@ Build in **dependency order, not alphabetical order**:
 19. **Remaining Utilities & Media** — Scroll Area, Split Pane, Resizable, Infinite Scroll, Masonry, Video, Audio 🔲 backlog
 20. **AI Core Infra** — `AIContext`/`AIProvider`/`useAI`, `useAIAction`, `AITriggerButton`, `AISuggestionPopover` ✅ shipped
 21. **Flagship AI Components** — `TextArea` (`aiRewrite`), `SearchField` (`aiSearch`), `Alert` (`aiExplain`), `DataGrid` (`aiTableQuery`/`aiRowExplain`), `CommandPalette` (`aiSearch`), `EmptyState` (story only) ✅ shipped
-22. **AI Enhancement Backlog** — remaining ~85 components' AI opportunities 🔲 backlog
+22. **AI Enhancement Backlog** — remaining 95 components' AI opportunities (26 with a real opportunity, 69 with none — see `docs/COMPONENT_LIST.md`); all 26 shipped ✅ shipped
+23. **Chat Conversation Core** — `MessageBubble`, `MessageMeta`, `CitationMarker`, `TypingIndicator`, `StreamingCursor` ✅ shipped
+24. **Message Actions & Reasoning UI** — `MessageActionBar`, `FeedbackControl`, `ThinkingBlock`, `ToolTraceViewer`, `StatusLine` ✅ shipped
+25. **AI Response Surfaces** — `CitationCard`, `CodeBlockToolbar`, `ChartSurface` ✅ shipped
+26. **Composer Extensions** — `MentionPicker`, `SlashCommandPicker`, `PromptTemplatePicker`, `TokenCounter` ✅ shipped
+27. **Conversation Shell & Memory** — `ConversationHeader`, `MemoryListItem`, `MemoryEditor` ✅ shipped
 
-**3 phases remain, all backlog: 18, 19, and 22** (see "Backlog: Phase 18 and 19" and "Backlog: Phase 22" below). Phases 20-21 (AI integration) are an unrelated feature track that jumped ahead of 18-19 in build order — numbered to continue the existing sequence rather than interleave, with no dependency on Mobile Gestures/Remaining Utilities either direction.
+**2 phases remain, both backlog: 18 and 19** (see "Backlog: Phase 18 and 19" below). Phases 20-22 (AI integration) are an unrelated feature track that jumped ahead of 18-19 in build order — numbered to continue the existing sequence rather than interleave, with no dependency on Mobile Gestures/Remaining Utilities either direction. Phases 23-27 (AI Chat Components) are a third, later track building on Phase 20's infra (`useAIAction`'s status vocabulary, `AISuggestionPopover`'s composition patterns) but not on 18/19/21/22 — the entire track is now shipped, see "Shipped Phase Notes" below for the per-phase write-ups.
 
 Phase 2 added the shared value/field plumbing later Form components build
 on: **`useControllableState`** (`src/hooks`) is the standard controlled/
@@ -193,7 +198,7 @@ Non-polymorphic, structural, or compound components (`Input`, `Portal`,
 generator's default is a polymorphic single-element leaf, which is right
 for most components but not all of them.
 
-### Shipped Phase Notes (Phases 4-17, 20-21) — condensed history
+### Shipped Phase Notes (Phases 4-17, 20-22) — condensed history
 
 One line per phase: what shipped and the single decision worth
 remembering. Full prior write-ups (multi-paragraph rationale per phase)
@@ -272,6 +277,164 @@ Upload`/`Dropzone`, `Carousel`. Two story-content contrast issues
     **and** fires a minimal synthetic `onChange` event, worth checking
     for in any future component applying a value without a real
     keystroke.
+20. **AI Enhancement Backlog** — all 26 components with a genuine AI
+    opportunity (see `docs/COMPONENT_LIST.md`'s per-component list) built
+    in one session across two shapes: 18 "trigger → `AISuggestionPopover`"
+    components (`Code`, `Paragraph`, `Blockquote`, `Input`, `ColorPicker`,
+    `FileUpload`, `ErrorMessage`, `Card`, `Table`, `Accordion`, `Timeline`,
+    `Calendar`, `Statistic`, `KeyValueList`, `Banner`, `Image`, plus
+    `DatePicker`'s `aiParse`, which hand-rolls its own accept/reject
+    instead of reusing `AISuggestionPopover` — see below) and 8
+    "`CommandPalette`-resolver" components (`Select`, `MultiSelect`,
+    `Combobox`, `Autocomplete`, `Menu`, `Dropdown`, `ContextMenu`,
+    `TreeView`). `Autocomplete` and `TimePicker` needed zero new code —
+    both are thin wrappers (`Combobox`/`Select`) that already spread
+    arbitrary props through, so `aiSearch`/`aiSuggest` was inherited for
+    free, the same "thin wrapper" precedent `TimePicker`-over-`Select`
+    established in Phase 9. `ContextMenu` forwards `aiSuggest` straight to
+    its internal `Menu`, wrapping resolved items' `onSelect` to also close
+    the menu. `DatePicker`'s `aiParse` is the one exception to both
+    shapes: since its panel is already `Popover`-like chrome, nesting a
+    second `AISuggestionPopover` inside it would violate CLAUDE.md's "no
+    nested overlay boxes" rule, so its query field + accept/reject UI is
+    hand-rolled directly into the panel instead, `useAIAction()` for
+    status only. `Table`'s `aiTableQuery` mirrors `DataGrid`'s toolbar
+    shape but builds its prompt from the rendered table's extracted text
+    (`extractTableText`, walking `<tr>`/`<th>`/`<td>`), since `Table` has
+    no structured `data` prop unlike `DataGrid`. Two real bugs found: (1)
+    an AI trigger button placed inside `Combobox`'s panel stole focus from
+    the input, firing its blur-triggered revert before the click
+    registered — fixed the same way `Combobox`'s own options already did,
+    `onMouseDown={(e) => e.preventDefault()}` on the row; (2) `Combobox`'s
+    `value`→`inputValue` sync effect looked up the selected label only in
+    the static `options` prop, so accepting an AI-resolved option (not in
+    that list) reverted the input to empty — fixed by searching
+    `[...options, ...aiOptions]` instead. A documentation bug was also
+    caught and fixed mid-phase: an earlier pass miscounted the AI-
+    opportunity split as "42/53" (3+9+1+4+7+1+1 mis-added as 42 instead of 26) — corrected to the real 26/69 split in `docs/COMPONENT_LIST.md`
+    before continuing; the per-component list itself was always right,
+    only the summary totals were wrong.
+21. **Chat Conversation Core** — `MessageBubble` (user/AI/system/tool/
+    error/status variants, reuses `Card`'s box CSS via a doubled-class
+    override rather than duplicating it), `MessageMeta` (composes `Label`
+    - `Caption` — `Caption`'s own doc comment already named "timestamps"
+      as a use case), `CitationMarker` (composes `Badge`'s pill styling;
+      renders `<a>`/`<button>`/`<span>` depending on whether `href`/
+      `onClick` is given), `TypingIndicator` and `StreamingCursor` (both
+      presentational-only, no `useAI`/`useAIAction` calls of their own —
+      same precedent `AISuggestionPopover` set — meant to be driven by the
+      owning component's own `useAIAction().status`). No new hooks/context;
+      first phase of the "AI Chat Components" track (`docs/SPEC.md`'s
+      Backlog section below), unrelated to the Phase 20-22 AI-enhancement
+      track beyond reusing its `useAIAction` status vocabulary.
+22. **Message Actions & Reasoning UI** — `MessageActionBar` (copy/
+    regenerate/continue/simplify/explain + a `extraActions` escape hatch,
+    each rendered only when its handler is given — `Alert`'s `onDismiss`
+    convention; rolls its own `role="toolbar"` + roving-tabindex via
+    `useRovingFocus` directly rather than reusing `ButtonGroup`'s JSX,
+    since `ButtonGroup`'s CSS visually joins its items with shared
+    borders — the wrong look for a loosely-gapped action row, the same
+    "reuse the hook, not the JSX" precedent `Tooltip` set against
+    `Popover`), `FeedbackControl` (mutually-exclusive thumbs up/down +
+    optional report, built directly on `IconButton` + manual
+    `aria-pressed`/`useControllableState` rather than two independent
+    `ToggleButton`s, which can't express shared exclusivity state),
+    `ThinkingBlock` (fixed single-item `Accordion` preset — the
+    established "thin wrapper" shape — with no `ref` prop, since
+    `Accordion`'s own root has none either), `ToolTraceViewer` (reuses
+    `AlertVariantIcon`'s success/danger glyphs for done/error steps and
+    `Spinner`'s CSS class, not the `Spinner` component, for the active
+    step — a second nested `role="status"` would double-announce the
+    same moment, so every icon stays `aria-hidden` with `aria-current=
+"step"` on the active `<li>` instead), `StatusLine` (single labeled
+    `role="status"` line, same icon-vs-component reasoning as
+    `ToolTraceViewer`'s active step). One real bug found: `ThinkingBlock`
+    initially mapped both `open={undefined}` (uncontrolled) and
+    `open={false}` (controlled-closed) to `value={undefined}` on the
+    underlying `Accordion`, so a controlled-closed `ThinkingBlock` still
+    opened on click — `Accordion`'s `useControllableState` treats
+    `value={undefined}` as "uncontrolled" with no way to distinguish the
+    two — fixed with a defined-but-not-the-item's-value sentinel
+    (`''`) for the controlled-and-closed state.
+23. **AI Response Surfaces** — `CitationCard` (footnote-style source card;
+    the whole card is a real `<a>` when `href` is given, a plain `<div>`
+    otherwise — reuses `Card`'s box CSS the same doubled-class way
+    `MessageBubble` does), `CodeBlockToolbar` (copy/download/run/expand
+    header bar for a `Code` block — a sibling the consumer places
+    alongside `Code`, not a prop on it, since `Code` also covers the
+    plain inline-snippet case with no toolbar; same roving-focus toolbar
+    shape as `MessageActionBar`, but its expand/collapse action reuses
+    `ToggleButton` directly since there's no second button it needs to
+    stay exclusive with, unlike `FeedbackControl`'s thumbs pair),
+    `ChartSurface` (minimal dependency-free bar/line chart, hand-rolled
+    inline SVG — no charting library, the same "no icon library"
+    precedent applied to data-viz; the SVG is `aria-hidden`, with a
+    `VisuallyHidden` `Table` of every label/value pair as the chart's
+    real accessible content, the standard accessible-chart pattern).
+    PDF viewer and Map embed excluded — grouped with Phase 19's
+    Video/Audio backlog instead. One test-only issue found (not a
+    component bug): `ChartSurface`'s visible axis labels and its hidden
+    data table both render the same text (e.g. "Jan"), so `getByText`
+    needs disambiguating — jsdom doesn't apply the CSS clip technique
+    `VisuallyHidden` relies on, so both copies are equally "present" to a
+    query that doesn't scope by container.
+24. **Composer Extensions** — a new shared hook,
+    **`useFloatingListPicker`** (`src/hooks/`), factors out the
+    positioning/dismissal/keyboard-delegation logic `MentionPicker` and
+    `SlashCommandPicker` both need — the same "generalize once two
+    components need the identical mechanics" precedent `useRovingFocus`
+    itself set (Phase 4). Both anchor to an arbitrary viewport point (a
+    host `TextArea`'s caret, computed by the consumer — this hook does
+    not measure caret position itself) via the same virtual-element
+    `usePositioning` trick `ContextMenu` established for click-point
+    placement, not `Popover` (no trigger element exists to anchor to).
+    Real focus must stay in the host `TextArea`, so neither component
+    listens for keyboard input itself; the hook exposes `handleKeyDown`
+    via `useImperativeHandle`, and the consumer's own `TextArea`
+    `onKeyDown` must call it and act on the returned boolean.
+    `MentionPicker` (people, avatar + name + description) and
+    `SlashCommandPicker` (commands, icon + label + description) share
+    this hook's mechanics but stay two separate components with distinct
+    data models — the same "share the mechanics, not the component"
+    choice `Alert`/`Banner` made. `PromptTemplatePicker` is structurally
+    different — a normal trigger-button-driven panel, not caret-anchored
+    — so it composes `Popover` + `Menu` directly instead; since `Menu`
+    already renders its own full box (designed to be usable standalone),
+    nesting it inside `Popover.Content`'s own default box would double
+    the border, so `Popover.Content`'s box chrome is stripped to nothing
+    via a doubled-class override, the inverse of `Combobox`'s fix (there
+    the _inner_ content stays layout-only; here the _outer_ wrapper
+    does) — both are instances of CLAUDE.md's "no nested overlay boxes"
+    rule. `TokenCounter` estimates `~length/4` by default (a rough
+    heuristic, not a real tokenizer — this library never bundles one,
+    the same "no vendor SDK" boundary `AIClient` draws for completions)
+    and is deliberately not a `role="status"` live region, unlike
+    `StatusLine` — announcing every keystroke's new count would spam
+    assistive tech. One test-tooling issue found (not a component bug):
+    `userEvent.type()` with a `{ArrowDown}{Enter}` key sequence
+    delegated through a ref-exposed `handleKeyDown` call intermittently
+    didn't reflect the resulting state update in time for the next
+    assertion; switched those specific interaction tests to
+    `fireEvent.keyDown` wrapped in `act()`, which resolved it —
+    `userEvent`'s special-key syntax worked fine elsewhere (e.g. the
+    `Escape`-closes tests), so this looks specific to that delegated-ref
+    - rapid-sequence combination, not a general problem with `type()`.
+25. **Conversation Shell & Memory** — `ConversationHeader` (title/tags/
+    model-used/participants/actions, a `<header>` layout shell — no `ref`
+    forwarding, no compound context, the same category `Navbar` is;
+    `participants`/`actions` are plain slots rather than baking in
+    `AvatarGroup`/`Button` opinions this component has no business
+    making, the same "accept a slot" precedent `MessageBubble`'s `avatar`
+    prop set), `MemoryListItem` (a single `<li>`, meant to live inside a
+    consumer-supplied `<ul>` — presentational only, `onForget` is the
+    consumer's own removal logic), `MemoryEditor` (a `MemoryListItem` per
+    entry plus an add-new-memory form; a real `<form onSubmit>`, not a
+    manual keydown handler, so Enter-to-submit and the button both work
+    via the platform's own submit behavior — the draft text is local,
+    ephemeral state this component owns, only committed `onAdd`/
+    `onForget` calls reach the consumer). This is the last phase of the
+    "AI Chat Components" track (Phases 23-27) — all five are now shipped.
+    No new bugs found.
 
 ### Known Issues
 
@@ -287,7 +450,7 @@ continuing to re-note it.
 
 ### Backlog: Phase 18 and 19 (not started)
 
-Phases 1-17 and 20-21 above are ✅ shipped. Phases 18-19 are 🔲 **backlog**
+Phases 1-17 and 20-22 above are ✅ shipped. Phases 18-19 are 🔲 **backlog**
 — the remaining dependency-ordered roadmap for the rest of the Component
 Inventory, written down so a future session can pick either up without
 re-deriving the ordering. Neither depends on the other or on Phase 22.
@@ -299,6 +462,46 @@ re-deriving the ordering. Neither depends on the other or on Phase 22.
     Resizable (all reuse `usePointerDrag`), Infinite Scroll (needs a new
     `useIntersectionObserver` hook), Masonry, Video, Audio.
 
+### AI Chat Components track: complete (Phases 23-27)
+
+The "AI Chat Components" track built the chat-conversation-specific UI
+surfaces identified in `docs/COMPONENT_LIST.md`'s "Cross-check against the
+AI-chat-interface taxonomy" section — the genuinely net-new pieces needed
+to assemble a working AI chat interface (ChatGPT/Claude/Gemini/Copilot-
+style), as opposed to the much larger set of adjacent subsystems that
+taxonomy also surfaced (voice pipelines, canvas/whiteboard, 3D viewers,
+enterprise back-office screens, ...) — those were deliberately left out;
+see "Out of scope" below for why each was excluded. Numbered to continue
+the sequence after Phase 22, same precedent as Phases 20-22 jumping ahead
+of 18-19. All five phases (23: Chat Conversation Core; 24: Message
+Actions & Reasoning UI; 25: AI Response Surfaces; 26: Composer
+Extensions; 27: Conversation Shell & Memory) are now shipped — see their
+write-ups in "Shipped Phase Notes" above. Model/generation controls
+(temperature, tool-permission toggles) needed no new component — same
+"Storybook composition only, no code" precedent as `EmptyState` in
+Phase 21, since the taxonomy already notes these are fully covered by
+`Select`/`Slider`/`Switch`/`FormGroup`.
+
+**Out of scope** (documented in the taxonomy cross-check, deliberately
+not phased): Voice Interface (mic/live transcription/waveform — needs
+`MediaRecorder`/`getUserMedia`, never integrated in this repo), Image
+Generation UI's inpainting/outpainting canvas, Canvas/Workspace
+(whiteboard, sticky notes, diagram editor — a full canvas engine),
+File workspace extras beyond what `Table`/`DataGrid`/`TreeView`/`Tabs`
+already cover (diff viewer, embedded code editor, spreadsheet/notebook
+preview), Multi-modal camera/OCR/3D viewer (device/3D rendering
+integrations), Enterprise features (audit log, compliance, approval
+workflows — app-specific business logic), and Authentication, Settings
+panels, Export menus, Search results panel, Notifications/connectivity,
+Context-usage tray, Error taxonomy, AI capabilities toggle panel,
+Developer/power-user inspectors, Specialized widget cards, Advanced
+interaction patterns (branch/fork, multi-agent view, workflow builder),
+and Collaboration (live cursors/presence) — the taxonomy document already
+marks each as covered by existing primitives for ad-hoc app composition,
+or as app-specific orchestration rather than a reusable design-system
+component, the same "don't force a feature onto every component"
+principle Phase 22's scoping already applied.
+
 **Testing/environment gaps to plan around**: jsdom has no real
 pointer-drag/touch physics, `IntersectionObserver`, or `ResizeObserver` —
 components depending on `usePointerDrag`, Infinite Scroll, or
@@ -308,26 +511,9 @@ behavior needs verification via `pnpm test:storybook`'s real Playwright
 pass, the same split already documented above for `color-contrast` in
 `tests/axe.ts`.
 
-### Backlog: Phase 22 — AI Enhancement Backlog (not started)
-
-Phase 21 shipped AI features on 6 flagship components as a first wave,
-deliberately not all ~90 components in the inventory. The remaining
-opportunities are catalogued per-component in the cross-check table in
-`docs/COMPONENT_LIST.md`, not repeated here — pick a slice from there.
-Summary: most remaining components get either a "small trigger → popover
-with a text result" enhancement (rewrite/summarize/explain/suggest,
-reusing `AIContext`/`useAI`/`useAIAction`/`AITriggerButton`/
-`AISuggestionPopover` exactly as 4 of Phase 21's 6 components did), or —
-where the AI output must become a typed, executable action rather than
-display text (menus, tabs, tree selection, table queries) — the
-`CommandPalette` shape instead: no shared AI primitive, the consumer's own
-resolver function returns real, safe, executable items. Which shape
-applies is determined by that distinction, not a per-component judgment
-call.
-
 ### Future: real AI backend wiring
 
-Deliberately **out of scope** for Phase 20/21 — every flagship component
+Deliberately **out of scope** for Phases 20-22 — every AI-enhanced component
 and Storybook story was built and tested against a mock/deterministic
 `AIClient`, per an explicit up-front scope decision with the user, so a
 production `AIClient` implementation and any real API key never touch
@@ -386,6 +572,15 @@ Mobile: Bottom Navigation, Action Sheet (covers via `Drawer`
 AI: AITriggerButton, AISuggestionPopover (shared primitives from Phase 20;
 `AIProvider`/`useAI`/`useAIAction` are infra in `src/providers`/`src/hooks`,
 not components, so aren't listed here — see Build Order Phase 20).
+
+AI Chat: MessageBubble, MessageMeta, CitationMarker, TypingIndicator,
+StreamingCursor (Phase 23, shipped); MessageActionBar, FeedbackControl,
+ThinkingBlock, ToolTraceViewer, StatusLine (Phase 24, shipped);
+CitationCard, CodeBlockToolbar, ChartSurface (Phase 25, shipped);
+MentionPicker, SlashCommandPicker, PromptTemplatePicker, TokenCounter
+(Phase 26, shipped); ConversationHeader, MemoryListItem, MemoryEditor
+(Phase 27, shipped) — see Build Order Phases 23-27 and
+`docs/COMPONENT_LIST.md`'s "AI Chat" section.
 
 ## Accessibility
 

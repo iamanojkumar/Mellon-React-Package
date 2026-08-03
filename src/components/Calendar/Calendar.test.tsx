@@ -6,6 +6,8 @@ import { expectNoA11yViolations } from '../../../tests/axe';
 import { Calendar } from './Calendar';
 import type { CalendarDateRange } from './Calendar';
 import { startOfDay } from '../../utilities/dateGrid';
+import { AIProvider } from '../../providers/AIProvider';
+import type { AIClient } from '../../contexts/AIContext';
 
 // Aug 15, 2026 is a Saturday - fixed via `defaultValue` so grid position is
 // deterministic without faking timers (same anchor DatePicker's tests use).
@@ -257,6 +259,64 @@ describe('Calendar', () => {
 
       expect(flagged.querySelector('[data-color="brand"]')).toBeInTheDocument();
       expect(unflagged.querySelector('[data-color]')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('aiQuery', () => {
+    it('renders no AI trigger when aiQuery is omitted', () => {
+      render(<Calendar defaultValue={ANCHOR} />);
+      expect(screen.queryByRole('button', { name: 'Ask AI' })).not.toBeInTheDocument();
+    });
+
+    it('renders no AI trigger when aiQuery is true but no AIProvider is mounted', () => {
+      render(<Calendar defaultValue={ANCHOR} aiQuery />);
+      expect(screen.queryByRole('button', { name: 'Ask AI' })).not.toBeInTheDocument();
+    });
+
+    it('renders the AI query field and trigger when a provider is mounted', () => {
+      const client: AIClient = { complete: vi.fn() };
+      render(
+        <AIProvider client={client}>
+          <Calendar defaultValue={ANCHOR} aiQuery />
+        </AIProvider>,
+      );
+      expect(screen.getByRole('button', { name: 'Ask AI' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('textbox', { name: 'Ask a question about this calendar' }),
+      ).toBeInTheDocument();
+    });
+
+    it('triggers the AI client with the typed question and the visible month, and has no accept/reject actions (read-only)', async () => {
+      const user = userEvent.setup();
+      const complete = vi.fn().mockResolvedValue('Nothing is marked on that day.');
+      const client: AIClient = { complete };
+      render(
+        <AIProvider client={client}>
+          <Calendar defaultValue={ANCHOR} aiQuery />
+        </AIProvider>,
+      );
+
+      await user.type(
+        screen.getByRole('textbox', { name: 'Ask a question about this calendar' }),
+        "what's on Friday",
+      );
+      await user.click(screen.getByRole('button', { name: 'Ask AI' }));
+      const prompt = complete.mock.calls[0]?.[0].prompt as string;
+      expect(prompt).toContain("what's on Friday");
+      expect(prompt).toContain('August 2026');
+      expect(await screen.findByText('Nothing is marked on that day.')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Accept' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Discard' })).not.toBeInTheDocument();
+    });
+
+    it('has no accessibility violations with the AI query row rendered', async () => {
+      const client: AIClient = { complete: vi.fn() };
+      const { container } = render(
+        <AIProvider client={client}>
+          <Calendar defaultValue={ANCHOR} aiQuery />
+        </AIProvider>,
+      );
+      await expectNoA11yViolations(container);
     });
   });
 });

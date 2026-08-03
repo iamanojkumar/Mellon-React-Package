@@ -4,6 +4,8 @@ import { Input } from './Input';
 import { Stack } from '../Stack/Stack';
 import { Text } from '../Text/Text';
 import type { InputSize } from './Input';
+import { AIProvider } from '../../providers/AIProvider';
+import type { AIClient } from '../../contexts/AIContext';
 
 const SIZES: InputSize[] = ['sm', 'md', 'lg'];
 
@@ -72,5 +74,29 @@ export const Controlled: Story = {
       );
     }
     return <Demo />;
+  },
+};
+
+const mockAIClient: AIClient = {
+  complete: async () => 'Jonathan',
+};
+
+/**
+ * `aiAutocomplete` is a no-op without an ancestor `AIProvider` — this
+ * story wraps a deterministic mock client so the trigger actually
+ * appears. Same accept/reject shape as `TextArea`'s `aiRewrite`.
+ */
+export const WithAIAutocomplete: Story = {
+  decorators: [
+    (Story) => (
+      <AIProvider client={mockAIClient}>
+        <Story />
+      </AIProvider>
+    ),
+  ],
+  args: {
+    'aria-label': 'Name',
+    defaultValue: 'Jon',
+    aiAutocomplete: true,
   },
 };

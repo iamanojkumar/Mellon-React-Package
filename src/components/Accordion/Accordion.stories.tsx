@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { Accordion } from './Accordion';
 import { Text } from '../Text/Text';
 import { Button } from '../Button/Button';
+import { AIProvider } from '../../providers/AIProvider';
+import type { AIClient } from '../../contexts/AIContext';
 
 const meta: Meta<typeof Accordion> = {
   title: 'Data Display/Accordion',
@@ -196,6 +198,40 @@ export const Uncontrolled: Story = {
         <Accordion.Trigger>Two (open by default)</Accordion.Trigger>
         <Accordion.Content>
           <Text>Content two — this component manages its own open state.</Text>
+        </Accordion.Content>
+      </Accordion.Item>
+    </Accordion>
+  ),
+};
+
+const mockAIClient: AIClient = {
+  complete: async () => 'Returns are accepted within 30 days for a full refund on unused items.',
+};
+
+/**
+ * `aiSummarize` lives on `Accordion.Content`, not the root — it's opt-in
+ * per section. A no-op without an ancestor `AIProvider`; this story wraps
+ * a deterministic mock client so the "Summarize with AI" trigger actually
+ * appears. Read-only: no accept/reject, just a summary. Only string
+ * `children` feed the default prompt, so this section uses plain text
+ * rather than the `Text`-wrapped content used elsewhere in this file.
+ */
+export const WithAISummarize: Story = {
+  decorators: [
+    (Story) => (
+      <AIProvider client={mockAIClient}>
+        <Story />
+      </AIProvider>
+    ),
+  ],
+  render: () => (
+    <Accordion defaultValue="returns">
+      <Accordion.Item value="returns">
+        <Accordion.Trigger>What is your return policy?</Accordion.Trigger>
+        <Accordion.Content aiSummarize>
+          Unused items can be returned within 30 days of delivery for a full refund. Items must be
+          in original packaging with tags attached. Refunds are processed within 5-7 business days
+          of receiving the returned item.
         </Accordion.Content>
       </Accordion.Item>
     </Accordion>

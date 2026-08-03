@@ -90,4 +90,70 @@ describe('Menu', () => {
     expect(screen.getByRole('menuitem', { name: 'Duplicate' })).toHaveAttribute('tabIndex', '0');
     expect(screen.getByRole('menuitem', { name: 'Edit' })).toHaveAttribute('tabIndex', '-1');
   });
+
+  describe('aiSuggest', () => {
+    it('renders no AI trigger item when aiSuggest is omitted', () => {
+      render(<BasicMenu />);
+      expect(screen.queryByRole('menuitem', { name: /Suggest with AI/ })).not.toBeInTheDocument();
+    });
+
+    it('renders an AI trigger item when aiSuggest is passed', () => {
+      render(
+        <Menu aria-label="Actions" aiSuggest={{ resolve: vi.fn() }}>
+          <MenuItem onSelect={() => {}}>Edit</MenuItem>
+        </Menu>,
+      );
+      expect(screen.getAllByRole('menuitem')).toHaveLength(2);
+      expect(screen.getByRole('menuitem', { name: 'Suggest with AI' })).toBeInTheDocument();
+    });
+
+    it('resolved items are merged in as real, clickable menu items under a Suggested heading', async () => {
+      const user = userEvent.setup();
+      const onSelect = vi.fn();
+      const resolve = vi.fn().mockResolvedValue([{ id: 'archive', label: 'Archive', onSelect }]);
+      render(
+        <Menu aria-label="Actions" aiSuggest={{ resolve }}>
+          <MenuItem onSelect={() => {}}>Edit</MenuItem>
+        </Menu>,
+      );
+      await user.click(screen.getByRole('menuitem', { name: 'Suggest with AI' }));
+      expect(resolve).toHaveBeenCalled();
+      expect(await screen.findByText('Suggested')).toBeInTheDocument();
+      await user.click(screen.getByRole('menuitem', { name: 'Archive' }));
+      expect(onSelect).toHaveBeenCalled();
+    });
+
+    it('the AI trigger item participates in roving-tabindex keyboard navigation', async () => {
+      const user = userEvent.setup();
+      render(
+        <Menu aria-label="Actions" aiSuggest={{ resolve: vi.fn() }}>
+          <MenuItem onSelect={() => {}}>Edit</MenuItem>
+        </Menu>,
+      );
+      screen.getByRole('menuitem', { name: 'Edit' }).focus();
+      await user.keyboard('{ArrowDown}');
+      expect(screen.getByRole('menuitem', { name: 'Suggest with AI' })).toHaveFocus();
+    });
+
+    it('shows an inline error when resolve rejects', async () => {
+      const user = userEvent.setup();
+      const resolve = vi.fn().mockRejectedValue(new Error('nope'));
+      render(
+        <Menu aria-label="Actions" aiSuggest={{ resolve }}>
+          <MenuItem onSelect={() => {}}>Edit</MenuItem>
+        </Menu>,
+      );
+      await user.click(screen.getByRole('menuitem', { name: 'Suggest with AI' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't get suggestions.");
+    });
+
+    it('has no accessibility violations with the AI trigger item rendered', async () => {
+      const { container } = render(
+        <Menu aria-label="Actions" aiSuggest={{ resolve: vi.fn() }}>
+          <MenuItem onSelect={() => {}}>Edit</MenuItem>
+        </Menu>,
+      );
+      await expectNoA11yViolations(container);
+    });
+  });
 });

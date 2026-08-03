@@ -80,3 +80,25 @@ export const Controlled: Story = {
     return <Demo />;
   },
 };
+
+/**
+ * `aiSearch` follows `Select`'s `aiSuggest` shape, not the popover
+ * flagships' — `resolve` is entirely a consumer-owned function, so this
+ * story doesn't need an `AIProvider`. Resolved options merge into the
+ * panel under a "Suggested" heading, mouse-selectable like any other
+ * option. The mock below stands in for "an LLM found fruits not in the
+ * static list."
+ */
+export const WithAISearch: Story = {
+  args: {
+    'aria-label': 'Fruit',
+    options: FRUITS,
+    placeholder: 'Type to search…',
+    aiSearch: {
+      resolve: async () => [
+        { value: 'kiwi', label: 'Kiwi' },
+        { value: 'mango', label: 'Mango' },
+      ],
+    },
+  },
+};

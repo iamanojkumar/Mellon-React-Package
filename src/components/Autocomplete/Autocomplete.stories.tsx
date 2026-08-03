@@ -71,3 +71,23 @@ export const Controlled: Story = {
     return <Demo />;
   },
 };
+
+/**
+ * `aiSearch` isn't reimplemented here — `Autocomplete` spreads all its
+ * props straight through to `Combobox` (fixing only `allowFreeText`), so
+ * this is `Combobox`'s own `aiSearch` shape, inherited for free. No
+ * `AIProvider` needed — `resolve` is a plain consumer-owned function.
+ */
+export const WithAISearch: Story = {
+  args: {
+    'aria-label': 'City',
+    options: CITIES,
+    placeholder: 'Type any city…',
+    aiSearch: {
+      resolve: async () => [
+        { value: 'sea', label: 'Seattle' },
+        { value: 'den', label: 'Denver' },
+      ],
+    },
+  },
+};

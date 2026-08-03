@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { Image } from './Image';
+import { AIProvider } from '../../providers/AIProvider';
+import type { AIClient } from '../../contexts/AIContext';
 
 const meta: Meta<typeof Image> = {
   title: 'Media/Image',
@@ -33,4 +35,25 @@ export const ObjectFitContain: Story = {
       />
     </div>
   ),
+};
+
+const mockAIClient: AIClient = {
+  complete: async () => 'A mountain landscape with a lake in the foreground at golden hour.',
+};
+
+/**
+ * `aiDescribe` is a no-op without an ancestor `AIProvider` — this story
+ * wraps a deterministic mock client so the "Describe with AI" trigger
+ * actually appears. Read-only: no accept/reject, `alt` stays required and
+ * explicit — this only suggests text for a human to copy in.
+ */
+export const WithAIDescribe: Story = {
+  decorators: [
+    (Story) => (
+      <AIProvider client={mockAIClient}>
+        <Story />
+      </AIProvider>
+    ),
+  ],
+  render: () => <Image src={SRC} alt="Mountain landscape" style={{ width: 240 }} aiDescribe />,
 };

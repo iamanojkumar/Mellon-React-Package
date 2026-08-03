@@ -4,3 +4,13 @@
   border-left: 3px solid var(--ds-color-border-primary);
   font-style: italic;
 }
+
+.aiWrapper {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ds-space-xs);
+}
+
+.aiTrigger {
+  flex-shrink: 0;
+}

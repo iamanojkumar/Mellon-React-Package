@@ -1,7 +1,10 @@
-import { useId, useMemo, useRef, useState } from 'react';
-import type { FocusEvent, KeyboardEvent, MouseEvent, ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import type { ChangeEvent, FocusEvent, KeyboardEvent, MouseEvent, ReactNode } from 'react';
 import { useControllableState } from '../../hooks/useControllableState';
 import { mergeClasses } from '../../utilities/mergeClasses';
+import { AITriggerButton } from '../AITriggerButton/AITriggerButton';
+import type { AIActionStatus } from '../../hooks/useAIAction';
+import inputStyles from '../Input/Input.module.css';
 import styles from './TreeView.module.css';
 
 export interface TreeViewNode {
@@ -10,6 +13,22 @@ export interface TreeViewNode {
   icon?: ReactNode;
   children?: TreeViewNode[];
   disabled?: boolean;
+}
+
+export interface TreeViewAISearchOptions {
+  /**
+   * Resolves a natural-language query to the `id` of the node to jump to
+   * — its ancestors are expanded automatically so it's visible, then it's
+   * selected and focused. Resolving to `undefined`, or to an id that
+   * doesn't match any node, leaves the tree unchanged (not an error).
+   * No shared AI primitive — entirely consumer-owned, the same
+   * `CommandPalette`-resolver shape `Select`'s `aiSuggest` uses.
+   */
+  resolve: (query: string) => Promise<string | undefined>;
+  /** Accessible label for the AI trigger button. Defaults to `'Search with AI'`. */
+  triggerLabel?: string;
+  /** Placeholder/accessible label for the query text field. Defaults to `'Ask AI to find a node…'`. */
+  placeholder?: string;
 }
 
 export interface TreeViewProps {
@@ -22,6 +41,23 @@ export interface TreeViewProps {
   onSelectedChange?: (id: string | undefined) => void;
   'aria-label'?: string;
   className?: string;
+  /** Adds a query field + "Search with AI" trigger above the tree, for jumping to a node by natural language. Off by default. */
+  aiSearch?: TreeViewAISearchOptions;
+}
+
+function collectAncestorIds(
+  nodes: TreeViewNode[],
+  targetId: string,
+  ancestors: string[] = [],
+): string[] | undefined {
+  for (const node of nodes) {
+    if (node.id === targetId) return ancestors;
+    if (node.children) {
+      const found = collectAncestorIds(node.children, targetId, [...ancestors, node.id]);
+      if (found !== undefined) return found;
+    }
+  }
+  return undefined;
 }
 
 interface FlatNode {
@@ -109,6 +145,7 @@ export function TreeView({
   onSelectedChange,
   'aria-label': ariaLabel = 'Tree',
   className,
+  aiSearch,
 }: TreeViewProps) {
   const [expanded, setExpanded] = useControllableState<string[]>({
     value: expandedIds,
@@ -123,6 +160,9 @@ export function TreeView({
 
   const flat = useMemo(() => flattenVisible(nodes, expanded, undefined), [nodes, expanded]);
   const [focusedId, setFocusedId] = useState<string | undefined>(() => flat[0]?.id);
+  const [aiQuery, setAiQuery] = useState('');
+  const [aiStatus, setAiStatus] = useState<AIActionStatus>('idle');
+  const [pendingFocusId, setPendingFocusId] = useState<string | undefined>(undefined);
   const containerRef = useRef<HTMLUListElement>(null);
 
   function focusItemById(id: string) {
@@ -135,6 +175,42 @@ export function TreeView({
     const has = expanded.includes(id);
     if (expand && !has) setExpanded([...expanded, id]);
     else if (!expand && has) setExpanded(expanded.filter((x) => x !== id));
+  }
+
+  // The target node only becomes a real DOM element once its ancestors'
+  // `expanded` update has re-rendered the tree — this waits for that
+  // before moving DOM focus, the same "don't infer readiness, wait for the
+  // real signal" lesson `Calendar`'s focus-tracking bug (docs/SPEC.md,
+  // Phase 15) already established for a keyed-list rebuild.
+  useEffect(() => {
+    if (!pendingFocusId) return;
+    if (!flat.some((node) => node.id === pendingFocusId)) return;
+    setFocusedId(pendingFocusId);
+    focusItemById(pendingFocusId);
+    setPendingFocusId(undefined);
+  }, [pendingFocusId, flat]);
+
+  async function handleAISearch() {
+    if (!aiSearch) return;
+    setAiStatus('loading');
+    try {
+      const targetId = await aiSearch.resolve(aiQuery);
+      if (!targetId) {
+        setAiStatus('idle');
+        return;
+      }
+      const ancestorIds = collectAncestorIds(nodes, targetId);
+      if (ancestorIds === undefined) {
+        setAiStatus('idle');
+        return;
+      }
+      setExpanded(Array.from(new Set([...expanded, ...ancestorIds])));
+      setSelected(targetId);
+      setPendingFocusId(targetId);
+      setAiStatus('idle');
+    } catch {
+      setAiStatus('error');
+    }
   }
 
   function handleFocus(event: FocusEvent<HTMLUListElement>) {
@@ -205,29 +281,53 @@ export function TreeView({
   }
 
   return (
-    <ul
-      ref={containerRef}
-      role="tree"
-      aria-label={ariaLabel}
-      className={mergeClasses(styles.tree, className)}
-      onKeyDown={handleKeyDown}
-      onFocus={handleFocus}
-    >
-      {nodes.map((node, index) => (
-        <TreeViewItem
-          key={node.id}
-          node={node}
-          level={1}
-          setSize={nodes.length}
-          posInSet={index + 1}
-          expandedIds={expanded}
-          selectedId={selected}
-          focusedId={focusedId}
-          onToggle={setNodeExpanded}
-          onSelect={setSelected}
-        />
-      ))}
-    </ul>
+    <>
+      {aiSearch && (
+        <div className={styles.aiSearchRow}>
+          <input
+            type="text"
+            value={aiQuery}
+            onChange={(event: ChangeEvent<HTMLInputElement>) => setAiQuery(event.target.value)}
+            placeholder={aiSearch.placeholder ?? 'Ask AI to find a node…'}
+            aria-label={aiSearch.placeholder ?? 'Ask AI to find a node'}
+            className={mergeClasses(inputStyles.input, styles.aiSearchInput)}
+          />
+          <AITriggerButton
+            aria-label={aiSearch.triggerLabel ?? 'Search with AI'}
+            status={aiStatus}
+            onClick={handleAISearch}
+          />
+          {aiStatus === 'error' && (
+            <span role="alert" className={styles.aiSearchError}>
+              Couldn&apos;t find a match.
+            </span>
+          )}
+        </div>
+      )}
+      <ul
+        ref={containerRef}
+        role="tree"
+        aria-label={ariaLabel}
+        className={mergeClasses(styles.tree, className)}
+        onKeyDown={handleKeyDown}
+        onFocus={handleFocus}
+      >
+        {nodes.map((node, index) => (
+          <TreeViewItem
+            key={node.id}
+            node={node}
+            level={1}
+            setSize={nodes.length}
+            posInSet={index + 1}
+            expandedIds={expanded}
+            selectedId={selected}
+            focusedId={focusedId}
+            onToggle={setNodeExpanded}
+            onSelect={setSelected}
+          />
+        ))}
+      </ul>
+    </>
   );
 }
 

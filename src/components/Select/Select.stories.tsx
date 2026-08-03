@@ -82,3 +82,21 @@ export const Controlled: Story = {
     return <Demo />;
   },
 };
+
+/**
+ * `aiSuggest` follows `CommandPalette`'s `aiSearch` shape, not the popover
+ * flagships' — `resolve` is entirely a consumer-owned function (it may call
+ * an `AIClient` internally or not), so this story doesn't need an
+ * `AIProvider` at all. The mock below stands in for "an LLM recommended the
+ * ripest fruit."
+ */
+export const WithAISuggest: Story = {
+  args: {
+    'aria-label': 'Fruit',
+    options: FRUITS,
+    placeholder: 'Choose a fruit…',
+    aiSuggest: {
+      resolve: async () => 'fig',
+    },
+  },
+};

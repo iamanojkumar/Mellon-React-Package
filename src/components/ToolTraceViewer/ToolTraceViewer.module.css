@@ -1,0 +1,56 @@
+.list {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ds-space-sm);
+}
+
+.icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  height: 1.4em;
+  color: var(--ds-color-text-secondary);
+}
+
+.step[data-status='done'] .icon {
+  color: var(--ds-color-status-success);
+}
+
+.step[data-status='error'] .icon {
+  color: var(--ds-color-status-danger);
+}
+
+.pendingDot {
+  box-sizing: border-box;
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--ds-radius-full);
+  background: var(--ds-color-text-disabled);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1em;
+}
+
+.label {
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  color: var(--ds-color-text-primary);
+}
+
+.step[data-status='pending'] .label {
+  color: var(--ds-color-text-secondary);
+}

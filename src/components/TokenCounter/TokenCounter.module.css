@@ -1,0 +1,11 @@
+.counter {
+  box-sizing: border-box;
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-xs);
+  color: var(--ds-color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.counter[data-over-limit] {
+  color: var(--ds-color-status-danger);
+}

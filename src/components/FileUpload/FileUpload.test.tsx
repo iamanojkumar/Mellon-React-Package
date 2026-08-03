@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event';
 import { expectNoA11yViolations } from '../../../tests/axe';
 import { FileUpload } from './FileUpload';
 import type { FileUploadFile } from './FileUpload';
+import { AIProvider } from '../../providers/AIProvider';
+import type { AIClient } from '../../contexts/AIContext';
 
 function makeFile(name: string, size: number, type = 'image/png'): File {
   const file = new File([new Uint8Array(size)], name, { type });
@@ -138,5 +140,67 @@ describe('FileUpload', () => {
       <FileUpload files={entries} onFilesAdded={vi.fn()} onRemove={vi.fn()} />,
     );
     await expectNoA11yViolations(container);
+  });
+
+  describe('aiDescribe', () => {
+    const entries: FileUploadFile[] = [
+      { id: '1', file: makeFile('photo.png', 2048), status: 'done' },
+    ];
+
+    it('renders no AI trigger when aiDescribe is omitted', () => {
+      render(<FileUpload files={entries} onFilesAdded={vi.fn()} />);
+      expect(screen.queryByRole('button', { name: 'Describe with AI' })).not.toBeInTheDocument();
+    });
+
+    it('renders no AI trigger when aiDescribe is true but no AIProvider is mounted', () => {
+      render(<FileUpload files={entries} onFilesAdded={vi.fn()} aiDescribe />);
+      expect(screen.queryByRole('button', { name: 'Describe with AI' })).not.toBeInTheDocument();
+    });
+
+    it('renders one AI trigger per file when a provider is mounted', () => {
+      const twoFiles: FileUploadFile[] = [
+        { id: '1', file: makeFile('a.png', 100), status: 'done' },
+        { id: '2', file: makeFile('b.png', 200), status: 'done' },
+      ];
+      const client: AIClient = { complete: vi.fn() };
+      render(
+        <AIProvider client={client}>
+          <FileUpload files={twoFiles} onFilesAdded={vi.fn()} aiDescribe />
+        </AIProvider>,
+      );
+      expect(screen.getAllByRole('button', { name: 'Describe with AI' })).toHaveLength(2);
+    });
+
+    it('triggers the AI client with the file name/type/size in the prompt and file in context, read-only', async () => {
+      const user = userEvent.setup();
+      const complete = vi.fn().mockResolvedValue('A small PNG image.');
+      const client: AIClient = { complete };
+      render(
+        <AIProvider client={client}>
+          <FileUpload files={entries} onFilesAdded={vi.fn()} aiDescribe />
+        </AIProvider>,
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Describe with AI' }));
+      expect(complete).toHaveBeenCalledWith(
+        expect.objectContaining({
+          prompt: expect.stringContaining('photo.png'),
+          context: { file: entries[0]?.file },
+        }),
+      );
+      expect(await screen.findByText('A small PNG image.')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Accept' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Discard' })).not.toBeInTheDocument();
+    });
+
+    it('has no accessibility violations with the AI trigger rendered', async () => {
+      const client: AIClient = { complete: vi.fn() };
+      const { container } = render(
+        <AIProvider client={client}>
+          <FileUpload files={entries} onFilesAdded={vi.fn()} aiDescribe />
+        </AIProvider>,
+      );
+      await expectNoA11yViolations(container);
+    });
   });
 });

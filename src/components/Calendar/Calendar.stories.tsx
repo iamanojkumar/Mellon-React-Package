@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { Calendar } from './Calendar';
 import type { CalendarDateRange } from './Calendar';
 import { Text } from '../Text/Text';
+import { AIProvider } from '../../providers/AIProvider';
+import type { AIClient } from '../../contexts/AIContext';
 
 const meta: Meta<typeof Calendar> = {
   title: 'Data Display/Calendar',
@@ -106,4 +108,26 @@ export const Controlled: Story = {
 
 export const Uncontrolled: Story = {
   render: () => <Calendar defaultValue={new Date()} />,
+};
+
+const mockAIClient: AIClient = {
+  complete: async () => 'You have nothing scheduled on that day — the calendar is clear.',
+};
+
+/**
+ * `aiQuery` is a no-op without an ancestor `AIProvider` — this story wraps
+ * a deterministic mock client so the query field/trigger actually appear.
+ * Calendar has no events data of its own, so the default prompt only has
+ * the visible month to go on — pass your own `buildAIPrompt` to include
+ * real event data. Read-only: no accept/reject, just an answer.
+ */
+export const WithAIQuery: Story = {
+  decorators: [
+    (Story) => (
+      <AIProvider client={mockAIClient}>
+        <Story />
+      </AIProvider>
+    ),
+  ],
+  render: () => <Calendar defaultValue={new Date()} aiQuery />,
 };

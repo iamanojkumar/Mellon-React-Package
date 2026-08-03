@@ -2,6 +2,8 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
 import { ColorPicker } from './ColorPicker';
 import { Text } from '../Text/Text';
+import { AIProvider } from '../../providers/AIProvider';
+import type { AIClient } from '../../contexts/AIContext';
 
 const meta: Meta<typeof ColorPicker> = {
   title: 'Inputs/ColorPicker',
@@ -66,4 +68,25 @@ export const Controlled: Story = {
 
 export const Uncontrolled: Story = {
   render: () => <ColorPicker defaultValue="#8b5cf6" />,
+};
+
+const mockAIClient: AIClient = {
+  complete: async () => '#f97316',
+};
+
+/**
+ * `aiSuggest` is a no-op without an ancestor `AIProvider` — this story
+ * wraps a deterministic mock client so the trigger actually appears.
+ * Same accept/reject shape as `TextArea`'s `aiRewrite`; an accepted
+ * suggestion only applies if it parses as a valid hex color.
+ */
+export const WithAISuggest: Story = {
+  decorators: [
+    (Story) => (
+      <AIProvider client={mockAIClient}>
+        <Story />
+      </AIProvider>
+    ),
+  ],
+  render: () => <ColorPicker defaultValue="#3b82f6" aiSuggest />,
 };

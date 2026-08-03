@@ -1,4 +1,12 @@
-import React, { createContext, forwardRef, useContext, useEffect, useId, useRef } from 'react';
+import React, {
+  createContext,
+  forwardRef,
+  useContext,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from 'react';
 import type { ElementType, KeyboardEvent, MouseEvent, ReactNode, RefObject } from 'react';
 import type { Placement } from '@floating-ui/dom';
 import { Portal } from '../Portal/Portal';
@@ -9,7 +17,12 @@ import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { mergeClasses } from '../../utilities/mergeClasses';
 import { mergeRefs } from '../../utilities/mergeRefs';
 import type { PolymorphicComponentPropWithRef } from '../../types/polymorphic';
+import { SparkleIcon } from '../AITriggerButton/AITriggerButton';
+import type { AIActionStatus } from '../../hooks/useAIAction';
+import type { MenuAISuggestItem, MenuAISuggestOptions } from '../Menu/Menu';
 import styles from './Dropdown.module.css';
+
+export type { MenuAISuggestItem, MenuAISuggestOptions } from '../Menu/Menu';
 
 interface DropdownContextValue {
   open: boolean;
@@ -93,12 +106,48 @@ export interface DropdownMenuProps {
   placement?: Placement;
   children: ReactNode;
   className?: string;
+  /**
+   * Adds a "Suggest with AI" item at the end of the menu. Off by default.
+   * Same resolver shape as `Menu`'s `aiSuggest` — no shared AI primitive,
+   * `resolve` is entirely consumer-owned. Resolved items render as real
+   * `Dropdown.Item`s (closing the menu and refocusing the trigger on
+   * select, same as any other item); the trigger item itself does not
+   * close the menu, so results stay visible once resolved.
+   */
+  aiSuggest?: MenuAISuggestOptions;
 }
 
-function DropdownMenu({ placement = 'bottom-start', children, className }: DropdownMenuProps) {
+function DropdownMenu({
+  placement = 'bottom-start',
+  children,
+  className,
+  aiSuggest,
+}: DropdownMenuProps) {
   const { open, setOpen, triggerRef, menuId } = useDropdownContext('Menu');
   const menuRef = useRef<HTMLDivElement>(null);
   const position = usePositioning(triggerRef, menuRef, { active: open, placement });
+  const [aiItems, setAiItems] = useState<MenuAISuggestItem[]>([]);
+  const [aiStatus, setAiStatus] = useState<AIActionStatus>('idle');
+
+  useEffect(() => {
+    if (!open) {
+      setAiItems([]);
+      setAiStatus('idle');
+    }
+  }, [open]);
+
+  async function handleAISuggest() {
+    if (!aiSuggest) return;
+    setAiStatus('loading');
+    try {
+      const resolved = await aiSuggest.resolve();
+      setAiItems(resolved);
+      setAiStatus('idle');
+    } catch {
+      setAiItems([]);
+      setAiStatus('error');
+    }
+  }
 
   useEscapeKey(() => {
     setOpen(false);
@@ -166,6 +215,39 @@ function DropdownMenu({ placement = 'bottom-start', children, className }: Dropd
         onKeyDown={handleKeyDown}
       >
         {children}
+        {aiSuggest && (
+          <>
+            <button
+              type="button"
+              role="menuitem"
+              tabIndex={-1}
+              className={mergeClasses(styles.item, styles.aiItem)}
+              onClick={handleAISuggest}
+            >
+              <SparkleIcon />
+              <span>
+                {aiStatus === 'loading'
+                  ? 'Thinking…'
+                  : (aiSuggest.triggerLabel ?? 'Suggest with AI')}
+              </span>
+            </button>
+            {aiStatus === 'error' && (
+              <div role="alert" className={styles.aiError}>
+                Couldn&apos;t get suggestions.
+              </div>
+            )}
+            {aiItems.length > 0 && (
+              <>
+                <div className={styles.aiGroupHeading}>{aiSuggest.groupHeading ?? 'Suggested'}</div>
+                {aiItems.map((item) => (
+                  <DropdownItem key={item.id} onSelect={item.onSelect}>
+                    {item.label}
+                  </DropdownItem>
+                ))}
+              </>
+            )}
+          </>
+        )}
       </div>
     </Portal>
   );

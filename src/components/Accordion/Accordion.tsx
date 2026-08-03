@@ -3,7 +3,18 @@ import type { ElementType, ReactNode } from 'react';
 import { mergeClasses } from '../../utilities/mergeClasses';
 import { useControllableState } from '../../hooks/useControllableState';
 import { useRovingFocus } from '../../hooks/useRovingFocus';
+import { useAI } from '../../hooks/useAI';
+import { useAIAction } from '../../hooks/useAIAction';
+import { AISuggestionPopover } from '../AISuggestionPopover/AISuggestionPopover';
 import styles from './Accordion.module.css';
+
+function nodeToText(node: ReactNode): string {
+  return typeof node === 'string' ? node : '';
+}
+
+function defaultBuildAIPrompt(text: string): string {
+  return `Summarize the following section content:\n\n${text}`;
+}
 
 export type AccordionType = 'single' | 'multiple';
 
@@ -209,12 +220,37 @@ function AccordionTrigger({ children, className }: AccordionTriggerProps) {
 export interface AccordionContentProps {
   children: ReactNode;
   className?: string;
+  /**
+   * Adds an AI-powered "Summarize with AI" trigger above this section's
+   * content. Off by default, and a no-op even when `true` unless an
+   * ancestor `AIProvider` is mounted — the rendered output is
+   * byte-identical to today's whenever this doesn't apply. Read-only: no
+   * accept/reject, since a summary isn't something to replace the
+   * section's own content with (same shape as `Alert`'s `aiExplain`).
+   * Only string `children` contribute to the default prompt.
+   */
+  aiSummarize?: boolean;
+  /** Builds the prompt sent to the AI client from this section's text content. Defaults to a generic summarize instruction. */
+  buildAIPrompt?: (text: string) => string;
+  /** Accessible label for the AI trigger button. Defaults to `'Summarize with AI'`. */
+  aiSummarizeLabel?: string;
 }
 
-function AccordionContent({ children, className }: AccordionContentProps) {
+function AccordionContent({
+  children,
+  className,
+  aiSummarize = false,
+  buildAIPrompt = defaultBuildAIPrompt,
+  aiSummarizeLabel = 'Summarize with AI',
+}: AccordionContentProps) {
   const { isOpen } = useAccordionContext('Content');
   const { value, triggerId, contentId } = useAccordionItemContext('Content');
   const open = isOpen(value);
+
+  const aiClient = useAI();
+  const aiAction = useAIAction();
+  const showAI = aiSummarize && !!aiClient;
+  const text = nodeToText(children);
 
   return (
     <div
@@ -224,6 +260,24 @@ function AccordionContent({ children, className }: AccordionContentProps) {
       hidden={!open}
       className={mergeClasses(styles.content, className)}
     >
+      {showAI && (
+        <div className={styles.aiRow}>
+          <AISuggestionPopover
+            triggerLabel={aiSummarizeLabel}
+            status={aiAction.status}
+            result={aiAction.result}
+            error={aiAction.error}
+            onOpenChange={(openPopover) => {
+              if (openPopover) {
+                aiAction.trigger({ prompt: buildAIPrompt(text) });
+              } else {
+                aiAction.reset();
+              }
+            }}
+            onRetry={() => aiAction.trigger({ prompt: buildAIPrompt(text) })}
+          />
+        </div>
+      )}
       {children}
     </div>
   );

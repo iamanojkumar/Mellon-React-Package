@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { useState } from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expectNoA11yViolations } from '../../../tests/axe';
 import { MultiSelect } from './MultiSelect';
@@ -121,5 +121,84 @@ describe('MultiSelect', () => {
   it('is disabled when the disabled prop is set', () => {
     render(<MultiSelect aria-label="Fruits" options={FRUITS} disabled />);
     expect(screen.getByRole('combobox')).toBeDisabled();
+  });
+
+  describe('aiSuggest', () => {
+    it('renders no AI trigger when aiSuggest is omitted', async () => {
+      const user = userEvent.setup();
+      render(<MultiSelect aria-label="Fruits" options={FRUITS} />);
+      await user.click(screen.getByRole('combobox'));
+      expect(screen.queryByRole('button', { name: 'Suggest with AI' })).not.toBeInTheDocument();
+    });
+
+    it('renders the AI trigger when aiSuggest is passed', async () => {
+      const user = userEvent.setup();
+      render(<MultiSelect aria-label="Fruits" options={FRUITS} aiSuggest={{ resolve: vi.fn() }} />);
+      await user.click(screen.getByRole('combobox'));
+      expect(screen.getByRole('button', { name: 'Suggest with AI' })).toBeInTheDocument();
+    });
+
+    it('merges resolved values into the existing selection', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      const resolve = vi.fn().mockResolvedValue(['banana', 'date']);
+      render(
+        <MultiSelect
+          aria-label="Fruits"
+          options={FRUITS}
+          defaultValue={['apple']}
+          onChange={onChange}
+          aiSuggest={{ resolve }}
+        />,
+      );
+      await user.click(screen.getByRole('combobox'));
+      await user.click(screen.getByRole('button', { name: 'Suggest with AI' }));
+      expect(resolve).toHaveBeenCalledWith(FRUITS);
+      await waitFor(() =>
+        expect(onChange).toHaveBeenCalledWith(expect.arrayContaining(['apple', 'banana', 'date'])),
+      );
+      expect(screen.getByRole('option', { name: 'Apple' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      );
+      expect(screen.getByRole('option', { name: 'Banana' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      );
+    });
+
+    it('ignores resolved values that match a disabled option', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      const resolve = vi.fn().mockResolvedValue(['cherry']);
+      render(
+        <MultiSelect
+          aria-label="Fruits"
+          options={FRUITS}
+          onChange={onChange}
+          aiSuggest={{ resolve }}
+        />,
+      );
+      await user.click(screen.getByRole('combobox'));
+      await user.click(screen.getByRole('button', { name: 'Suggest with AI' }));
+      await waitFor(() => expect(resolve).toHaveBeenCalled());
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it('shows an inline error when resolve rejects', async () => {
+      const user = userEvent.setup();
+      const resolve = vi.fn().mockRejectedValue(new Error('nope'));
+      render(<MultiSelect aria-label="Fruits" options={FRUITS} aiSuggest={{ resolve }} />);
+      await user.click(screen.getByRole('combobox'));
+      await user.click(screen.getByRole('button', { name: 'Suggest with AI' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't get a suggestion.");
+    });
+
+    it('has no accessibility violations with the AI trigger rendered', async () => {
+      const user = userEvent.setup();
+      render(<MultiSelect aria-label="Fruits" options={FRUITS} aiSuggest={{ resolve: vi.fn() }} />);
+      await user.click(screen.getByRole('combobox'));
+      await expectNoA11yViolations(document.body);
+    });
   });
 });

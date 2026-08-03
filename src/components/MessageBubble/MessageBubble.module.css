@@ -1,0 +1,56 @@
+.wrapper {
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ds-space-sm);
+}
+
+.wrapper[data-variant='user'] {
+  flex-direction: row-reverse;
+}
+
+.wrapper[data-variant='system'],
+.wrapper[data-variant='status'] {
+  justify-content: center;
+  text-align: center;
+}
+
+.avatar {
+  flex-shrink: 0;
+}
+
+.bubble.bubble {
+  box-sizing: border-box;
+  padding: var(--ds-space-sm) var(--ds-space-md);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  line-height: var(--ds-line-height-base);
+  color: var(--ds-color-text-primary);
+}
+
+.bubble.bubble[data-variant='user'] {
+  background: var(--ds-color-brand-primary);
+  color: var(--ds-color-text-inverse);
+}
+
+.bubble.bubble[data-variant='ai'] {
+  background: var(--ds-color-surface-secondary);
+}
+
+.bubble.bubble[data-variant='system'],
+.bubble.bubble[data-variant='status'] {
+  background: transparent;
+  color: var(--ds-color-text-secondary);
+  font-size: var(--ds-font-size-xs);
+}
+
+.bubble.bubble[data-variant='tool'] {
+  background: var(--ds-color-surface-secondary);
+  border: 1px solid var(--ds-color-border-primary);
+  font-family: var(--ds-font-family-mono);
+}
+
+.bubble.bubble[data-variant='error'] {
+  background: var(--ds-color-surface-secondary);
+  border-left: 4px solid var(--ds-color-status-danger);
+}

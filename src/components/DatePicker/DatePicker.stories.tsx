@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { DatePicker } from './DatePicker';
 import type { DateRange } from './DatePicker';
 import { Field } from '../Field/Field';
+import { AIProvider } from '../../providers/AIProvider';
+import type { AIClient } from '../../contexts/AIContext';
 
 const meta: Meta<typeof DatePicker> = {
   title: 'Inputs/DatePicker',
@@ -109,4 +111,32 @@ export const RangeSelectionWithDefaultValue: Story = {
       defaultRangeValue={{ start: new Date(2026, 7, 17), end: new Date(2026, 7, 22) }}
     />
   ),
+};
+
+const mockAIClient: AIClient = {
+  complete: async () => {
+    const nextFriday = new Date();
+    nextFriday.setDate(nextFriday.getDate() + ((5 - nextFriday.getDay() + 7) % 7 || 7));
+    return nextFriday.toISOString().slice(0, 10);
+  },
+};
+
+/**
+ * `aiParse` is a no-op without an ancestor `AIProvider`, and only applies
+ * in `selectionMode="single"` — this story wraps a deterministic mock
+ * client so the field/trigger actually appear. Accept/reject is
+ * hand-rolled directly into this panel rather than reusing
+ * `AISuggestionPopover`, since nesting a second popover inside this
+ * already-`Popover`-like panel would violate CLAUDE.md's "no nested
+ * overlay boxes" rule.
+ */
+export const WithAIParse: Story = {
+  decorators: [
+    (Story) => (
+      <AIProvider client={mockAIClient}>
+        <Story />
+      </AIProvider>
+    ),
+  ],
+  render: () => <DatePicker aiParse placeholder="Select a date" />,
 };

@@ -3,8 +3,21 @@ import type { ChangeEvent, DragEvent, KeyboardEvent } from 'react';
 import { Progress } from '../Progress/Progress';
 import { IconButton } from '../IconButton/IconButton';
 import { mergeClasses } from '../../utilities/mergeClasses';
+import { useAI } from '../../hooks/useAI';
+import { useAIAction } from '../../hooks/useAIAction';
+import { AISuggestionPopover } from '../AISuggestionPopover/AISuggestionPopover';
 import visuallyHiddenStyles from '../VisuallyHidden/VisuallyHidden.module.css';
 import styles from './FileUpload.module.css';
+
+export interface FileUploadAIDescribeContext {
+  name: string;
+  type: string;
+  size: number;
+}
+
+function defaultBuildAIPrompt({ name, type, size }: FileUploadAIDescribeContext): string {
+  return `Describe or summarize the likely contents of this file based on its name and type. File: ${name} (${type || 'unknown type'}, ${size} bytes).`;
+}
 
 export type FileUploadStatus = 'pending' | 'uploading' | 'done' | 'error';
 
@@ -45,6 +58,21 @@ export interface FileUploadProps {
   /** Defaults to `'Upload files'`. */
   'aria-label'?: string;
   className?: string;
+  /**
+   * Adds a per-file "Describe with AI" trigger to each row — describes/
+   * summarizes the file based on its name/type/size (and the raw `File`
+   * object, forwarded via `AICompleteOptions.context` for a consumer
+   * whose `AIClient` can actually inspect file content, e.g. a
+   * vision-capable model for images). Off by default, and a no-op even
+   * when `true` unless an ancestor `AIProvider` is mounted — the rendered
+   * output is byte-identical to today's whenever this doesn't apply.
+   * Read-only: no accept/reject, nothing to replace.
+   */
+  aiDescribe?: boolean;
+  /** Builds the prompt sent to the AI client from the file's name/type/size. Defaults to a generic describe instruction. */
+  buildAIPrompt?: (context: FileUploadAIDescribeContext) => string;
+  /** Accessible label for each row's AI trigger button. Defaults to `'Describe with AI'`. */
+  aiDescribeLabel?: string;
 }
 
 function matchesAccept(file: File, accept: string | undefined): boolean {
@@ -110,6 +138,9 @@ export function FileUpload({
   disabled = false,
   'aria-label': ariaLabel = 'Upload files',
   className,
+  aiDescribe = false,
+  buildAIPrompt = defaultBuildAIPrompt,
+  aiDescribeLabel = 'Describe with AI',
 }: FileUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const dragCounterRef = useRef(0);
@@ -208,41 +239,14 @@ export function FileUpload({
       {files.length > 0 && (
         <ul className={styles.fileList}>
           {files.map((entry) => (
-            <li key={entry.id} className={styles.fileRow} data-status={entry.status}>
-              <div className={styles.fileInfo}>
-                <span className={styles.fileName}>{entry.file.name}</span>
-                <span className={styles.fileSize}>{formatBytes(entry.file.size)}</span>
-              </div>
-              {entry.status === 'error' ? (
-                <span className={styles.errorText}>{entry.error ?? 'Upload failed'}</span>
-              ) : (
-                entry.status !== 'done' && (
-                  <Progress
-                    value={entry.progress}
-                    size="sm"
-                    label={`Uploading ${entry.file.name}`}
-                    className={styles.fileProgress}
-                  />
-                )
-              )}
-              {onRemove && (
-                <IconButton
-                  aria-label={`Remove ${entry.file.name}`}
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onRemove(entry.id)}
-                >
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                    <path
-                      d="M2 2l10 10M12 2L2 12"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </IconButton>
-              )}
-            </li>
+            <FileUploadRow
+              key={entry.id}
+              entry={entry}
+              onRemove={onRemove}
+              aiDescribe={aiDescribe}
+              buildAIPrompt={buildAIPrompt}
+              aiDescribeLabel={aiDescribeLabel}
+            />
           ))}
         </ul>
       )}
@@ -251,3 +255,92 @@ export function FileUpload({
 }
 
 FileUpload.displayName = 'FileUpload';
+
+interface FileUploadRowProps {
+  entry: FileUploadFile;
+  onRemove?: (id: string) => void;
+  aiDescribe: boolean;
+  buildAIPrompt: (context: FileUploadAIDescribeContext) => string;
+  aiDescribeLabel: string;
+}
+
+/**
+ * Its own component (not inlined in `FileUpload`'s `.map`) so each row's
+ * `useAIAction()` call — and therefore its loading/result/error state —
+ * stays independent per file, the same reason any per-item async action
+ * in a list needs its own component instance rather than one hook call
+ * shared across the whole list.
+ */
+function FileUploadRow({
+  entry,
+  onRemove,
+  aiDescribe,
+  buildAIPrompt,
+  aiDescribeLabel,
+}: FileUploadRowProps) {
+  const aiClient = useAI();
+  const aiAction = useAIAction();
+  const showAI = aiDescribe && !!aiClient;
+
+  const aiContext: FileUploadAIDescribeContext = {
+    name: entry.file.name,
+    type: entry.file.type,
+    size: entry.file.size,
+  };
+
+  return (
+    <li className={styles.fileRow} data-status={entry.status}>
+      <div className={styles.fileInfo}>
+        <span className={styles.fileName}>{entry.file.name}</span>
+        <span className={styles.fileSize}>{formatBytes(entry.file.size)}</span>
+      </div>
+      {entry.status === 'error' ? (
+        <span className={styles.errorText}>{entry.error ?? 'Upload failed'}</span>
+      ) : (
+        entry.status !== 'done' && (
+          <Progress
+            value={entry.progress}
+            size="sm"
+            label={`Uploading ${entry.file.name}`}
+            className={styles.fileProgress}
+          />
+        )
+      )}
+      {showAI && (
+        <AISuggestionPopover
+          triggerLabel={aiDescribeLabel}
+          status={aiAction.status}
+          result={aiAction.result}
+          error={aiAction.error}
+          onOpenChange={(open) => {
+            if (open) {
+              aiAction.trigger({ prompt: buildAIPrompt(aiContext), context: { file: entry.file } });
+            } else {
+              aiAction.reset();
+            }
+          }}
+          onRetry={() =>
+            aiAction.trigger({ prompt: buildAIPrompt(aiContext), context: { file: entry.file } })
+          }
+        />
+      )}
+      {onRemove && (
+        <IconButton
+          aria-label={`Remove ${entry.file.name}`}
+          variant="ghost"
+          size="sm"
+          onClick={() => onRemove(entry.id)}
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <path
+              d="M2 2l10 10M12 2L2 12"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+          </svg>
+        </IconButton>
+      )}
+    </li>
+  );
+}

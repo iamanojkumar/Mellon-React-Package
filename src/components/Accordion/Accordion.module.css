@@ -65,3 +65,9 @@
   color: var(--ds-color-text-secondary);
   font-size: var(--ds-font-size-md);
 }
+
+.aiRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--ds-space-xs);
+}

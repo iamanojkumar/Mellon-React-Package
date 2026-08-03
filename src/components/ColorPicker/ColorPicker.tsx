@@ -6,6 +6,9 @@ import { clamp } from '../Slider/Slider';
 import { mergeClasses } from '../../utilities/mergeClasses';
 import { hexToRgb, hsvToRgb, rgbToHex, rgbToHsv } from './colorConversions';
 import type { HSV, RGB } from './colorConversions';
+import { useAI } from '../../hooks/useAI';
+import { useAIAction } from '../../hooks/useAIAction';
+import { AISuggestionPopover } from '../AISuggestionPopover/AISuggestionPopover';
 import styles from './ColorPicker.module.css';
 
 export interface ColorPickerProps {
@@ -17,6 +20,24 @@ export interface ColorPickerProps {
   presets?: string[];
   disabled?: boolean;
   className?: string;
+  /**
+   * Adds an AI-powered "Suggest with AI" trigger — suggests a matching/
+   * complementary hex color for the current one. Off by default, and a
+   * no-op even when `true` unless an ancestor `AIProvider` is mounted —
+   * the rendered output is byte-identical to today's whenever this
+   * doesn't apply. Same accept/reject shape as `TextArea`'s `aiRewrite`;
+   * an accepted suggestion only applies if it parses as a valid hex color
+   * (an invalid AI response is silently ignored, not applied).
+   */
+  aiSuggest?: boolean;
+  /** Builds the prompt sent to the AI client from the current hex value. Defaults to a generic complementary-color instruction. */
+  buildAIPrompt?: (hex: string) => string;
+  /** Accessible label for the AI trigger button. Defaults to `'Suggest with AI'`. */
+  aiSuggestLabel?: string;
+}
+
+function defaultBuildAIPrompt(hex: string): string {
+  return `Suggest a single complementary or matching color for ${hex}. Respond with only a hex color code, e.g. #3b82f6.`;
 }
 
 const DEFAULT_COLOR = '#3b82f6';
@@ -69,6 +90,9 @@ export function ColorPicker({
   presets,
   disabled = false,
   className,
+  aiSuggest = false,
+  buildAIPrompt = defaultBuildAIPrompt,
+  aiSuggestLabel = 'Suggest with AI',
 }: ColorPickerProps) {
   const [hex, setHex] = useControllableState<string>({ value, defaultValue, onChange });
   const [hsv, setHsv] = useState<HSV>(() => rgbToHsv(hexToRgb(hex) ?? { r: 0, g: 0, b: 0 }));
@@ -182,6 +206,15 @@ export function ColorPicker({
 
   const currentRgb = hexToRgb(hex) ?? { r: 0, g: 0, b: 0 };
 
+  const aiClient = useAI();
+  const aiAction = useAIAction();
+  const showAI = aiSuggest && !!aiClient;
+
+  function applyAISuggestion(suggested: string) {
+    const rgb = hexToRgb(suggested.trim());
+    if (rgb) updateFromRgb(rgb);
+  }
+
   return (
     <div
       className={mergeClasses(styles.colorPicker, className)}
@@ -255,6 +288,27 @@ export function ColorPicker({
           </label>
         ))}
       </div>
+
+      {showAI && (
+        <div className={styles.aiRow}>
+          <AISuggestionPopover
+            triggerLabel={aiSuggestLabel}
+            status={aiAction.status}
+            result={aiAction.result}
+            error={aiAction.error}
+            onOpenChange={(open) => {
+              if (open) {
+                aiAction.trigger({ prompt: buildAIPrompt(hex) });
+              } else {
+                aiAction.reset();
+              }
+            }}
+            onAccept={applyAISuggestion}
+            onReject={() => aiAction.reset()}
+            onRetry={() => aiAction.trigger({ prompt: buildAIPrompt(hex) })}
+          />
+        </div>
+      )}
 
       {presets && presets.length > 0 && (
         <div role="group" aria-label="Preset colors" className={styles.presets}>

@@ -4,6 +4,8 @@ import { Popover } from '../Popover/Popover';
 import { useControllableState } from '../../hooks/useControllableState';
 import { useFieldContext } from '../../hooks/useFieldContext';
 import { mergeClasses } from '../../utilities/mergeClasses';
+import { AITriggerButton } from '../AITriggerButton/AITriggerButton';
+import type { AIActionStatus } from '../../hooks/useAIAction';
 import inputStyles from '../Input/Input.module.css';
 import styles from './Combobox.module.css';
 
@@ -14,6 +16,22 @@ export interface ComboboxOption {
 }
 
 export type ComboboxSize = 'sm' | 'md' | 'lg';
+
+export interface ComboboxAISearchOptions {
+  /**
+   * Resolves the current input text into extra options, merged into the
+   * panel below the regular filtered results under a "Suggested" heading.
+   * No shared AI primitive — entirely consumer-owned, the same
+   * `CommandPalette`-resolver shape `Select`'s `aiSuggest` uses. Only
+   * called when the trigger is explicitly clicked, never on every
+   * keystroke (unlike `CommandPalette`'s own debounced `aiSearch`).
+   */
+  resolve: (query: string) => Promise<ComboboxOption[]>;
+  /** Accessible label for the AI trigger button. Defaults to `'Search with AI'`. */
+  triggerLabel?: string;
+  /** Heading shown above the AI-resolved options. Defaults to `'Suggested'`. */
+  groupHeading?: ReactNode;
+}
 
 export interface ComboboxOwnProps {
   options: ComboboxOption[];
@@ -41,6 +59,8 @@ export interface ComboboxOwnProps {
   allowFreeText?: boolean;
   /** Shown in the panel when no options match the current text. Defaults to "No results". Pass `null` to render nothing. */
   noResultsLabel?: ReactNode;
+  /** Adds a "Search with AI" trigger inside the open panel. Off by default. Mouse-selectable only — AI-resolved options aren't included in arrow-key roving, a deliberate scope cut (same shape as `Select`'s "no typeahead"). */
+  aiSearch?: ComboboxAISearchOptions;
 }
 
 export type ComboboxProps = ComboboxOwnProps;
@@ -107,6 +127,7 @@ export function Combobox({
   filterOptions = defaultFilter,
   allowFreeText = false,
   noResultsLabel = 'No results',
+  aiSearch,
 }: ComboboxProps) {
   const field = useFieldContext();
   const generatedId = useId();
@@ -131,14 +152,23 @@ export function Combobox({
   const [isFiltering, setIsFiltering] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [aiOptions, setAiOptions] = useState<ComboboxOption[]>([]);
+  const [aiStatus, setAiStatus] = useState<AIActionStatus>('idle');
   const inputRef = useRef<HTMLInputElement>(null);
   const listboxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setAiOptions([]);
+      setAiStatus('idle');
+    }
+  }, [isOpen]);
 
   // Keep displayed text in sync when `value` changes externally (controlled
   // usage) — not on every keystroke, only when the committed value itself
   // changes from outside.
   useEffect(() => {
-    const label = options.find((option) => option.value === value)?.label;
+    const label = [...options, ...aiOptions].find((option) => option.value === value)?.label;
     setInputValue(label ?? (allowFreeText ? (value ?? '') : ''));
     setIsFiltering(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -166,6 +196,19 @@ export function Combobox({
     setIsOpen(false);
     setActiveIndex(-1);
     inputRef.current?.focus();
+  }
+
+  async function handleAISearch() {
+    if (!aiSearch) return;
+    setAiStatus('loading');
+    try {
+      const resolved = await aiSearch.resolve(inputValue);
+      setAiOptions(resolved);
+      setAiStatus('idle');
+    } catch {
+      setAiOptions([]);
+      setAiStatus('error');
+    }
   }
 
   function revertOrClear() {
@@ -297,6 +340,21 @@ export function Combobox({
         data-invalid={resolvedInvalid || undefined}
       />
       <Popover.Content className={styles.content}>
+        {aiSearch && (
+          // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- onMouseDown here only prevents the input's blur-triggered revert when clicking the AI trigger button inside, the same trick used by each option below; it's not a custom interactive control itself
+          <div className={styles.aiSearchRow} onMouseDown={(event) => event.preventDefault()}>
+            <AITriggerButton
+              aria-label={aiSearch.triggerLabel ?? 'Search with AI'}
+              status={aiStatus}
+              onClick={handleAISearch}
+            />
+            {aiStatus === 'error' && (
+              <span role="alert" className={styles.aiSearchError}>
+                Couldn&apos;t get suggestions.
+              </span>
+            )}
+          </div>
+        )}
         <div ref={listboxRef} role="listbox" id={listboxId} className={styles.listbox}>
           {filteredOptions.length === 0
             ? noResultsLabel !== null && <div className={styles.noResults}>{noResultsLabel}</div>
@@ -318,6 +376,28 @@ export function Combobox({
                   {option.label}
                 </div>
               ))}
+          {aiOptions.length > 0 && (
+            <>
+              <div className={styles.aiGroupHeading}>{aiSearch?.groupHeading ?? 'Suggested'}</div>
+              {aiOptions.map((option) => (
+                // eslint-disable-next-line jsx-a11y/click-events-have-key-events -- mouse-selectable only, see aiSearch's own doc comment on the scope cut
+                <div
+                  key={`ai-${option.value}`}
+                  role="option"
+                  tabIndex={-1}
+                  data-value={option.value}
+                  data-ai-suggested=""
+                  aria-selected={option.value === value}
+                  aria-disabled={option.disabled || undefined}
+                  className={styles.option}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => commit(option)}
+                >
+                  {option.label}
+                </div>
+              ))}
+            </>
+          )}
         </div>
       </Popover.Content>
     </Popover>

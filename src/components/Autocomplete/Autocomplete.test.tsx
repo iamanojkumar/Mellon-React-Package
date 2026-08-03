@@ -59,4 +59,16 @@ describe('Autocomplete', () => {
     render(<Autocomplete aria-label="City" options={CITIES} disabled />);
     expect(screen.getByRole('combobox')).toBeDisabled();
   });
+
+  describe('aiSearch', () => {
+    it('inherits aiSearch from Combobox (thin pass-through, not reimplemented)', async () => {
+      const user = userEvent.setup();
+      const resolve = vi.fn().mockResolvedValue([{ value: 'sea', label: 'Seattle' }]);
+      render(<Autocomplete aria-label="City" options={CITIES} aiSearch={{ resolve }} />);
+      await user.click(screen.getByRole('combobox'));
+      await user.click(screen.getByRole('button', { name: 'Search with AI' }));
+      expect(resolve).toHaveBeenCalledWith('');
+      expect(await screen.findByRole('option', { name: 'Seattle' })).toBeInTheDocument();
+    });
+  });
 });
