@@ -11,9 +11,9 @@ importers:
       '@floating-ui/dom':
         specifier: ^1.8.0
         version: 1.8.0
-      '@mellon/tokens-web':
-        specifier: link:..\mellon_designsystem_foundation\builds\web
-        version: link:../mellon_designsystem_foundation/builds/web
+      '@mellon-design/tokens-web':
+        specifier: ^1.0.0
+        version: 1.0.0
     devDependencies:
       '@changesets/cli':
         specifier: ^2.27.9
@@ -1016,6 +1016,9 @@ packages:
     peerDependencies:
       '@types/react': '>=16'
       react: '>=16'
+
+  '@mellon-design/tokens-web@1.0.0':
+    resolution: {integrity: sha512-qDI0ezZ1kp5nAf3wnO5kxUTmAntJPyLNRHi+fQE0ELQrQLd4QBICtlGnI5YNC6IGxZgm/Qf14qGQagdz6s+2oQ==}
 
   '@microsoft/api-extractor-model@7.33.10':
     resolution: {integrity: sha512-uPUK17xGxeQ3av6TN7awp+dTTSTvx8fZC0XFL1gyt7hFapYuxND3XLXH8vkmI7UjfW92oogzFAFqHSifmJROaw==}
@@ -6015,6 +6018,8 @@ snapshots:
       '@types/mdx': 2.0.14
       '@types/react': 19.2.18
       react: 19.2.8
+
+  '@mellon-design/tokens-web@1.0.0': {}
 
   '@microsoft/api-extractor-model@7.33.10(@types/node@22.20.1)':
     dependencies:

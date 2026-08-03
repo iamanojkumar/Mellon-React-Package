@@ -1,9 +1,9 @@
-# react-design-system
+# @mellon-design/react
 
 Production-grade React + TypeScript component library, styled entirely
 through `--ds-*` CSS variables backed by the Design System Foundation
-package (`@mellon/tokens-web`, currently linked in locally from the sibling
-`mellon_designsystem_foundation` repo ahead of its npm publish). Full scope
+package ([`@mellon-design/tokens-web`](https://www.npmjs.com/package/@mellon-design/tokens-web),
+published on npm — see `package.json`'s `dependencies`). Full scope
 and rationale: [docs/SPEC.md](./docs/SPEC.md).
 
 ## Getting started
@@ -42,8 +42,9 @@ so components render correctly today:
 padding: var(--ds-space-md, 1rem);
 ```
 
-When `@mellon/tokens-web` is published for real, only
-`src/styles/variables.css` changes — component logic and markup do not.
+`@mellon-design/tokens-web` is now the real published package — if its
+tokens ever change, only `src/styles/variables.css` changes — component
+logic and markup do not.
 
 ## Build order
 

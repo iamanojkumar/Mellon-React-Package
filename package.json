@@ -1,8 +1,11 @@
 {
-  "name": "react-design-system",
+  "name": "@mellon-design/react",
   "version": "0.1.0",
-  "description": "Production-grade React + TypeScript component library, styled through --ds-* CSS variables backed by the @mellon/tokens-web Design System Foundation package.",
+  "description": "Production-grade React + TypeScript component library, styled through --ds-* CSS variables backed by the @mellon-design/tokens-web Design System Foundation package.",
   "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "license": "UNLICENSED",
   "packageManager": "pnpm@10.34.5",
@@ -111,6 +114,6 @@
   ],
   "dependencies": {
     "@floating-ui/dom": "^1.8.0",
-    "@mellon/tokens-web": "link:..\\mellon_designsystem_foundation\\builds\\web"
+    "@mellon-design/tokens-web": "^1.0.0"
   }
 }

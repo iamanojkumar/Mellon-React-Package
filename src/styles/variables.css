@@ -1,18 +1,18 @@
 /*
   Bridges the --ds-* names component code references to the real
-  @mellon/tokens-web tokens (linked locally from
-  ../mellon_designsystem_foundation/builds/web until it's published to
-  npm — see package.json). Foundation token names/scales don't match this
-  file 1:1 (e.g. a numeric --spacing-* scale vs. this xs/sm/md scale, or
-  multi-layer --elevation-N-* shadows vs. a single box-shadow var), so
-  each line below is a deliberate mapping, not a rename. When the real
-  package is synced, only this file should need to change — component
-  .tsx/.module.css files never reference tokens.web directly.
+  @mellon-design/tokens-web tokens (published on npm — see
+  package.json's dependencies). Foundation token names/scales don't
+  match this file 1:1 (e.g. a numeric --spacing-* scale vs. this
+  xs/sm/md scale, or multi-layer --elevation-N-* shadows vs. a single
+  box-shadow var), so each line below is a deliberate mapping, not a
+  rename. When a new Foundation release is picked up, only this file
+  should need to change — component .tsx/.module.css files never
+  reference tokens-web directly.
 */
-@import '@mellon/tokens-web/css';
-@import '@mellon/tokens-web/css/theme-light';
-@import '@mellon/tokens-web/css/theme-dark';
-@import '@mellon/tokens-web/css/theme-high-contrast';
+@import '@mellon-design/tokens-web/css';
+@import '@mellon-design/tokens-web/css/theme-light';
+@import '@mellon-design/tokens-web/css/theme-dark';
+@import '@mellon-design/tokens-web/css/theme-high-contrast';
 
 :root {
   /* Color — surface */
