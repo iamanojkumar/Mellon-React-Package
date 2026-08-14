@@ -48,4 +48,62 @@ describe('Badge', () => {
     expect(el).toHaveAttribute('data-color', 'danger');
     expect(el).toHaveAttribute('data-variant', 'solid');
   });
+
+  // Status color must never be the only channel: red and green are the same
+  // color under deuteranopia, and screen readers get no color at all.
+  describe('secondary encoding for status colors', () => {
+    it.each(['success', 'warning', 'danger'] as const)(
+      'pairs color=%s with a visible glyph and a screen-reader label',
+      (color) => {
+        render(
+          <Badge data-testid="badge" color={color}>
+            3
+          </Badge>,
+        );
+        const el = screen.getByTestId('badge');
+        expect(el.querySelector('svg')).toBeInTheDocument();
+        expect(el).toHaveAttribute('data-has-icon');
+        expect(el).toHaveTextContent(color);
+      },
+    );
+
+    it.each(['neutral', 'brand'] as const)('adds no glyph for presentational color=%s', (color) => {
+      render(
+        <Badge data-testid="badge" color={color}>
+          3
+        </Badge>,
+      );
+      const el = screen.getByTestId('badge');
+      expect(el.querySelector('svg')).not.toBeInTheDocument();
+      expect(el).not.toHaveAttribute('data-has-icon');
+      expect(el).toHaveTextContent('3');
+    });
+
+    it('lets a caller supply its own glyph', () => {
+      render(
+        <Badge data-testid="badge" color="danger" icon={<span data-testid="custom">!</span>}>
+          Error
+        </Badge>,
+      );
+      expect(screen.getByTestId('custom')).toBeInTheDocument();
+      expect(screen.getByTestId('badge').querySelector('svg')).not.toBeInTheDocument();
+    });
+
+    it('suppresses both channels with icon={false}, for labels that name the status themselves', () => {
+      render(
+        <Badge data-testid="badge" color="danger" icon={false}>
+          Failed
+        </Badge>,
+      );
+      const el = screen.getByTestId('badge');
+      expect(el.querySelector('svg')).not.toBeInTheDocument();
+      expect(el).toHaveTextContent('Failed');
+      expect(el).not.toHaveTextContent('danger');
+    });
+
+    it('has no accessibility violations with a status color', async () => {
+      const { container } = render(<Badge color="success">3</Badge>);
+      await expectNoA11yViolations(container);
+    });
+  });
 });

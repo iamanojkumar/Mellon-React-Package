@@ -21,3 +21,52 @@ export type {
   UsePointerDragHandlers,
   PointerDragDelta,
 } from './usePointerDrag';
+export {
+  useChartScale,
+  createLinearScale,
+  createBandScale,
+  resolveChartFrame,
+  DEFAULT_CHART_MARGIN,
+} from './useChartScale';
+export type {
+  UseChartScaleOptions,
+  UseChartScaleResult,
+  LinearScale,
+  BandScale,
+  LinearScaleOptions,
+  BandScaleOptions,
+  ChartMargin,
+  ChartFrame,
+} from './useChartScale';
+export { useKanbanCommands } from './useKanbanCommands';
+export type {
+  UseKanbanCommandsOptions,
+  UseKanbanCommandsResult,
+  KanbanCommandOutcome,
+  KanbanCommandResolver,
+  KanbanResolveContext,
+} from './useKanbanCommands';
+export {
+  useCanvasViewport,
+  DEFAULT_CANVAS_VIEWPORT,
+  MIN_CANVAS_ZOOM,
+  MAX_CANVAS_ZOOM,
+} from './useCanvasViewport';
+export type {
+  CanvasViewport,
+  UseCanvasViewportOptions,
+  UseCanvasViewportResult,
+} from './useCanvasViewport';
+export { useCanvasCommands } from './useCanvasCommands';
+export type {
+  UseCanvasCommandsOptions,
+  UseCanvasCommandsResult,
+  CanvasCommandOutcome,
+  CanvasCommandResolver,
+  CanvasResolveContext,
+  CanvasClusterResolver,
+  CanvasClusterContext,
+  CanvasClusterRequest,
+  CanvasDiagramResolver,
+  CanvasDiagramContext,
+} from './useCanvasCommands';

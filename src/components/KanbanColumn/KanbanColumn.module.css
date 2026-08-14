@@ -1,0 +1,77 @@
+.column {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-sm);
+  min-width: 0;
+  padding: var(--ds-space-sm);
+  background: var(--ds-color-surface-secondary);
+  border: var(--ds-border-width-thin) solid transparent;
+  border-radius: var(--ds-radius-lg);
+  transition:
+    border-color var(--ds-motion-duration-fast) var(--ds-motion-easing-standard),
+    background-color var(--ds-motion-duration-fast) var(--ds-motion-easing-standard);
+}
+
+/* The card being dragged is over this column. Deliberately quiet — the drop
+   indicator inside says *where* it lands, which is the information that
+   matters; this only says *which*. */
+.column[data-active] {
+  border-color: var(--ds-color-border-focus);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-sm);
+  padding: var(--ds-space-xs) var(--ds-space-sm);
+}
+
+.title {
+  margin: 0;
+  color: var(--ds-color-text-primary);
+  font-size: var(--ds-font-size-sm);
+  font-weight: var(--ds-font-weight-bold);
+  line-height: var(--ds-line-height-tight);
+}
+
+/* A pill rather than bare text, so the count reads as metadata about the
+   column instead of part of its name. */
+.count {
+  flex: none;
+  padding: var(--ds-space-none) var(--ds-space-sm);
+  color: var(--ds-color-text-secondary);
+  font-size: var(--ds-font-size-xs);
+  font-variant-numeric: tabular-nums;
+  background: var(--ds-color-surface-primary);
+  border-radius: var(--ds-radius-full);
+}
+
+.overLimit {
+  margin: 0;
+  padding-inline: var(--ds-space-sm);
+  color: var(--ds-color-status-warning);
+  font-size: var(--ds-font-size-xs);
+  font-weight: var(--ds-font-weight-medium);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-sm);
+  min-height: var(--ds-space-2xl);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.empty {
+  margin: 0;
+  padding: var(--ds-space-md) var(--ds-space-sm);
+  color: var(--ds-color-text-secondary);
+  font-size: var(--ds-font-size-xs);
+  text-align: center;
+  border: var(--ds-border-width-thin) dashed var(--ds-color-border-primary);
+  border-radius: var(--ds-radius-md);
+}

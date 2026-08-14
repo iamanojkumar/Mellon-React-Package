@@ -1,0 +1,21 @@
+.label {
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-xs);
+  font-weight: var(--ds-font-weight-medium);
+  fill: var(--ds-color-text-primary);
+  /* A data label is read against its neighbours, so the digits have to line
+     up — see docs/CHART_TOKEN_REQUIREMENTS.md F.1. */
+  font-variant-numeric: tabular-nums;
+  text-anchor: middle;
+}
+
+/* The gap is a CSS transform rather than a dy attribute so the spacing stays
+   tokenized — an SVG attribute can't read a custom property. */
+.label[data-placement='above'] {
+  transform: translateY(calc(-1 * var(--ds-space-xs)));
+}
+
+.label[data-placement='below'] {
+  dominant-baseline: hanging;
+  transform: translateY(var(--ds-space-xs));
+}

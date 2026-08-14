@@ -1,0 +1,30 @@
+.tooltip {
+  position: absolute;
+  /* The pointer is chasing the mark underneath, so the readout must never
+     become the hit target — it would flicker itself in and out. */
+  pointer-events: none;
+  z-index: var(--ds-z-index-tooltip);
+  padding: var(--ds-space-xs) var(--ds-space-sm);
+  border-radius: var(--ds-radius-sm);
+  background-color: var(--ds-color-surface-inverse);
+  color: var(--ds-color-text-inverse);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-xs);
+  line-height: var(--ds-line-height-tight);
+  white-space: nowrap;
+  box-shadow: var(--ds-elevation-md);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Lifted clear of the mark it describes, so the pointer doesn't cover it. */
+.tooltip[data-align='center'] {
+  transform: translate(-50%, calc(-100% - var(--ds-space-xs)));
+}
+
+.tooltip[data-align='start'] {
+  transform: translate(0, calc(-100% - var(--ds-space-xs)));
+}
+
+.tooltip[data-align='end'] {
+  transform: translate(-100%, calc(-100% - var(--ds-space-xs)));
+}

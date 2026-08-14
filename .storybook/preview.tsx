@@ -29,6 +29,8 @@ const preview: Preview = {
           'Form',
           'Navigation',
           'Data Display',
+          'Board',
+          'Canvas',
           'Feedback',
           'Overlays',
           'Media',

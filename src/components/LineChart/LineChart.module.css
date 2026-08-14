@@ -1,0 +1,40 @@
+/* The plot scales as a unit, so a label that overhangs the gutter (the first
+   or last category) stays visible instead of being clipped by the viewBox. */
+.svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+/* Owns the plot's box so the tooltip can be positioned as a percentage of
+   it — the same box the SVG fills, so the two stay in step at any size. */
+.plot {
+  position: relative;
+  min-width: 0;
+}
+
+.crosshair {
+  stroke: var(--ds-chart-crosshair);
+  stroke-width: var(--ds-border-width-thin);
+}
+
+.hitArea {
+  fill: transparent;
+}
+
+.line {
+  fill: none;
+  stroke: var(--ds-chart-primary);
+  stroke-width: var(--ds-chart-stroke-width);
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+/* A ring in the plot surface colour keeps overlapping markers readable where
+   the line doubles back on itself. */
+.marker {
+  fill: var(--ds-chart-primary);
+  stroke: var(--ds-chart-surface);
+  stroke-width: var(--ds-chart-stroke-width);
+}

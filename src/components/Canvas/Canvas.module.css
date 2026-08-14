@@ -1,0 +1,109 @@
+.canvas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-sm);
+  width: 100%;
+  height: 100%;
+}
+
+.surface {
+  position: relative;
+  flex: 1 1 auto;
+  box-sizing: border-box;
+  /* Component-intrinsic: a canvas with no height is not a canvas. Consumers
+     override via className; no sizing token exists to express "a workspace". */
+  min-height: 24rem;
+  overflow: hidden;
+  /* A plain recessed surface. The workspace reads as a backdrop that blocks
+     sit *on*, which is also why blocks use the lighter primary surface. */
+  background: var(--ds-color-surface-secondary);
+  border: var(--ds-border-width-thin) solid var(--ds-color-border-primary);
+  border-radius: var(--ds-radius-lg);
+  cursor: default;
+  /* The canvas owns the wheel and every touch gesture; the page must not
+     scroll underneath it. */
+  touch-action: none;
+  overscroll-behavior: contain;
+}
+
+.surface:focus-visible {
+  outline: var(--ds-border-width-medium) solid var(--ds-color-border-focus);
+  outline-offset: var(--ds-border-width-medium);
+}
+
+.surface[data-panning] {
+  cursor: grabbing;
+}
+
+.world {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  width: 100%;
+  height: 100%;
+  /* Scaling must happen about the origin, or pan and zoom fight each other. */
+  transform-origin: 0 0;
+}
+
+/* Overflow visible so edges leaving the nominal box still draw; the surface
+   clips them at its own bounds. */
+.connectors {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* Re-enabled only on the connectors' own hit areas, so the empty space between
+   edges stays available for marquee selection. */
+.connectors :global(path) {
+  pointer-events: auto;
+}
+
+.marquee {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  background: var(--ds-color-surface-secondary);
+  border: var(--ds-border-width-thin) dashed var(--ds-color-border-focus);
+  border-radius: var(--ds-radius-sm);
+  pointer-events: none;
+}
+
+/* Row of scene-level AI actions above the surface. Flex-none for the same
+   reason as .answer: the surface is what the user is looking at. */
+.toolbar {
+  display: flex;
+  flex: none;
+  gap: var(--ds-space-sm);
+  align-items: center;
+}
+
+/* Takes the row's spare width so the cluster button keeps its intrinsic size. */
+.diagramBar {
+  flex: 1 1 auto;
+}
+
+.error {
+  flex: none;
+  margin: 0;
+  color: var(--ds-color-status-danger);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+}
+
+/* The visible answer to a question. Flex-none so it never steals height from
+   the surface, which is the thing the user is actually looking at. */
+.answer {
+  flex: none;
+  margin: 0;
+  padding: var(--ds-space-sm) var(--ds-space-md);
+  color: var(--ds-color-text-primary);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  background: var(--ds-color-surface-secondary);
+  border-radius: var(--ds-radius-md);
+}

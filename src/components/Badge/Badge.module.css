@@ -11,6 +11,13 @@
   white-space: nowrap;
 }
 
+/* Separates the status glyph from the label. The glyph is the non-color
+   channel that makes a status badge readable under color-vision deficiency —
+   see Badge.tsx's `icon` prop. */
+.badge[data-has-icon] {
+  gap: 0.3em;
+}
+
 /* "subtle" (default): a neutral surface with colored text - this design
    system's token set has no separate tinted-background scale per status
    color, only the full-strength ones used by "solid" below. */

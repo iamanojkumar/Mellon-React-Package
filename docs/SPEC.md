@@ -153,6 +153,79 @@ Build in **dependency order, not alphabetical order**:
 25. **AI Response Surfaces** — `CitationCard`, `CodeBlockToolbar`, `ChartSurface` ✅ shipped
 26. **Composer Extensions** — `MentionPicker`, `SlashCommandPicker`, `PromptTemplatePicker`, `TokenCounter` ✅ shipped
 27. **Conversation Shell & Memory** — `ConversationHeader`, `MemoryListItem`, `MemoryEditor` ✅ shipped
+28. **Kanban Board** — phase A: `KanbanBoard`, `KanbanColumn`, `KanbanCard`, `applyKanbanCommands` ✅ shipped. Phase B: `KanbanPromptBar`, `KanbanChangePreview`, `useKanbanCommands`, `kanbanSnapshot`, `parseKanbanResolution` ✅ shipped
+29. **Canvas (phase 1 — no AI)** — `Canvas`, `CanvasBlock`, `CanvasConnector`, `CanvasOutline`, `StickyNote`, `CanvasShape`, `CanvasEmbed`, `CanvasFrame`, `useCanvasViewport`, `applyCanvasCommands`, `canvasGeometry` ✅ shipped. Phase 2 (prompt pipeline + per-note `aiRewrite`): `CanvasPromptBar`, `CanvasChangePreview`, `useCanvasCommands`, `canvasSnapshot`, `parseCanvasResolution` ✅ shipped. Phase 3 (`aiCluster` affinity mapping): `canvasClusters.ts` (`clusterCommands`, `normalizeCanvasClusters`, `parseCanvasClusterResolution`, `buildCanvasClusterPrompt`) + `Canvas`'s `aiCluster`/`resolveClusters`, sharing `useCanvasCommands`' single in-flight slot and review panel ✅ shipped. Phase 4 (`aiDiagram`): `canvasDiagram.ts` (`breakDiagramCycles`, `rankDiagramNodes`, `layoutCanvasDiagram`, `diagramCommands`, `normalizeCanvasDiagram`, `parseCanvasDiagramResolution`) + `Canvas`'s `aiDiagram`/`resolveDiagram`, applied with an undo rather than staged because it is purely additive ✅ shipped. Phase 5 (the rest of the block catalogue): `code`, `table`, `link`, `checklist` and `chart` block kinds, `CanvasChecklist`, plus the viewport pass — free wheel/trackpad panning, Shift for sideways, Ctrl/Cmd to zoom, and a full keyboard set (arrows pan, `+`/`-`/`0`/`1`, PageUp/PageDown) ✅ shipped
+
+Phase 28 is the library's first AI affordance that **changes structured
+state** rather than producing text. It was built in two halves on purpose.
+Phase A is the board with no AI at all: every AI affordance here is inert
+without an `AIProvider`, so a prompt bar can never be a board's
+accessibility story, and the board had to stand alone first.
+
+Phase B adds the command pipeline. The vocabulary (`KanbanCommand`) and its
+validator belong to the library; the transport does not — `resolveCommands`
+is consumer-owned, the same split as `FileUpload`/`DataGrid`, and
+`AIClient` in `src/contexts/AIContext.ts` was deliberately **not** widened,
+since 26 AI-enhanced components depend on that two-method contract. Without
+a resolver the board falls back to `complete()` plus
+`parseKanbanResolution`, so any existing client works.
+
+Responses are classified by blast radius rather than handled uniformly: no
+commands is an answer (highlight, mutate nothing), one non-destructive
+command applies with an undo `Toast`, and anything larger or any `delete`
+stages a reviewable diff. Validation runs on every path including the
+consumer's own resolver, because a model that hallucinated an id is not
+more trustworthy for having come through someone else's transport.
+Unparseable prose is treated as an answer, not an error — a model replying
+to "what's blocked?" in plain English has done the right thing.
+
+Phase 29 reopens the Canvas/Workspace exclusion recorded below. That
+exclusion's reasoning — "a full canvas engine" — is right for a `<canvas>`
+implementation and wrong for a DOM one, where blocks are ordinary
+absolutely-positioned elements under a single transform. Doing it this way
+keeps component reuse, design tokens, all three themes and the
+accessibility tree, none of which survive a raster surface. **Freehand ink
+remains excluded** and is the one item the original reasoning got right.
+
+The canvas reuses phase 28's shape wholesale: a pure `applyCanvasCommands`
+reducer behind every input path, drop-and-report validation so a model can
+drive it safely later, and an accessible linear twin (`CanvasOutline`)
+standing in for spatial content exactly as a chart's table twin stands in
+for its SVG. Phases 2–5 add the prompt pipeline, `aiCluster` affinity
+mapping, `aiDiagram`, and the remaining block catalogue.
+
+Phase 3's one generalizable decision: **the model is asked what belongs
+together, never where to put it.** Grouping is the part a language model is
+genuinely good at; coordinates are the part it is worst at, and a grouping of
+thirty notes returned with positions comes back overlapping or stacked. So
+the response carries titles and member ids only, and `clusterCommands` — pure,
+deterministic, unit-testable without a layout engine — decides the geometry.
+It is the same move `@`-mention resolution makes on the prompt bar, one level
+up.
+
+Phase 4 applies the same split to diagrams — the model returns a graph, the
+library ranks and lays it out — and settles where the blast-radius line
+actually falls. Clustering always stages because it rearranges the user's own
+arrangement; a generated diagram applies with an undo because it adds content
+and touches none, which is checked (`isPurelyAdditive`) rather than assumed.
+Command count was never the right axis.
+
+Phase 5 completes the catalogue and fixes navigation. Three things worth
+keeping: the painted grid is gone and the surface is the recessed neutral
+(`surface-secondary`) with every block face on `surface-primary`, so blocks
+read as sitting _on_ the workspace; the wheel listener is bound natively
+because React registers wheel handlers as passive, where `preventDefault`
+silently does nothing and the page scrolls away underneath the gesture; and a
+press on a control inside a block must not take pointer capture, because a
+captured pointer never delivers its click — which is how a checklist's boxes
+stopped ticking the moment the catalogue gained an interactive face.
+
+Two Phase 1 defects surfaced once generated content started living inside
+frames, both fixed here: the connector layer painted under every block, so a
+frame covered every edge inside it (connectors now paint above frames and below
+other blocks), and a filled frame used `surface-secondary` — the same fill a
+clipped `CanvasShape` uses — so a diamond on a frame was invisible (a frame is
+now an unfilled boundary: dashed edge plus title).
 
 **2 phases remain, both backlog: 18 and 19** (see "Backlog: Phase 18 and 19" below). Phases 20-22 (AI integration) are an unrelated feature track that jumped ahead of 18-19 in build order — numbered to continue the existing sequence rather than interleave, with no dependency on Mobile Gestures/Remaining Utilities either direction. Phases 23-27 (AI Chat Components) are a third, later track building on Phase 20's infra (`useAIAction`'s status vocabulary, `AISuggestionPopover`'s composition patterns) but not on 18/19/21/22 — the entire track is now shipped, see "Shipped Phase Notes" below for the per-phase write-ups.
 

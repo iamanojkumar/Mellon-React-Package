@@ -13,6 +13,12 @@
   line-height: 1.4;
 }
 
+/* Separates the status glyph from the label — the non-color channel that
+   keeps a status tag readable under color-vision deficiency. */
+.tag[data-has-icon] {
+  gap: 0.3em;
+}
+
 .tag[data-color='brand'] {
   border-color: var(--ds-color-brand-primary);
   color: var(--ds-color-brand-primary);

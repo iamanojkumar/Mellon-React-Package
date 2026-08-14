@@ -1,0 +1,70 @@
+.note {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  padding: var(--ds-space-sm);
+  overflow: hidden;
+  /* The lighter surface: blocks sit on the canvas's recessed grey backdrop,
+     so they must not share its fill. */
+  background: var(--ds-color-surface-primary);
+  border: var(--ds-border-width-thin) solid var(--ds-color-border-primary);
+  border-radius: var(--ds-radius-md);
+  box-shadow: var(--ds-elevation-sm);
+}
+
+/* Tone is decoration, never the carrier of meaning — the note's own text says
+   what it means. Only the accent edge changes, so text contrast is unaffected
+   in every theme. */
+.note[data-tone='brand'] {
+  border-inline-start: var(--ds-border-width-thick) solid var(--ds-color-brand-primary);
+}
+.note[data-tone='success'] {
+  border-inline-start: var(--ds-border-width-thick) solid var(--ds-color-status-success);
+}
+.note[data-tone='warning'] {
+  border-inline-start: var(--ds-border-width-thick) solid var(--ds-color-status-warning);
+}
+.note[data-tone='danger'] {
+  border-inline-start: var(--ds-border-width-thick) solid var(--ds-color-status-danger);
+}
+
+.text {
+  margin: 0;
+  width: 100%;
+  color: var(--ds-color-text-primary);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  line-height: var(--ds-line-height-base);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+/* Borderless: the note is already the visible container, so an input chrome
+   inside it would be a second box. */
+.input {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  color: var(--ds-color-text-primary);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  line-height: var(--ds-line-height-base);
+  background: transparent;
+  border: none;
+  resize: none;
+}
+
+.input:focus {
+  outline: none;
+}
+
+/* Corner-positioned so it survives whatever the note's text does, and outside
+   the text flow so it never reflows the content it acts on. */
+.aiTrigger {
+  position: absolute;
+  inset-block-start: var(--ds-space-xs);
+  inset-inline-end: var(--ds-space-xs);
+  cursor: auto;
+}

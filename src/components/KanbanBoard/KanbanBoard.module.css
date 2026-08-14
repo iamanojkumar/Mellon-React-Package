@@ -1,0 +1,44 @@
+/* Only rendered when the prompt bar is active — see the board's own comment on
+   why there's no wrapper otherwise. */
+.shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-md);
+}
+
+.answer {
+  margin: 0;
+  padding: var(--ds-space-sm) var(--ds-space-md);
+  color: var(--ds-color-text-primary);
+  font-size: var(--ds-font-size-sm);
+  background: var(--ds-color-surface-secondary);
+  border-radius: var(--ds-radius-md);
+}
+
+.board {
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ds-space-md);
+  overflow-x: auto;
+}
+
+.column {
+  flex: 1 1 0;
+  /* Component-intrinsic geometry with no matching token — variables.css maps
+     no sizing scale. Keeps columns legible rather than collapsing as more are
+     added; the board scrolls horizontally instead. */
+  min-width: 14rem;
+}
+
+/* Where the card will land. A line rather than a ghost card: it needs to read
+   as a position, and it must not change the list's height enough to move the
+   cards it sits between. */
+.dropIndicator {
+  flex: none;
+  height: var(--ds-border-width-thick);
+  margin-block: calc(var(--ds-space-xs) * -1);
+  list-style: none;
+  background: var(--ds-color-brand-primary);
+  border-radius: var(--ds-radius-full);
+}

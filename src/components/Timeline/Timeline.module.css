@@ -79,6 +79,24 @@
   background: var(--ds-color-status-danger);
 }
 
+/* Shape is the second, non-color channel for the status markers. A bare
+   colored dot encodes nothing for a reader with deuteranopia — success
+   (green) and danger (red) are the same color to them — so the three status
+   values differ in silhouette as well as hue: success stays a circle,
+   warning becomes a triangle, danger a square. `neutral`/`brand` are not
+   status claims and keep the default circle.
+
+   Skipped when an `icon` is supplied: a custom glyph is already a non-color
+   channel, and clipping it to a triangle would mangle it. */
+.marker[data-color='warning']:not([data-has-icon]) {
+  border-radius: var(--ds-radius-none);
+  clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+}
+
+.marker[data-color='danger']:not([data-has-icon]) {
+  border-radius: var(--ds-radius-none);
+}
+
 .connector {
   background: var(--ds-color-border-primary);
 }

@@ -1,0 +1,202 @@
+.block {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  box-sizing: border-box;
+  cursor: grab;
+  /* The canvas owns every gesture — no browser panning or text selection
+     fighting the drag. */
+  touch-action: none;
+  user-select: none;
+}
+
+.block[data-editing] {
+  cursor: auto;
+  user-select: text;
+}
+
+/* A frame is a backdrop: it must never sit above the blocks it contains, and
+   its interior has to stay clickable so a marquee can start inside it. */
+.block[data-kind='frame'] {
+  z-index: 0;
+}
+
+.block:focus-visible {
+  outline: var(--ds-border-width-medium) solid var(--ds-color-border-focus);
+  outline-offset: var(--ds-border-width-medium);
+}
+
+.block[data-selected] {
+  outline: var(--ds-border-width-medium) solid var(--ds-color-border-focus);
+  outline-offset: var(--ds-border-width-thin);
+}
+
+/* An AI answer's annotation, not a state change. Paired with visually-hidden
+   text in the outline so it isn't carried by colour alone. */
+.block[data-highlighted] {
+  outline: var(--ds-border-width-medium) solid var(--ds-color-brand-primary);
+  outline-offset: var(--ds-border-width-thin);
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--ds-radius-md);
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.richText {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: var(--ds-space-sm);
+  overflow: auto;
+  color: var(--ds-color-text-primary);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  line-height: var(--ds-line-height-base);
+  background: var(--ds-color-surface-primary);
+  border: var(--ds-border-width-thin) solid var(--ds-color-border-primary);
+  border-radius: var(--ds-radius-md);
+}
+
+.handles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.handle {
+  position: absolute;
+  /* Component-intrinsic hit-target geometry: a grab handle's size is a fact
+     about fingertips, and no token models it. */
+  width: 10px;
+  height: 10px;
+  background: var(--ds-color-surface-primary);
+  border: var(--ds-border-width-medium) solid var(--ds-color-border-focus);
+  border-radius: var(--ds-radius-full);
+  pointer-events: auto;
+}
+
+.handle[data-handle='nw'] {
+  inset-block-start: -5px;
+  inset-inline-start: -5px;
+  cursor: nwse-resize;
+}
+.handle[data-handle='n'] {
+  inset-block-start: -5px;
+  inset-inline-start: calc(50% - 5px);
+  cursor: ns-resize;
+}
+.handle[data-handle='ne'] {
+  inset-block-start: -5px;
+  inset-inline-end: -5px;
+  cursor: nesw-resize;
+}
+.handle[data-handle='e'] {
+  inset-block-start: calc(50% - 5px);
+  inset-inline-end: -5px;
+  cursor: ew-resize;
+}
+.handle[data-handle='se'] {
+  inset-block-end: -5px;
+  inset-inline-end: -5px;
+  cursor: nwse-resize;
+}
+.handle[data-handle='s'] {
+  inset-block-end: -5px;
+  inset-inline-start: calc(50% - 5px);
+  cursor: ns-resize;
+}
+.handle[data-handle='sw'] {
+  inset-block-end: -5px;
+  inset-inline-start: -5px;
+  cursor: nesw-resize;
+}
+.handle[data-handle='w'] {
+  inset-block-start: calc(50% - 5px);
+  inset-inline-start: -5px;
+  cursor: ew-resize;
+}
+
+/* Each new face gets a full-size scroll container of its own: a block is a
+   fixed rect the user sized, so overflowing content scrolls inside it rather
+   than escaping the block's own bounds. */
+.code,
+.table,
+.link,
+.chart {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background: var(--ds-color-surface-primary);
+  border: var(--ds-border-width-thin) solid var(--ds-color-border-primary);
+  border-radius: var(--ds-radius-md);
+  box-shadow: var(--ds-elevation-sm);
+}
+
+.code {
+  position: relative;
+  padding: var(--ds-space-xs);
+}
+
+/* A caption, not syntax highlighting — this library ships no tokenizer. */
+.codeLanguage {
+  position: absolute;
+  inset-block-start: var(--ds-space-xs);
+  inset-inline-end: var(--ds-space-sm);
+  color: var(--ds-color-text-secondary);
+  font-family: var(--ds-font-family-mono);
+  font-size: var(--ds-font-size-xs);
+}
+
+.tableCaption {
+  padding: var(--ds-space-xs) var(--ds-space-sm);
+  color: var(--ds-color-text-secondary);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-xs);
+  text-align: start;
+}
+
+.link {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-xs);
+  padding: var(--ds-space-sm);
+  overflow: hidden;
+}
+
+.linkTitle {
+  font-size: var(--ds-font-size-sm);
+  font-weight: var(--ds-font-weight-bold);
+  overflow-wrap: anywhere;
+}
+
+.linkDescription {
+  margin: 0;
+  color: var(--ds-color-text-primary);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  line-height: var(--ds-line-height-base);
+  overflow-wrap: anywhere;
+}
+
+.linkUrl {
+  margin-block-start: auto;
+  color: var(--ds-color-text-secondary);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-xs);
+  overflow-wrap: anywhere;
+}
+
+.chart {
+  padding: var(--ds-space-sm);
+}

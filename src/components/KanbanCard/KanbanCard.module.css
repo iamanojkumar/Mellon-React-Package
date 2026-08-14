@@ -1,0 +1,94 @@
+/* Doubled class: `Card` sets its own `display`/`border-radius` from its own
+   module, and single-class rules here would win or lose by import order. */
+.card.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-xs);
+  padding: var(--ds-space-sm) var(--ds-space-md);
+  cursor: grab;
+  list-style: none;
+  touch-action: none; /* the board owns the gesture — let the browser scroll nothing here */
+  border-color: var(--ds-color-border-primary);
+  box-shadow: var(--ds-elevation-sm);
+  transition:
+    box-shadow var(--ds-motion-duration-fast) var(--ds-motion-easing-standard),
+    border-color var(--ds-motion-duration-fast) var(--ds-motion-easing-standard),
+    transform var(--ds-motion-duration-fast) var(--ds-motion-easing-standard);
+}
+
+.card.card:hover {
+  border-color: var(--ds-color-border-focus);
+  box-shadow: var(--ds-elevation-md);
+}
+
+.card.card:focus-visible {
+  outline: var(--ds-border-width-medium) solid var(--ds-color-border-focus);
+  outline-offset: var(--ds-border-width-medium);
+}
+
+/* Follows the pointer. `transform` doesn't affect layout, so the card's own
+   slot stays open behind it and reads as the placeholder it is. The transition
+   is dropped here — the transform is already tracking the cursor every frame,
+   and easing it would lag the card behind the hand. */
+.card.card[data-dragging] {
+  z-index: var(--ds-z-index-dropdown);
+  cursor: grabbing;
+  border-color: var(--ds-color-border-focus);
+  box-shadow: var(--ds-elevation-lg);
+  transition: none;
+}
+
+/* A keyboard lift has no pointer following it, so it gets a persistent ring
+   rather than the drag's elevation — the card stays exactly where it is until
+   the user drops it. */
+.card.card[data-lifted] {
+  outline: var(--ds-border-width-medium) solid var(--ds-color-border-focus);
+  outline-offset: var(--ds-border-width-medium);
+  box-shadow: var(--ds-elevation-md);
+}
+
+/* An answer's annotation, not a state change — a ring rather than anything
+   that reads as "this card was modified". Paired with visually-hidden text so
+   the highlight isn't carried by colour alone. */
+.card.card[data-highlighted] {
+  outline: var(--ds-border-width-medium) solid var(--ds-color-brand-primary);
+  outline-offset: var(--ds-border-width-thin);
+}
+
+.title {
+  color: var(--ds-color-text-primary);
+  font-size: var(--ds-font-size-sm);
+  font-weight: var(--ds-font-weight-medium);
+  line-height: var(--ds-line-height-tight);
+  /* Room for the corner actions, which sit outside the flow. */
+  padding-inline-end: var(--ds-space-lg);
+}
+
+.description {
+  color: var(--ds-color-text-secondary);
+  font-size: var(--ds-font-size-xs);
+  line-height: var(--ds-line-height-base);
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ds-space-xs);
+  margin-block-start: var(--ds-space-xs);
+}
+
+.assignee {
+  margin-inline-start: auto;
+  display: inline-flex;
+}
+
+.actions {
+  position: absolute;
+  inset-block-start: var(--ds-space-xs);
+  inset-inline-end: var(--ds-space-xs);
+  display: inline-flex;
+  gap: var(--ds-space-xs);
+  cursor: auto;
+}

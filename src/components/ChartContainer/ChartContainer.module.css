@@ -1,0 +1,54 @@
+.container {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-sm);
+  margin: 0;
+  font-family: var(--ds-font-family-base);
+}
+
+.caption {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-xs);
+  font-size: var(--ds-font-size-sm);
+  font-weight: var(--ds-font-weight-medium);
+  color: var(--ds-color-text-primary);
+}
+
+.description {
+  font-size: var(--ds-font-size-xs);
+  font-weight: var(--ds-font-weight-regular);
+  color: var(--ds-color-text-secondary);
+}
+
+/* The figure's own controls — the table toggle and the AI trigger — kept on
+   one row above the plot so neither shifts position when the other appears. */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-xs);
+  align-self: flex-start;
+}
+
+/* The plot owns its own height; the figure grows with it rather than
+   imposing a fixed height that would clip the x-axis band into a nested
+   scrollbar. */
+.plot {
+  min-width: 0;
+}
+
+/* A wide table scrolls inside its own box rather than pushing the figure
+   sideways. */
+.table {
+  overflow-x: auto;
+}
+
+/* VisuallyHidden clamps the twin to 1px, which leaves Table's own horizontal
+   scroll container technically scrollable with nothing focusable inside it —
+   axe's scrollable-region-focusable, a real keyboard trap in the general case
+   but meaningless at 1px, where nothing can scroll. Neutralise it rather than
+   adding a tab stop to content that is deliberately off-screen. */
+.hiddenTwin > * {
+  overflow: visible;
+}

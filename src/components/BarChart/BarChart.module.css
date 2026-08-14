@@ -1,0 +1,40 @@
+/* The plot scales as a unit, so a label that overhangs the gutter (the first
+   or last category) stays visible instead of being clipped by the viewBox. */
+.svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+/* Owns the plot's box so the tooltip can be positioned as a percentage of
+   it — the same box the SVG fills, so the two stay in step at any size. */
+.plot {
+  position: relative;
+  min-width: 0;
+}
+
+.bar {
+  fill: var(--ds-chart-primary);
+  /* Unsupported CSS geometry properties degrade to square corners, which is
+     harmless — unlike `r`, where the fallback is an invisible mark. */
+  rx: var(--ds-chart-mark-radius);
+}
+
+/* The hovered bar is outlined rather than recoloured, and nothing here dims
+   the others: a de-emphasis treatment needs a colour this system can't yet
+   name for series marks, and an outline plus the readout already say which
+   bar the pointer is on. */
+.bar[data-active] {
+  stroke: var(--ds-chart-crosshair);
+  stroke-width: var(--ds-chart-stroke-width);
+}
+
+.hitArea {
+  fill: transparent;
+}
+
+.zeroLine {
+  stroke: var(--ds-chart-axis);
+  stroke-width: var(--ds-border-width-thin);
+}

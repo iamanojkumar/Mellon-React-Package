@@ -1,0 +1,27 @@
+.embed {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--ds-color-surface-primary);
+  border: var(--ds-border-width-thin) solid var(--ds-color-border-primary);
+  border-radius: var(--ds-radius-md);
+}
+
+.frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.empty {
+  margin: 0;
+  padding: var(--ds-space-sm);
+  color: var(--ds-color-text-secondary);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-xs);
+  text-align: center;
+}

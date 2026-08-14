@@ -58,6 +58,11 @@ Scaffold a new component with `pnpm generate:component <Category> <Name>`.
 See the full component inventory and per-component checklist in
 [docs/SPEC.md](./docs/SPEC.md).
 
+## Component reference
+
+Per-component docs — purpose, key props, compound parts — for everything
+exported from the package: [docs/COMPONENTS.md](./docs/COMPONENTS.md).
+
 ## Conventions
 
 - Commits follow [Conventional Commits](https://www.conventionalcommits.org/)

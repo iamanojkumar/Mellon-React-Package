@@ -1,0 +1,32 @@
+.axis {
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-xs);
+}
+
+.line {
+  stroke: var(--ds-chart-axis);
+  stroke-width: var(--ds-border-width-thin);
+}
+
+.label {
+  fill: var(--ds-chart-tick-label);
+  /* Digits must not change width as values change, or a live-updating axis
+     visibly jitters. No token expresses this yet — the Foundation ask is
+     docs/CHART_TOKEN_REQUIREMENTS.md F.1, the one genuine primitive gap. */
+  font-variant-numeric: tabular-nums;
+}
+
+/* The label gutter is a CSS transform rather than an x/y offset on the
+   element so the spacing stays tokenized — an SVG attribute can't read a
+   custom property. */
+.axis[data-orientation='left'] .label {
+  text-anchor: end;
+  dominant-baseline: middle;
+  transform: translateX(calc(-1 * var(--ds-space-xs)));
+}
+
+.axis[data-orientation='bottom'] .label {
+  text-anchor: middle;
+  dominant-baseline: hanging;
+  transform: translateY(var(--ds-space-xs));
+}

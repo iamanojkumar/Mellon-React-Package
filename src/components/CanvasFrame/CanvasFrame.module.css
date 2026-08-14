@@ -1,0 +1,40 @@
+/* Deliberately unfilled. A frame is a boundary, not a surface: its dashed edge
+   and title already say where the region is, and filling it made everything
+   placed on it disappear — `surface-secondary` is exactly the fill a clipped
+   `CanvasShape` uses, so a diamond on a frame vanished, and the connector layer
+   below the blocks was painted over entirely. */
+.frame {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding-block-start: var(--ds-space-lg);
+  background: transparent;
+  border: var(--ds-border-width-thin) dashed var(--ds-color-border-primary);
+  border-radius: var(--ds-radius-lg);
+}
+
+.frame[data-tone='brand'] {
+  border-color: var(--ds-color-brand-primary);
+}
+.frame[data-tone='success'] {
+  border-color: var(--ds-color-status-success);
+}
+.frame[data-tone='warning'] {
+  border-color: var(--ds-color-status-warning);
+}
+.frame[data-tone='danger'] {
+  border-color: var(--ds-color-status-danger);
+}
+
+/* Sits above the frame's own top edge so it reads as a label on the region
+   rather than content inside it. */
+.title {
+  position: absolute;
+  inset-block-start: var(--ds-space-xs);
+  inset-inline-start: var(--ds-space-sm);
+  color: var(--ds-color-text-secondary);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-xs);
+  font-weight: var(--ds-font-weight-bold);
+  letter-spacing: var(--ds-space-none);
+}

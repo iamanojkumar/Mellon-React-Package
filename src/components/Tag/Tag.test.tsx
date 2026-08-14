@@ -52,4 +52,49 @@ describe('Tag', () => {
     );
     expect(screen.getByTestId('tag')).toHaveAttribute('data-color', 'brand');
   });
+
+  // See Badge's equivalent block — status color is never the only channel.
+  describe('secondary encoding for status colors', () => {
+    it.each(['success', 'warning', 'danger'] as const)(
+      'pairs color=%s with a visible glyph and a screen-reader label',
+      (color) => {
+        render(
+          <Tag data-testid="tag" color={color}>
+            build
+          </Tag>,
+        );
+        const el = screen.getByTestId('tag');
+        expect(el.querySelector('svg')).toBeInTheDocument();
+        expect(el).toHaveAttribute('data-has-icon');
+        expect(el).toHaveTextContent(color);
+      },
+    );
+
+    it.each(['neutral', 'brand'] as const)('adds no glyph for presentational color=%s', (color) => {
+      render(
+        <Tag data-testid="tag" color={color}>
+          build
+        </Tag>,
+      );
+      const el = screen.getByTestId('tag');
+      expect(el.querySelector('svg')).not.toBeInTheDocument();
+      expect(el).not.toHaveAttribute('data-has-icon');
+    });
+
+    it('suppresses both channels with icon={false}', () => {
+      render(
+        <Tag data-testid="tag" color="danger" icon={false}>
+          Failed
+        </Tag>,
+      );
+      const el = screen.getByTestId('tag');
+      expect(el.querySelector('svg')).not.toBeInTheDocument();
+      expect(el).not.toHaveTextContent('danger');
+    });
+
+    it('has no accessibility violations with a status color', async () => {
+      const { container } = render(<Tag color="warning">build</Tag>);
+      await expectNoA11yViolations(container);
+    });
+  });
 });

@@ -26,7 +26,7 @@ own `.tsx`, `.module.css`, `.test.tsx`, `.stories.tsx`, and `index.ts`.
 - Label
 - Paragraph
 - Caption
-- Code (AI: `aiExplain`)
+- Code
 - Link
 - Blockquote
 - List
@@ -44,15 +44,15 @@ own `.tsx`, `.module.css`, `.test.tsx`, `.stories.tsx`, and `index.ts`.
 ## Inputs
 
 - Input
-- TextArea (AI: `aiRewrite`)
+- TextArea
 - PasswordField
-- SearchField (AI: `aiSearch`)
+- SearchField
 - NumberField
 - EmailField
 - PhoneField
 - OTPInput
 - PinInput
-- Select (AI: `aiSuggest`)
+- Select
 - MultiSelect
 - Combobox
 - Autocomplete
@@ -86,7 +86,7 @@ own `.tsx`, `.module.css`, `.test.tsx`, `.stories.tsx`, and `index.ts`.
 - Menu
 - Dropdown
 - ContextMenu
-- CommandPalette (AI: `aiSearch.onQuery`)
+- CommandPalette
 - NavigationRail
 - TreeView
 
@@ -99,17 +99,39 @@ own `.tsx`, `.module.css`, `.test.tsx`, `.stories.tsx`, and `index.ts`.
 - Tag
 - Card
 - Table
-- DataGrid (AI: `aiTableQuery`, `aiRowExplain`)
+- DataGrid
 - Accordion
 - Timeline
 - Calendar
 - Statistic
-- EmptyState (AI: via existing `action` slot — no new prop)
+- EmptyState
 - KeyValueList
+
+## Board
+
+- KanbanBoard
+- KanbanColumn
+- KanbanCard
+- KanbanPromptBar
+- KanbanChangePreview
+
+## Canvas
+
+- Canvas
+- CanvasBlock
+- CanvasConnector
+- CanvasOutline
+- StickyNote
+- CanvasShape
+- CanvasEmbed
+- CanvasFrame
+- CanvasChecklist
+- CanvasPromptBar
+- CanvasChangePreview
 
 ## Feedback
 
-- Alert (AI: `aiExplain`)
+- Alert
 - Banner
 - Toast (covers Snackbar via `ToastProvider`/`useToast`)
 - Progress
@@ -141,220 +163,15 @@ own `.tsx`, `.module.css`, `.test.tsx`, `.stories.tsx`, and `index.ts`.
 
 - BottomNavigation
 
-## AI
-
-- AITriggerButton
-- AISuggestionPopover
-
-## AI Chat
-
-- MessageBubble
-- MessageMeta
-- CitationMarker
-- TypingIndicator
-- StreamingCursor
-- MessageActionBar
-- FeedbackControl
-- ThinkingBlock
-- ToolTraceViewer
-- StatusLine
-- CitationCard
-- CodeBlockToolbar
-- ChartSurface
-- MentionPicker
-- SlashCommandPicker
-- PromptTemplatePicker
-- TokenCounter
-- ConversationHeader
-- MemoryListItem
-- MemoryEditor
-
-The "AI Chat" section above is the complete, shipped output of the
-five-phase "AI Chat Components" track (Phases 23-27) — see
-`docs/SPEC.md`'s "AI Chat Components track: complete (Phases 23-27)"
-for the full per-phase build notes and the "Out of scope" list of
-adjacent subsystems (voice, canvas, 3D, enterprise, ...) deliberately
-excluded from this track.
-
 ---
 
-**Shipped so far:** 123 components (Phases 1-17, 20-21, and 23-27, per
-`docs/SPEC.md`). `src/components/*/` (excluding `index.ts`) is the
-authoritative count.
+**Shipped so far:** 91 components (Phases 1-14, per `docs/SPEC.md`).
 
-## AI enhancements shipped (Phase 21)
-
-Six existing components gained opt-in AI props in Phase 21 — marked inline
-above as `(AI: propName)`, not counted as separate components since
-they're the same component with a new prop family. Behavior notes:
-
-- `TextArea`'s `aiRewrite` and `SearchField`'s `aiSearch` both open an
-  `AISuggestionPopover` from a trigger button.
-- `Alert`'s `aiExplain` is read-only — no accept/reject, nothing to
-  replace.
-- `DataGrid`'s `aiTableQuery` is a toolbar action; `aiRowExplain` is
-  per-row.
-- `CommandPalette`'s `aiSearch.onQuery` is the one flagship that skips the
-  shared `AISuggestionPopover`/`AITriggerButton` primitives entirely —
-  results must resolve to real executable items, debounced and merged
-  into the listbox as a synthesized group.
-- `EmptyState` needed no code change — its existing `action` slot already
-  composes arbitrary UI; shipped as a Storybook story only.
-
-## AI enhancements shipped (Phase 22)
-
-All 26 opportunities below are done, across two shapes (see `docs/SPEC.md`'s
-condensed Phase 22 writeup for the full per-component list and the two real
-bugs found) — also marked inline above:
-
-- **18 components** reuse `AISuggestionPopover`/`AITriggerButton` (the
-  Phase 21 "trigger → popover" shape): `Code`, `Paragraph`, `Blockquote`,
-  `Input`, `ColorPicker`, `FileUpload`, `ErrorMessage`, `Card`, `Table`,
-  `Accordion`, `Timeline`, `Calendar`, `Statistic`, `KeyValueList`,
-  `Banner`, `Image`, plus `TimePicker` (inherited for free via `Select`
-  pass-through — see below).
-- **8 components** follow the `CommandPalette` resolver shape (no shared
-  AI primitive, a consumer-owned `resolve` function returns real
-  executable items): `Select`, `MultiSelect`, `Combobox`, `Autocomplete`
-  (inherited for free via `Combobox` pass-through), `Menu`, `Dropdown`,
-  `ContextMenu` (forwards to its internal `Menu`), `TreeView`.
-- `DatePicker`'s `aiParse` is the one exception to both shapes — its panel
-  is already `Popover`-like chrome, so nesting a second
-  `AISuggestionPopover` inside it would violate CLAUDE.md's "no nested
-  overlay boxes" rule; its query field + accept/reject UI is hand-rolled
-  directly into the panel instead.
-
-## Backlog
-
-**Phases 18-19** (see `docs/SPEC.md`):
+**Not yet built** (Phases 18-19 roadmap, see `docs/SPEC.md`):
 
 - Mobile: Pull To Refresh, Swipe Actions (Action Sheet is covered by `Drawer`)
 - Media: Video, Audio
 - Utilities: Scroll Area, Infinite Scroll, Split Pane, Resizable, Masonry
-
-## AI opportunity reference (Phase 22, shipped — kept for context)
-
-The 95 non-flagship components (103 shipped minus the 6 already
-AI-enhanced in Phase 21 minus the 2 AI infra primitives,
-`AITriggerButton`/`AISuggestionPopover`, which are enhancement building
-blocks, not targets) were split into components with a genuine AI
-opportunity and components with none — forcing an AI feature onto every
-remaining component would
-violate the "don't build features beyond what's needed" principle in
-`CLAUDE.md`. 26 have a real opportunity; 69 don't (pure layout/structural
-primitives, security-sensitive fields, transient or content-less surfaces).
-All 26 are now shipped — see the "AI enhancements shipped (Phase 22)"
-section above. Each opportunity note below names the prop in the same
-`aiXxx` naming family as Phase 21's shipped props, and — where it reuses
-the shared `AISuggestionPopover`/`AITriggerButton` primitives vs. the
-`CommandPalette` resolver shape — which shape it covers, mirroring the
-"(AI: propName)" / "(covers ...)" annotation style used for shipped
-components above.
-
-### Has a real AI opportunity (26 — all shipped)
-
-**Typography** — Code ✅ shipped (`aiExplain` — explain a code block;
-covers via `AISuggestionPopover`, same shape as `Alert`), Paragraph ✅
-shipped (`aiSummarize`/`aiExplain` — summarize or simplify body text;
-covers via `AISuggestionPopover`), Blockquote ✅ shipped (`aiExplain` —
-explain quoted text in context; covers via `AISuggestionPopover`).
-
-**Inputs** — Input ✅ shipped (`aiAutocomplete` — generic free-text assist;
-covers via `AISuggestionPopover`, same shape as `TextArea`'s `aiRewrite`),
-Select ✅ shipped (`aiSuggest` — recommend the best option from context;
-covers via `CommandPalette`'s resolver shape, not a popover — output must
-become a real selection), MultiSelect ✅ shipped (`aiSuggest` — recommend
-an option set; same shape as Select), Combobox ✅ shipped (`aiSearch` —
-semantic ranking of list results; covers via `CommandPalette`'s
-`aiSearch.onQuery` shape), Autocomplete ✅ shipped (`aiSearch` — inherits
-Combobox's opportunity for free, it's a thin wrapper — zero new code),
-ColorPicker ✅ shipped (`aiSuggest` — generate a matching color/palette;
-covers via `AISuggestionPopover`), DatePicker ✅ shipped (`aiParse` —
-natural-language date entry, e.g. "next Friday"; hand-rolled accept/
-reject directly in its own panel rather than reusing `AISuggestionPopover`
-— see "AI enhancements shipped" above for why), TimePicker ✅ shipped
-(`aiSuggest` — inherits `Select`'s opportunity for free, it's a thin
-wrapper — zero new code), FileUpload ✅ shipped (`aiDescribe` — per-file
-describe/summarize trigger; covers via `AISuggestionPopover`).
-
-**Form** — ErrorMessage ✅ shipped (`aiExplain` — explain a validation
-error or suggest a fix; covers via `AISuggestionPopover`, same shape as
-`Alert`'s `aiExplain`).
-
-**Navigation** — Menu ✅ shipped (`aiSuggest` — contextual action
-suggestions; covers via `CommandPalette`'s resolver shape), Dropdown ✅
-shipped (`aiSuggest` — same shape
-as Menu), ContextMenu ✅ shipped (`aiSuggest` — same shape as Menu,
-forwarded straight to its internal `Menu`), TreeView ✅ shipped
-(`aiSearch`/`aiNavigate` — jump to a node via natural language; covers via
-`CommandPalette`'s resolver shape).
-
-**Data Display** — Card ✅ shipped (`aiExplain`/`aiSummarize` — summarize
-arbitrary card content; covers via `AISuggestionPopover`, same shape as
-`Alert`), Table ✅ shipped (`aiTableQuery` — same shape as `DataGrid`, but
-prompted from the rendered table's extracted text since `Table` has no
-structured `data` prop), Accordion ✅ shipped (`aiSummarize` — summarize a
-collapsed section's content, lives on `Accordion.Content`; covers via
-`AISuggestionPopover`), Timeline ✅ shipped (`aiSummarize` — summarize a
-history/sequence of events; covers via `AISuggestionPopover`), Calendar ✅
-shipped (`aiQuery` — natural-language schedule query, e.g. "what's on
-Friday"; covers via `AISuggestionPopover`), Statistic ✅ shipped
-(`aiExplain` — explain why a metric changed; covers via
-`AISuggestionPopover`), KeyValueList ✅ shipped (`aiExplain` — explain or
-query structured key/value data; covers via `AISuggestionPopover`).
-
-**Feedback** — Banner ✅ shipped (`aiExplain` — same shape as its sibling
-`Alert`; covers via `AISuggestionPopover`).
-
-**Media** — Image ✅ shipped (`aiDescribe` — generate alt-text/caption via
-a vision-capable `AIClient`; covers via `AISuggestionPopover`).
-
-### No sensible AI surface (69)
-
-**Foundations (11)** — Box, Flex, Grid, Stack, Inline, Spacer, Container,
-Center, Divider, AspectRatio, VisuallyHidden. Pure layout primitives, no
-content or semantics of their own.
-
-**Typography (8)** — Text, Heading, Display, Label, Caption, Link, List,
-ListItem. Too generic/structural to own distinct AI-actionable content
-separate from their container.
-
-**Buttons (6)** — Button, IconButton, ButtonGroup, ToggleButton,
-SplitButton, FloatingActionButton. Pure action controls — the vehicle for
-AI actions elsewhere (e.g. `AITriggerButton`), not an AI target themselves.
-
-**Inputs (12)** — PasswordField (security — never AI-assist a password),
-NumberField, EmailField, PhoneField (narrow validated formats; free-text
-generative assist doesn't fit), OTPInput, PinInput (security codes),
-Checkbox, RadioGroup, Switch (binary/discrete toggles, nothing to
-generate), Slider, RangeSlider, Rating (bare numeric value pickers).
-
-**Form (5)** — Field, Fieldset, HelperText, FormGroup, FormSection.
-Structural wrappers, no distinct content of their own.
-
-**Navigation (6)** — Navbar, Sidebar, Breadcrumb, Tabs, Pagination,
-NavigationRail. Structural navigation shells/destinations, nothing to
-query or generate.
-
-**Data Display (5)** — Avatar, AvatarGroup, Badge, Chip, Tag. Pure visual
-identity/status labels, nothing to explain or generate.
-
-**Feedback (6)** — Toast (too transient for an interactive AI popover),
-Progress, CircularProgress, Skeleton, Spinner, LoadingOverlay. Pure state
-indicators, no content.
-
-**Overlays (5)** — Dialog, Drawer, Popover, Tooltip, HoverCard. Generic
-chrome/shells for arbitrary content — any AI enhancement belongs to what's
-rendered inside them, not the shell itself.
-
-**Media (2)** — Figure (thin wrapper around `Image` + caption, redundant
-with `Image`'s own opportunity), Carousel (arbitrary slide container,
-nothing of its own to act on).
-
-**Utilities (2)** — Portal, FocusTrap. Pure infrastructure, no content.
-
-**Mobile (1)** — BottomNavigation. Structural nav, same reasoning as
-Navbar/Sidebar.
 
 ---
 
@@ -366,12 +183,6 @@ already shipped above (or already on the Phase 18-19 roadmap) is left off this
 list. Remaining items are genuinely new component surfaces this library
 doesn't have yet — grouped by the taxonomy's own sections, with `(covers ...)`
 noting which existing/roadmap component already satisfies part of that need.
-
-The genuinely chat-specific subset of this list became the "AI Chat"
-section above (Phases 23-27, all shipped). Everything else here (voice,
-canvas/workspace, 3D, enterprise, ...) is intentionally left un-phased —
-see `docs/SPEC.md`'s "Out of scope" note in the "AI Chat Components
-track: complete" section for why.
 
 ### Conversation area (chat-specific)
 
@@ -461,12 +272,32 @@ track: complete" section for why.
 - Aspect ratio picker (covers: `AspectRatio` as the display primitive;
   no dedicated _picker_ control yet)
 
-### Canvas / workspace
+### Canvas / workspace — **reopened, mostly shipped**
 
-- Whiteboard / infinite canvas
-- Sticky notes
-- Diagram / flowchart / mind-map editor
-- Drawing & selection tools
+This section was excluded on the grounds that it needed "a full canvas
+engine". That holds for a `<canvas>` implementation and not for a DOM one:
+blocks are absolutely-positioned real elements inside a single transformed
+world div, so no engine is involved, every existing component can be a block,
+`--ds-*` tokens and all three themes apply for free, and blocks stay focusable
+and present in the accessibility tree.
+
+- Whiteboard / infinite canvas — ✅ `Canvas` (pan, zoom, marquee, snap)
+- Sticky notes — ✅ `StickyNote`
+- Diagram / flowchart / mind-map editor — ✅ `CanvasShape` + `CanvasConnector`
+  (the flowchart vocabulary and three edge routings); mind-map auto-layout is
+  not built
+- Affinity mapping / clustering — ✅ `Canvas`'s `aiCluster` (groups notes by
+  theme into titled `CanvasFrame`s; the model supplies the grouping, the
+  library supplies the geometry)
+- Block catalogue — ✅ code, table, link, checklist and chart blocks alongside
+  sticky/text/image/shape/divider/embed/frame; `CanvasChecklist` is the only
+  new component, the rest delegate to `Code`/`Table`/`Link`/`ChartSurface`
+- Diagram generation from a description — ✅ `Canvas`'s `aiDiagram` (the model
+  supplies a graph of nodes and edges, `canvasDiagram.ts` ranks and lays it
+  out); mind-map auto-layout is now covered by the same layered layout
+- Drawing & selection tools — selection ✅; **freehand ink is still excluded**,
+  and is the one item the original reasoning got right. Thousands of points per
+  stroke as SVG paths is the case a raster layer genuinely serves better.
 
 ### File workspace / artifact panels
 

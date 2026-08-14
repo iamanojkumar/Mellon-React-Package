@@ -1,0 +1,4 @@
+.line {
+  stroke: var(--ds-chart-grid);
+  stroke-width: var(--ds-border-width-hairline);
+}

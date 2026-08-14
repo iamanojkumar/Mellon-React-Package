@@ -1,0 +1,85 @@
+/* Clipped rather than `display: none` — the latter would take the outline out
+   of the accessibility tree, which is the one thing it exists for. */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.panel {
+  box-sizing: border-box;
+  width: 100%;
+  max-height: 100%;
+  padding: var(--ds-space-sm);
+  overflow-y: auto;
+  background: var(--ds-color-surface-secondary);
+  border: var(--ds-border-width-thin) solid var(--ds-color-border-primary);
+  border-radius: var(--ds-radius-md);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-xs);
+  width: 100%;
+  padding: var(--ds-space-xs) var(--ds-space-sm);
+  color: var(--ds-color-text-primary);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  text-align: start;
+  background: transparent;
+  border: var(--ds-border-width-thin) solid transparent;
+  border-radius: var(--ds-radius-sm);
+  cursor: pointer;
+}
+
+.entry:hover {
+  background: var(--ds-color-surface-primary);
+}
+
+.entry:focus-visible {
+  outline: var(--ds-border-width-medium) solid var(--ds-color-border-focus);
+  outline-offset: var(--ds-border-width-thin);
+}
+
+.entry[data-selected] {
+  border-color: var(--ds-color-border-focus);
+  background: var(--ds-color-surface-primary);
+}
+
+.kind {
+  color: var(--ds-color-text-secondary);
+  font-size: var(--ds-font-size-xs);
+  text-transform: uppercase;
+}
+
+.label {
+  overflow-wrap: anywhere;
+}
+
+.connections {
+  color: var(--ds-color-text-secondary);
+  font-size: var(--ds-font-size-xs);
+}
+
+.empty {
+  margin: 0;
+  color: var(--ds-color-text-secondary);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-xs);
+}

@@ -46,6 +46,15 @@
   --ds-space-xl: var(--spacing-8);
   --ds-space-2xl: var(--spacing-12);
 
+  /* Border width — the foundation ships all five; these were previously
+     unmapped, which is why raw 1px/2px literals accumulated in component
+     CSS (see docs/TOKEN_AUDIT.md B1). */
+  --ds-border-width-none: var(--border-width-none);
+  --ds-border-width-hairline: var(--border-width-hairline);
+  --ds-border-width-thin: var(--border-width-thin);
+  --ds-border-width-medium: var(--border-width-medium);
+  --ds-border-width-thick: var(--border-width-thick);
+
   /* Radius */
   --ds-radius-none: var(--radius-none);
   --ds-radius-sm: var(--radius-sm);
@@ -99,6 +108,44 @@
   --ds-z-index-modal: var(--z-index-modal);
   --ds-z-index-toast: var(--z-index-toast);
   --ds-z-index-tooltip: var(--z-index-tooltip);
+
+  /* ---------------------------------------------------------------------
+     Chart / data-viz
+
+     GEOMETRY — final. Chart mark specs land exactly on existing primitives;
+     these alias the *intent* so a chart's 2px segment gap isn't mistaken
+     for a border and "corrected" later.
+
+     FURNITURE — INTERIM. The foundation ships no data-viz semantic roles
+     yet (docs/CHART_TOKEN_REQUIREMENTS.md §E), so the grayscale chrome maps
+     onto the nearest existing UI roles. Two known compromises to re-point
+     once the real roles land: the gridline should be *fainter* than
+     border-default, and the plot surface should be its own role rather than
+     riding on surface-primary.
+
+     NOT DEFINED HERE — categorical, sequential, and diverging series color.
+     Those require per-theme selection that cannot be derived from UI roles,
+     and inventing them in this mapping-only file would break the contract
+     that a foundation revision touches nothing else. Charts needing more
+     than one series are blocked until the foundation ships them.
+     --------------------------------------------------------------------- */
+  --ds-chart-stroke-width: var(--ds-border-width-medium);
+  --ds-chart-mark-radius: var(--ds-radius-sm);
+  --ds-chart-gap: var(--ds-border-width-medium);
+  --ds-chart-marker-size: var(--ds-space-sm);
+
+  --ds-chart-surface: var(--ds-color-surface-primary);
+  --ds-chart-axis: var(--ds-color-border-primary);
+  --ds-chart-grid: var(--ds-color-border-primary);
+  --ds-chart-tick-label: var(--ds-color-text-secondary);
+  --ds-chart-crosshair: var(--ds-color-text-secondary);
+  --ds-chart-annotation: var(--ds-color-text-secondary);
+  --ds-chart-de-emphasis: var(--ds-color-text-disabled);
+
+  /* The single-series mark. A one-series chart needs no categorical palette
+     — the title names the series, so the accent hue is correct and
+     sufficient. This is what makes single-series charts buildable today. */
+  --ds-chart-primary: var(--ds-color-brand-primary);
 }
 
 @media (prefers-reduced-motion: reduce) {

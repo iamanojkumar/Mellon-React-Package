@@ -15,9 +15,7 @@ export const Default: Story = {
     children: 'Box content',
     p: 'md',
   },
-  render: (args) => (
-    <Box {...args} style={{ background: 'var(--ds-color-surface-secondary)' }} />
-  ),
+  render: (args) => <Box {...args} style={{ background: 'var(--ds-color-surface-secondary)' }} />,
 };
 
 export const PolymorphicAsSection: Story = {
