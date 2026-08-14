@@ -1,0 +1,200 @@
+# @mellon-design/react
+
+## 0.2.0
+
+### Minor Changes
+
+- fb25b60: Make the Kanban board AI-native: `KanbanBoard` gains `aiPrompt`, backed by `KanbanPromptBar`, `KanbanChangePreview`, `useKanbanCommands`, `kanbanSnapshot` and `parseKanbanResolution`.
+
+  This is the library's first AI affordance that **changes structured state** instead of producing text. Everything shipped before it turns the model's `string` into prose (`aiExplain`), a text field's value (`aiRewrite`, `aiSearch`) or an answer about data (`aiTableQuery`); driving a board by prompt needs typed operations against identified entities, which is a genuinely new capability.
+
+  **The vocabulary is ours, the transport is yours.** `KanbanCommand` and its validator live in the library; `resolveCommands` is consumer-owned — tool-calling, JSON mode, a server round-trip, whatever you already run. `AIClient` was deliberately not widened: 26 AI-enhanced components depend on that two-method contract, and structured output is a Kanban-local concern. Omit the resolver and the board falls back to `AIClient.complete` plus `parseKanbanResolution`, so every existing client keeps working.
+
+  **Responses are classified by blast radius**, because handling them uniformly fails in both directions — it either turns "what's blocked?" into a scary confirmation dialog, or lets "tidy the backlog" rewrite forty cards before anyone sees them:
+
+  - no commands → an answer: shown, announced, relevant cards highlighted, board untouched
+  - one non-destructive command → applied immediately with an undo `Toast`
+  - more than one command, or any `delete` → staged in `KanbanChangePreview` for per-item review
+
+  Validation runs on **every** path, including your own `resolveCommands` — a model that hallucinated a card id is not more trustworthy for having come through someone else's transport. Invalid commands are dropped and shown with their reason rather than thrown or half-applied.
+
+  Two behaviours are deliberate rather than incidental. Unparseable prose becomes a `message`, not an error: a model answering "what's blocked?" in plain English has done the right thing, and the failure mode of the alternative (the user sees an error and the board is untouched) is the safe direction anyway. And `@` in the prompt bar resolves a card to its **id** client-side via `useFloatingListPicker`, which removes the single hardest thing we'd otherwise ask a model to get right — two similar titles and a confident guess between them.
+
+  `aiPrompt` renders nothing unless there's a way to resolve a prompt: an ancestor `AIProvider` **or** a `resolveCommands`. With neither, the board's markup is byte-identical to the non-AI rendering — there's a test asserting exactly that, and a Storybook story showing it. Note this widens the usual rule slightly: supplying a resolver is itself an explicit opt-in, so it enables the bar without a provider mounted.
+
+  Undo uses `ToastContext` read directly rather than `useToast`, which throws outside its provider — an undo affordance must never be the reason a board can't mount. Without a `ToastProvider` the change still applies and is announced through the board's live region.
+
+  The prompt payload is budgeted and deterministically truncated (`kanbanSnapshot`): every column always appears, since a column a model can't see is a destination it can't use, and cards are dropped from the end with the omitted count stated in the prompt.
+
+  Also adds `highlighted` to `KanbanCard`, which pairs its ring with visually-hidden text so the annotation isn't carried by colour alone.
+
+- fb25b60: Add `aiExplain` to the chart track — a plain-language reading of the plotted series.
+
+  The affordance lives on `ChartContainer`, so `BarChart`, `LineChart` and `ChartSurface` all inherit it by mounting there rather than each wiring its own; the same reasoning that put the accessible table twin in the container. Opt-in via `aiExplain`, with `buildAIPrompt` to replace the prompt and `aiExplainLabel` to rename the trigger.
+
+  It follows the existing AI conventions exactly: no vendor SDK, key or `fetch` in the library, one `useAIAction` instance per container, and — the load-bearing rule — nothing rendered at all unless an ancestor `AIProvider` is mounted, so the output is byte-identical to today's without one. Read-only like `Alert`'s explanation: there are no accept/reject actions, because a chart's data belongs to the caller and there is nothing to write back into.
+
+  Two details specific to charts. The prompt is built from the `data` prop directly rather than by scraping the rendered DOM the way `Table` must, and the series is also forwarded on the `context` bag so a client can use the structured form. Values are stated through the chart's own `formatValue`, so the prompt reads in the same units as the axis, and a non-finite reading is described as `no data` rather than sent as `NaN` — the same refusal to invent a measurement that makes `LineChart` break its line at a gap.
+
+  Exports `ChartAIProps` and `ChartExplainPromptOptions`.
+
+- fb25b60: Add the first plotted charts: `BarChart` and `LineChart`, both single-series, built on `useChartScale` and `ChartContainer`, plus the shared chrome they compose — `ChartAxis` and `ChartGrid`.
+
+  Both charts mount in `ChartContainer`, so the accessible table twin, caption and optional table toggle come for free; the SVG itself stays `aria-hidden`. Bars include zero in the domain by default and grow in both directions from an explicit zero line when the data goes negative. A non-finite value is dropped from the plot but kept in the table, and in `LineChart` it breaks the line into separate segments rather than being interpolated across.
+
+  Series colour is still limited to one series by design — `variables.css` defines no categorical palette until the Foundation ships the per-theme roles.
+
+  Also exports `resolveChartFrame` and `DEFAULT_CHART_MARGIN` from the chart-scale module, and fixes a `scrollable-region-focusable` accessibility violation in `ChartContainer`, where `Table`'s horizontal scroll container became a scrollable region with no focusable content once `VisuallyHidden` clamped the table twin to 1px.
+
+- fb25b60: Canvas phase 5: the rest of the block catalogue, and a viewport pass.
+
+  **New block kinds** — `code`, `table`, `link`, `checklist` and `chart`, joining
+  sticky/text/image/shape/divider/embed/frame. All but one are delegation to
+  components that already exist (`Code`, `Table`, `Link`, `ChartSurface`);
+  `checklist` gets its own `CanvasChecklist` because it is the only face with
+  state of its own, and a tick still travels as an `update` command through the
+  reducer. Each kind is parsed from an AI response and named in the outline
+  (a checklist reports its own progress there).
+
+  **Navigation.** The wheel now pans freely in both axes, Shift pans sideways,
+  and Ctrl/Cmd zooms about the pointer — bound as a native non-passive listener,
+  since React's `onWheel` is passive and the page scrolled away underneath the
+  gesture. The keyboard gained the whole viewport: arrows pan when nothing is
+  selected (Ctrl/Cmd forces it regardless), `+`/`-` zoom, `0` resets, `1` zooms
+  to fit, PageUp/PageDown jump. All of it works under `readOnly`, and zoom is
+  announced as a percentage.
+
+  **Look.** The painted grid is removed and the `showGrid` prop with it
+  (**breaking**, though `grid` — snap spacing — is unrelated and unchanged). The
+  surface is now the recessed neutral with block faces on the lighter surface, so
+  blocks sit on the workspace instead of dissolving into it.
+
+  **Fix:** a press on a control inside a block no longer starts a drag, and
+  pointer capture is deferred until a drag actually begins. A captured pointer
+  never delivers its click, which meant controls inside a block silently stopped
+  responding.
+
+- fb25b60: Add `Canvas` — an infinite, pannable, zoomable block workspace — with `StickyNote`, `CanvasShape`, `CanvasEmbed`, `CanvasFrame`, `CanvasBlock`, `CanvasConnector`, `CanvasOutline`, plus `useCanvasViewport`, `applyCanvasCommands` and the `canvasGeometry` helpers.
+
+  This reopens a documented exclusion. `docs/COMPONENT_LIST.md` listed Canvas/Workspace as out of scope because it needed "a full canvas engine" — true of a `<canvas>` implementation, and not of this one. Blocks are absolutely-positioned **real DOM elements** inside a single transformed world div, so there's no engine: every existing component can be a block, `--ds-*` tokens and all three themes apply for free, and blocks stay focusable and present in the accessibility tree. A raster surface would have cost all four. **Freehand ink stays excluded** and is the one item the original reasoning got right — thousands of points per stroke is genuinely a raster problem.
+
+  **Accessibility is the load-bearing design decision.** A canvas conveys meaning through position, which is exactly what a screen reader cannot perceive. So the spatial rendering is `aria-hidden` and `CanvasOutline` **is** the accessible content — the same split the chart track makes between an `aria-hidden` SVG and its table twin. The outline lists blocks in reading order (top-to-bottom, then left-to-right, with a row tolerance so two blocks side by side aren't read as one above the other) and states every connection as text. It is not a convenience view; without it the canvas has no accessible content at all.
+
+  Keyboard reaches everything the pointer does: arrows nudge, Shift+arrows step further, **Alt+arrows resize** — so the eight drag handles need no keyboard equivalent and add no tab stops — Enter edits a note, Delete removes, Escape deselects, each announced through a live region.
+
+  Every mutation — drag, resize, keyboard, and the AI commands coming in later phases — becomes a `CanvasCommand` through one pure reducer, so no two input paths can disagree about clamping or cascade rules. It validates sequentially and **drops-and-reports** rather than throwing: a `create` followed by a `connect` naming the block it just made both succeed, while a hallucinated id is a reported rejection instead of a corrupted scene. Deleting a block takes its connectors with it; a resize below the minimum is _clamped_ rather than rejected, because a resize drag emits sub-minimum values continuously and rejecting each would stutter instead of stopping.
+
+  Connector routing works from the blocks' stored canvas rects, never from measured DOM — which is what makes the whole geometry layer unit-testable despite jsdom having no layout engine, exactly where the bugs live. A connector whose endpoint has gone renders nothing rather than throwing mid-render.
+
+  `CanvasEmbed` never uses `dangerouslySetInnerHTML`. Content renders in an iframe with `allow-scripts` but deliberately **without** `allow-same-origin` — granting both is equivalent to no sandbox at all, since the frame could then reach the parent document and strip its own sandbox attribute. There's a test asserting that pairing can't be reintroduced.
+
+  Note and shape `tone` is one of the five semantic roles rather than a free colour, and is decoration only — the block's own text carries its meaning. A wider whiteboard palette is blocked on the same Foundation gap as chart series colour, and inventing one here would break the same contract.
+
+  Known limits, stated rather than discovered later: DOM blocks degrade past roughly 500 on screen (viewport culling is supported by the coordinate model but not built), and this adds to an already-failing `pnpm size` budget.
+
+- fb25b60: Canvas phase 3: `aiCluster` affinity mapping.
+
+  `Canvas` gains `aiCluster`, which adds a "Group by theme" trigger: the notes
+  are read, grouped by meaning, and each group is framed with its members laid
+  out inside. Like `aiPrompt` it renders nothing without an `AIProvider` or a
+  `resolveClusters` of your own, and it always stages the result for review —
+  clustering rearranges work the user arranged themselves.
+
+  The model is asked only which blocks belong together, never where to put them.
+  Placement is the new pure `clusterCommands` (`src/utilities/canvasClusters.ts`),
+  which lays out a grid per frame clear of everything that isn't moving and never
+  resizes a block. Groups are validated like commands are: an unknown id, or a
+  block claimed by two groups, is dropped and reported.
+
+  Also exported: `normalizeCanvasClusters`, `parseCanvasClusterResolution`,
+  `buildCanvasClusterPrompt`, `clusterCandidates`/`isClusterCandidate`,
+  `DEFAULT_CLUSTER_LAYOUT`, and `useCanvasCommands`' new `cluster`/
+  `clusterAvailable`.
+
+- fb25b60: Make the canvas AI-native: `Canvas` gains `aiPrompt` and `aiRewrite`, backed by `CanvasPromptBar`, `CanvasChangePreview`, `useCanvasCommands`, `canvasSnapshot` and `parseCanvasResolution`.
+
+  The pipeline is deliberately the same shape the Kanban board already proved — resolve, validate, classify by blast radius, apply or stage — because the policy is the same policy. The vocabulary (`CanvasCommand`) and its validator belong to the library; the transport does not. `resolveCommands` is consumer-owned, and `AIClient` was again left alone rather than widened.
+
+  **One line moved versus the board.** A lone `create` applies immediately: adding a block is additive and trivially undone, and making "add a note" open a review panel would make the feature not worth using. Anything that _changes or removes_ existing content — including a lone `move` — is staged. Deletes always are.
+
+  Two canvas-specific details in the prompt payload. **Geometry is content here**, not decoration: "put it next to the login note" is only answerable from coordinates, so every block carries its rect. And the scene's occupied bounds ride along, because a model given no placement guidance will cheerfully create ten blocks at `0,0`. The snapshot serializes in reading order, so a truncated scene keeps the blocks a person would have mentioned first.
+
+  `CanvasChangePreview` describes commands against the scene **plus the blocks the batch creates**. Without that, "add two notes and connect them" read as `Connect n1 to n2` — naming by id in exactly the case a human most needs a real name, since those blocks don't exist yet.
+
+  **A phase-1 accessibility decision is corrected here.** The canvas previously made the whole world `aria-hidden`, treating `CanvasOutline` as its table twin. That was the wrong analogy: a chart's SVG is paths with no text, but canvas blocks hold real content _and real controls_. Once notes gained a "Rewrite with AI" trigger, that design put focusable buttons inside an `aria-hidden` subtree — a violation, not a trade-off, and one no earlier test caught because none enabled `aiRewrite` with a provider.
+
+  So blocks are now labelled groups in the accessibility tree, only the connector SVG (pure geometry, whose meaning the outline states as text) stays hidden, and `CanvasOutline` is documented as a navigation aid over the blocks rather than a substitute for them. A `frame` block defers its labelling to `CanvasFrame` so the same name isn't announced twice around nested groups. There's a regression test asserting the per-note trigger stays reachable.
+
+  `aiPrompt` renders nothing unless there's an `AIProvider` or a `resolveCommands`; `aiRewrite` needs a provider specifically, since it calls `complete` directly. With neither, markup is byte-identical to the non-AI canvas — asserted by a test and shown in a story. Undo reads `ToastContext` directly rather than `useToast`, which throws outside its provider.
+
+- fb25b60: Complete the chart chrome and fold `ChartSurface` into it.
+
+  Adds `ChartTooltip` and `ChartDataLabel`, and wires both into `BarChart` and `LineChart`. Hovering reads out the value under the pointer (`showTooltip`, on by default; `renderTooltip` replaces the body), and `showDataLabels` prints values next to their marks (off by default — labels don't self-avoid). The tooltip anchors in percentages of the plot box rather than pixels, so it tracks the scaling SVG without measuring anything. Hit areas span the whole category slot including the gutter, so a pointer between two bars still picks a side. `LineChart` draws a crosshair; `BarChart` deliberately doesn't, since a bar already spans baseline-to-value — it outlines the hovered bar instead.
+
+  `ChartDataLabel` only sits outside its mark. In-bar labels need the `-on` contrast roles the Foundation hasn't shipped, so that placement is absent rather than approximated.
+
+  **Breaking — `ChartSurface`** is now a thin preset over `BarChart`/`LineChart` instead of a parallel implementation with its own scale math and its own copy of the accessible-table pattern:
+
+  - Its root element is a `<figure>`, not a `<div>`; `ref` is now `HTMLElement` and the passthrough props are figure props.
+  - The table twin now uses row headers and is labelled by the caption, so a category cell is a `rowheader` rather than a `cell`.
+  - It gains a value axis, gridlines, nice-rounded ticks, a zero-based baseline and the hover readout, and accepts the charts' own options.
+  - `ChartDataPoint` is now a deprecated alias of `ChartDatum`.
+
+  Also adds `slotWidth` to `BandScale` — the full slot including its gutter, which is the width a pointer hit area needs.
+
+- fb25b60: Rework the Kanban board's drag interaction, add per-card actions, and refine the visual design.
+
+  **Drag now shows where the card will land.** Previously the card ghosted in place and only the target column's border changed, which told you _which_ column you were over but never _where_ in it — the difference between dropping a card and guessing. The dragged card now tracks the cursor, and a line marks the exact insertion point.
+
+  Two details that make this correct rather than merely animated. The dragged card keeps its DOM position and moves by `transform`, so its original slot stays open as a placeholder instead of the card jumping to a new position the instant the drag begins. And it is **excluded from hit-testing**: once it follows the pointer its measured rect is wherever the cursor is, not where it sits in the list. Excluding it also happens to produce exactly the index the reducer wants, since `move` means "position once the card has left its old slot" — so the indicator appears where the card actually lands even when it moves downward within its own column, which is the case an off-by-one would break.
+
+  **Cards now carry an overflow menu** (`cardMenu`, on by default) listing every other column plus `Delete`. This is the only _discoverable_ pointer affordance on the board: dragging advertises nothing, and on touch it's behind a long press. Every item runs through the same reducer and `onCommand` as a drag, and the board is controlled, so a consumer sees and can refuse each change. `hideCardDelete` drops the destructive item, `cardMenu={false}` removes the menu, and `cardActions` adds your own controls.
+
+  Two interaction guards come with it: a press on an action doesn't start a drag, and the board no longer intercepts keystrokes aimed at a control inside a card — without that, Space on the menu button would lift the card instead of opening the menu.
+
+  Visual refinement throughout — card padding and hover elevation, a pill for the column count, a dashed empty state, a warning-toned WIP overflow — entirely from `--ds-*` tokens. The dragged card now reads through elevation and border rather than the flat `opacity: 0.6` it used before, which removes this component's only dependence on the unmapped opacity scale (`docs/TOKEN_AUDIT.md` B2). Exactly one raw value survives in the Kanban CSS, commented: the column's `min-width`, component-intrinsic geometry with no matching token since `variables.css` maps no sizing scale. The drag threshold is likewise a bare number in TS — it's a property of human hands, not of the design language.
+
+  `KanbanCard` gains an `actions` slot, positioned outside the flow so a custom `renderCard` face keeps its actions without laying them out itself.
+
+- fb25b60: Add the Kanban board — `KanbanBoard`, `KanbanColumn` and `KanbanCard`, plus the pure `applyKanbanCommands` reducer behind them.
+
+  This is the first phase of an AI-native board: the board itself, with **no AI at all**. That ordering is deliberate rather than incidental. Every AI affordance in this library is inert whenever no `AIProvider` is mounted, so a prompt bar can never be the accessibility story for a board — the board has to be complete on its own first, and this phase is what makes that true by construction.
+
+  The consumer owns the data (`KanbanBoardData`: `columns` plus a normalized `cards` record) and the board emits `KanbanCommand`s rather than mutating anything, the same "component stays dumb, consumer owns state" split as `DataGrid`/`FileUpload`. Card order lives on the column's `cardIds`, which makes a move a list splice.
+
+  Both move paths — pointer drag and keyboard — go through the same pure reducer, so they can't drift apart on index semantics. Keyboard moves are first-class: Space/Enter picks a card up, arrows move it, Space/Enter drops it, Escape puts it back exactly where it started, and every step is announced through a live region. Moving a card across columns re-parents its element and would otherwise drop focus to `<body>`, stranding the user after one arrow press, so the lifted card is re-focused after each applied move.
+
+  `applyKanbanCommands` validates as it goes, against the board as of that point in the sequence — a `create` followed by a `move` of the card it just created both succeed, while a command naming a card that never existed is dropped and reported rather than throwing or half-mutating the board. That behaviour exists for the AI layer that comes next: a single hallucinated id must not be able to corrupt a board.
+
+  Two smaller decisions worth knowing. `wipLimit` is advisory — an over-limit column says so in words but the drop is never blocked, because refusing it would strand a card mid-move with no way to finish. And a card's `status` renders its label as visible text through `Badge` rather than as a bare coloured dot, so status colour is never the sole carrier of meaning; `statusLabels` overrides the wording.
+
+  Drag physics remain unverifiable in jsdom (no layout engine, no pointer capture), so the drag path is covered by `pnpm test:storybook` while the reducer and the whole keyboard contract are unit-tested.
+
+  Exports `KanbanBoardData`, `KanbanColumnData`, `KanbanCommand`, `KanbanCardData`, `KanbanCardStatus`, `KanbanAssignee`, `KanbanApplyResult`, `KanbanRejectedCommand`, `applyKanbanCommands`, `validateKanbanCommands`, `findColumnOfCard` and `isOverWipLimit`.
+
+- fb25b60: Canvas phase 4: `aiDiagram`, plus two frame rendering fixes.
+
+  `Canvas` gains `aiDiagram`, a bar you describe a flow into — it's drawn as
+  shapes and connectors. The model returns a graph of nodes and edges with no
+  coordinates; the new `src/utilities/canvasDiagram.ts` owns everything spatial:
+  `breakDiagramCycles` (so a retry loop can't invert the reading order),
+  `rankDiagramNodes`, `layoutCanvasDiagram`, `diagramCommands`. A node's `role`
+  (start, decision, process…) maps onto the shape vocabulary in the library.
+
+  Unlike clustering, a diagram is applied immediately with an undo toast: it adds
+  content and touches nothing that already existed. That claim is checked by the
+  new `isPurelyAdditive` rather than assumed, and a batch failing it falls back to
+  the review panel.
+
+  Two rendering fixes to `Canvas`/`CanvasFrame`, both visible on any framed scene:
+
+  - Connectors now paint **above frames** and below other blocks. The connector
+    layer previously rendered under every block, so a frame — a full-size
+    backdrop — hid every edge inside it.
+  - A frame is now an **unfilled boundary** (dashed edge plus title). Its
+    `surface-secondary` fill was the same colour a clipped `CanvasShape` uses, so
+    a diamond placed on a frame was invisible.
+
+  Also exported: `normalizeCanvasDiagram`, `parseCanvasDiagramResolution`,
+  `buildCanvasDiagramPrompt`, `diagramNodeShape`, `DEFAULT_DIAGRAM_LAYOUT`, and
+  `useCanvasCommands`' new `diagram`/`diagramAvailable`.
