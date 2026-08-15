@@ -25,6 +25,11 @@
   border-radius: inherit;
 }
 
+.optionsLayer {
+  position: absolute;
+  inset: 0;
+}
+
 .waveformBar {
   flex: 1;
   min-width: 1px;
@@ -126,4 +131,31 @@
   transform: translateX(-50%);
   background: var(--ds-color-text-primary);
   pointer-events: none;
+}
+
+.trimDim {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--ds-color-surface-inverse);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.trimHandle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  box-sizing: border-box;
+  width: 10px;
+  transform: translateX(-50%);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-color-brand-primary);
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.trimHandle:focus-visible {
+  outline: 2px solid var(--ds-color-border-focus);
+  outline-offset: 2px;
 }

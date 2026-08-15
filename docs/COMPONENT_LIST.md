@@ -184,7 +184,10 @@ review UI itself). Not `Timeline` (an event log — dot + title per item, not
 a duration-proportional axis) and not a `RangeSlider` composition (N
 independently-labelled, non-adjustable regions with per-region review
 state, not one draggable min/max pair). Drag-to-resize a segment's
-boundaries was explicitly deferred to a possible v2.
+boundaries was explicitly deferred to a possible v2. A follow-up request
+added `trimmable` — one continuous, draggable range independent of
+`segments`, reusing `Audio`'s own cross-clamped trim-handle shape, reporting-
+only since `SegmentTrack` owns no media element to constrain playback on.
 
 ---
 

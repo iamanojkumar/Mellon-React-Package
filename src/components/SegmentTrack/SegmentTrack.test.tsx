@@ -13,6 +13,12 @@ const segments: SegmentTrackSegment[] = [
   { id: 'c5', start: 110.1, end: 113.0, state: 'rejected' },
 ];
 
+// The outer track div (holding the pointer-drag/seek handlers) is the
+// listbox's parent — the listbox itself only wraps the option buttons.
+function getTrack(container: HTMLElement): HTMLElement {
+  return container.querySelector('[role="listbox"]')!.parentElement as HTMLElement;
+}
+
 function mockTrackRect(track: HTMLElement) {
   track.getBoundingClientRect = () =>
     ({
@@ -75,7 +81,7 @@ describe('SegmentTrack', () => {
         onSeek={onSeek}
       />,
     );
-    const track = container.querySelector('[role="listbox"]') as HTMLElement;
+    const track = getTrack(container);
     mockTrackRect(track);
     const option = screen.getByRole('option', { name: /Selected segment/ });
     fireEvent(option, new MouseEvent('pointerdown', { bubbles: true, clientX: 60, clientY: 10 }));
@@ -89,7 +95,7 @@ describe('SegmentTrack', () => {
     const { container } = render(
       <SegmentTrack duration={200} segments={segments} onSeek={onSeek} />,
     );
-    const track = container.querySelector('[role="listbox"]') as HTMLElement;
+    const track = getTrack(container);
     mockTrackRect(track);
     fireEvent(track, new MouseEvent('pointerdown', { bubbles: true, clientX: 100, clientY: 10 }));
     expect(onSeek).toHaveBeenCalledWith(100);
@@ -142,5 +148,95 @@ describe('SegmentTrack', () => {
   it('renders no segments when duration is not yet known', () => {
     render(<SegmentTrack duration={0} segments={segments} />);
     expect(screen.queryAllByRole('option')).toHaveLength(0);
+  });
+
+  it('does not render trim handles when trimmable is false', () => {
+    render(<SegmentTrack duration={200} segments={segments} />);
+    expect(screen.queryByRole('slider', { name: 'Trim start' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('slider', { name: 'Trim end' })).not.toBeInTheDocument();
+  });
+
+  it('renders trim handles spanning the full duration by default when trimmable', () => {
+    render(<SegmentTrack duration={200} segments={segments} trimmable />);
+    expect(screen.getByRole('slider', { name: 'Trim start' })).toHaveAttribute(
+      'aria-valuenow',
+      '0',
+    );
+    expect(screen.getByRole('slider', { name: 'Trim end' })).toHaveAttribute(
+      'aria-valuenow',
+      '200',
+    );
+  });
+
+  it('nudges trim end left/right with arrow keys', () => {
+    const onTrimChange = vi.fn();
+    render(
+      <SegmentTrack
+        duration={200}
+        segments={segments}
+        trimmable
+        trimStep={1}
+        onTrimChange={onTrimChange}
+      />,
+    );
+    const endHandle = screen.getByRole('slider', { name: 'Trim end' });
+    act(() => endHandle.focus());
+    fireEvent.keyDown(endHandle, { key: 'ArrowLeft' });
+    expect(onTrimChange).toHaveBeenLastCalledWith({ start: 0, end: 199 });
+  });
+
+  it('cross-clamps trim start against trim end via keyboard', () => {
+    const onTrimChange = vi.fn();
+    render(
+      <SegmentTrack
+        duration={200}
+        segments={segments}
+        trimmable
+        defaultTrimRange={{ start: 0, end: 50 }}
+        onTrimChange={onTrimChange}
+      />,
+    );
+    const startHandle = screen.getByRole('slider', { name: 'Trim start' });
+    act(() => startHandle.focus());
+    fireEvent.keyDown(startHandle, { key: 'End' });
+    // Home/End on "start" clamp to the current "end" (50), not past it.
+    expect(onTrimChange).toHaveBeenLastCalledWith({ start: 50, end: 50 });
+  });
+
+  it('does not move segment focus when arrowing a trim handle', () => {
+    const onSegmentClick = vi.fn();
+    render(
+      <SegmentTrack
+        duration={200}
+        segments={segments}
+        trimmable
+        selectedId="c1"
+        onSegmentClick={onSegmentClick}
+      />,
+    );
+    const endHandle = screen.getByRole('slider', { name: 'Trim end' });
+    act(() => endHandle.focus());
+    fireEvent.keyDown(endHandle, { key: 'ArrowLeft' });
+    expect(onSegmentClick).not.toHaveBeenCalled();
+  });
+
+  it('does not fire onSeek when a trim handle is pressed', () => {
+    const onSeek = vi.fn();
+    const { container } = render(
+      <SegmentTrack duration={200} segments={segments} trimmable onSeek={onSeek} />,
+    );
+    const track = getTrack(container);
+    mockTrackRect(track);
+    const startHandle = screen.getByRole('slider', { name: 'Trim start' });
+    fireEvent(
+      startHandle,
+      new MouseEvent('pointerdown', { bubbles: true, clientX: 0, clientY: 10 }),
+    );
+    expect(onSeek).not.toHaveBeenCalled();
+  });
+
+  it('has no accessibility violations when trimmable', async () => {
+    const { container } = render(<SegmentTrack duration={200} segments={segments} trimmable />);
+    await expectNoA11yViolations(container);
   });
 });

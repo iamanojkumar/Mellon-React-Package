@@ -255,6 +255,20 @@ composition (one draggable min/max pair, not N independent regions with
 per-region review state). Drag-to-resize a segment's boundaries was
 explicitly scoped out by the request as a possible v2, not built here.
 
+A follow-up request added `trimmable` — one continuous, draggable range
+independent of `segments`, reusing `Audio`'s own cross-clamped "Trim
+start"/"Trim end" handle shape and keyboard nudging verbatim. It is
+reporting-only (`onTrimChange`): unlike `Audio`, this component owns no
+media element, so it cannot itself constrain playback the way `Audio`'s
+`trimmable` + `playTrimmedOnly` pair does — "playback constrained to the
+selection" is the caller's job, demonstrated in the `Trimmable` story by
+pairing the reported `trimRange` with a plain `<audio>` element's
+`onTimeUpdate`. The one structural change this required: `role="listbox"`
+now wraps only the segment `option` buttons in their own layer, not the
+whole track — the trim handles are `role="slider"`, and a `listbox`'s
+ARIA-required-children rule rejects any non-`option` sibling, which axe
+caught immediately once both affordances rendered together.
+
 Phase 2 added the shared value/field plumbing later Form components build
 on: **`useControllableState`** (`src/hooks`) is the standard controlled/
 uncontrolled value pattern used throughout the library, and

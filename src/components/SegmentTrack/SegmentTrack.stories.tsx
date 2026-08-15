@@ -1,10 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { SegmentTrack } from './SegmentTrack';
-import type { SegmentTrackSegment } from './SegmentTrack';
+import type { SegmentTrackSegment, SegmentTrackTrimRange } from './SegmentTrack';
 import { Stack } from '../Stack/Stack';
 import { Inline } from '../Inline/Inline';
 import { Text } from '../Text/Text';
+
+const AUDIO_SRC = 'https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3';
 
 const DURATION = 180;
 
@@ -56,6 +58,87 @@ export const WithWaveform: Story = {
       <SegmentTrack {...args} />
     </div>
   ),
+};
+
+/**
+ * `trimmable` adds one continuous, draggable selection independent of
+ * `segments` — reporting-only, the same boundary `Audio`'s own `trimmable`
+ * draws around re-encoding. This component has no media element of its
+ * own, so "playback constrained to the selection" (mirroring `Audio`'s
+ * `trimmable` + `playTrimmedOnly` pair) is reimplemented here on a plain
+ * `<audio>` element from the reported `trimRange`: play always starts from
+ * `trimRange.start`, and `onTimeUpdate` pauses playback once it passes
+ * `trimRange.end`.
+ */
+export const Trimmable: Story = {
+  render: () => {
+    function TrimmedAudioDemo() {
+      const audioRef = useRef<HTMLAudioElement>(null);
+      const [duration, setDuration] = useState(0);
+      const [currentTime, setCurrentTime] = useState(0);
+      const [trimRange, setTrimRange] = useState<SegmentTrackTrimRange>({ start: 0, end: 0 });
+
+      function handleLoadedMetadata() {
+        const audio = audioRef.current;
+        if (!audio || !Number.isFinite(audio.duration)) return;
+        setDuration(audio.duration);
+        setTrimRange({ start: 0, end: audio.duration });
+      }
+
+      function handleTimeUpdate() {
+        const audio = audioRef.current;
+        if (!audio) return;
+        if (trimRange.end > trimRange.start && audio.currentTime >= trimRange.end - 0.02) {
+          audio.pause();
+          audio.currentTime = trimRange.end;
+        }
+        setCurrentTime(audio.currentTime);
+      }
+
+      function playTrimmedSelection() {
+        const audio = audioRef.current;
+        if (!audio) return;
+        if (audio.currentTime < trimRange.start || audio.currentTime >= trimRange.end) {
+          audio.currentTime = trimRange.start;
+        }
+        void audio.play();
+      }
+
+      return (
+        <Stack gap="lg" style={{ maxWidth: 640 }}>
+          {/* eslint-disable-next-line jsx-a11y/media-has-caption -- demo clip has no caption track to attach */}
+          <audio
+            ref={audioRef}
+            src={AUDIO_SRC}
+            onLoadedMetadata={handleLoadedMetadata}
+            onTimeUpdate={handleTimeUpdate}
+          />
+          <SegmentTrack
+            duration={duration}
+            currentTime={currentTime}
+            segments={[]}
+            trimmable
+            trimRange={trimRange}
+            onTrimChange={setTrimRange}
+            onSeek={(time) => {
+              const audio = audioRef.current;
+              if (audio) audio.currentTime = time;
+            }}
+            aria-label="Trim selection"
+          />
+          <Inline gap="sm">
+            <button type="button" onClick={playTrimmedSelection}>
+              Play trimmed selection
+            </button>
+          </Inline>
+          <Text>
+            Selection: {trimRange.start.toFixed(2)}s–{trimRange.end.toFixed(2)}s
+          </Text>
+        </Stack>
+      );
+    }
+    return <TrimmedAudioDemo />;
+  },
 };
 
 /**
