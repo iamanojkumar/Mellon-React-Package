@@ -34,17 +34,24 @@ src/
 
 ## Styling
 
-Every value comes from a `--ds-*` CSS variable defined in
-[`src/styles/variables.css`](./src/styles/variables.css), with a fallback
-so components render correctly today:
+Every value comes from a `--ds-*` CSS variable, mapped in
+[`src/styles/variables.css`](./src/styles/variables.css) from
+`@mellon-design/tokens-web`. Component CSS never uses a fallback (e.g.
+`var(--ds-space-md, 1rem)`) — a token is always defined unconditionally
+by the second import below.
 
-```css
-padding: var(--ds-space-md, 1rem);
+Consumers need **two** CSS imports, not one:
+
+```ts
+import '@mellon-design/react/styles.css'; // component CSS — consumes --ds-*
+import '@mellon-design/react/tokens.css'; // defines every --ds-* variable
 ```
 
-`@mellon-design/tokens-web` is now the real published package — if its
-tokens ever change, only `src/styles/variables.css` changes — component
-logic and markup do not.
+`tokens.css` is optional if you already wire up your own `--ds-*`
+definitions from `@mellon-design/tokens-web` directly — `styles.css` has
+no dependency on it beyond the variable names. Light is the default;
+set `data-theme="dark"` or `data-theme="high-contrast"` on any ancestor
+element to switch.
 
 ## Build order
 

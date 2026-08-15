@@ -27,11 +27,12 @@
       "import": "./dist/index.js"
     },
     "./styles.css": "./dist/style.css",
+    "./tokens.css": "./dist/tokens.css",
     "./package.json": "./package.json"
   },
   "scripts": {
     "dev": "storybook dev -p 6006",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && node scripts/build-tokens-css.mjs",
     "build:storybook": "storybook build",
     "test:storybook": "concurrently -k -s first -n \"SB,TEST\" \"http-server storybook-static --port 6006 --silent\" \"wait-on tcp:6006 && test-storybook --url http://localhost:6006\"",
     "generate:component": "node scripts/generate-component.mjs",
