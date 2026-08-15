@@ -146,3 +146,4 @@ export * from './CanvasPromptBar';
 export * from './CanvasChangePreview';
 export * from './Video';
 export * from './Audio';
+export * from './SegmentTrack';

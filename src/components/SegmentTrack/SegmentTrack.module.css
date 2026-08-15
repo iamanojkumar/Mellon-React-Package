@@ -1,0 +1,129 @@
+.wrapper {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.track {
+  position: relative;
+  box-sizing: border-box;
+  height: 56px;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-color-surface-secondary);
+  cursor: pointer;
+  touch-action: none;
+}
+
+.waveform {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  padding: 0 var(--ds-space-xs);
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.waveformBar {
+  flex: 1;
+  min-width: 1px;
+  border-radius: var(--ds-radius-full);
+  background: var(--ds-color-border-primary);
+  opacity: 0.5;
+}
+
+.segment {
+  position: absolute;
+  top: var(--ds-space-xs);
+  bottom: var(--ds-space-xs);
+  box-sizing: border-box;
+  min-width: 3px;
+  margin: 0;
+  padding: 0;
+  border: var(--ds-border-width-thin) solid var(--ds-color-border-primary);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-color-border-primary);
+  opacity: 0.4;
+  cursor: pointer;
+}
+
+.segment[data-state='excluded'] {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--ds-color-border-primary) 0,
+    var(--ds-color-border-primary) 2px,
+    transparent 2px,
+    transparent 5px
+  );
+  opacity: 0.5;
+}
+
+.segment[data-state='selected'] {
+  border-color: var(--ds-color-brand-primary);
+  background: var(--ds-color-brand-primary);
+  opacity: 0.85;
+}
+
+.segment[data-state='accepted'] {
+  border-color: var(--ds-color-status-success);
+  background: var(--ds-color-status-success);
+  opacity: 0.85;
+}
+
+.segment[data-state='rejected'] {
+  border-color: var(--ds-color-status-danger);
+  background: var(--ds-color-status-danger);
+  opacity: 0.5;
+}
+
+.segment:focus-visible {
+  outline: 2px solid var(--ds-color-border-focus);
+  outline-offset: 2px;
+}
+
+/*
+  Sits on the track's own neutral surface, never on top of a filled
+  segment's status-color fill — the foundation ships no "on-success"/
+  "on-danger" contrast role yet, the same gap ChartDataLabel works around
+  by only ever placing a label outside its mark.
+*/
+.segmentIcon {
+  position: absolute;
+  top: -6px;
+  right: -5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--ds-radius-full);
+  background: var(--ds-color-surface-primary);
+  box-shadow: var(--ds-elevation-sm);
+  font-size: 10px;
+  pointer-events: none;
+}
+
+.segmentIcon svg {
+  width: 10px;
+  height: 10px;
+}
+
+.segmentIcon[data-variant='success'] {
+  color: var(--ds-color-status-success);
+}
+
+.segmentIcon[data-variant='danger'] {
+  color: var(--ds-color-status-danger);
+}
+
+.playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--ds-border-width-medium);
+  transform: translateX(-50%);
+  background: var(--ds-color-text-primary);
+  pointer-events: none;
+}

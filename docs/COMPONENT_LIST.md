@@ -177,6 +177,15 @@ own `.tsx`, `.module.css`, `.test.tsx`, `.stories.tsx`, and `index.ts`.
 (`computePeaks`/`decodeAudioPeaks`) plus draggable trim handles; it
 reports `{ start, end }` only and never re-encodes audio itself.
 
+**Media: `SegmentTrack`** — shipped (Phase 30, see `docs/SPEC.md`), added
+from a real consumer request (a same-speaker-detection review queue: a
+duration-scaled track of the engine's candidate segments doubling as the
+review UI itself). Not `Timeline` (an event log — dot + title per item, not
+a duration-proportional axis) and not a `RangeSlider` composition (N
+independently-labelled, non-adjustable regions with per-region review
+state, not one draggable min/max pair). Drag-to-resize a segment's
+boundaries was explicitly deferred to a possible v2.
+
 ---
 
 ## Cross-check against the AI-chat-interface taxonomy

@@ -155,6 +155,7 @@ Build in **dependency order, not alphabetical order**:
 27. **Conversation Shell & Memory** — `ConversationHeader`, `MemoryListItem`, `MemoryEditor` ✅ shipped
 28. **Kanban Board** — phase A: `KanbanBoard`, `KanbanColumn`, `KanbanCard`, `applyKanbanCommands` ✅ shipped. Phase B: `KanbanPromptBar`, `KanbanChangePreview`, `useKanbanCommands`, `kanbanSnapshot`, `parseKanbanResolution` ✅ shipped
 29. **Canvas (phase 1 — no AI)** — `Canvas`, `CanvasBlock`, `CanvasConnector`, `CanvasOutline`, `StickyNote`, `CanvasShape`, `CanvasEmbed`, `CanvasFrame`, `useCanvasViewport`, `applyCanvasCommands`, `canvasGeometry` ✅ shipped. Phase 2 (prompt pipeline + per-note `aiRewrite`): `CanvasPromptBar`, `CanvasChangePreview`, `useCanvasCommands`, `canvasSnapshot`, `parseCanvasResolution` ✅ shipped. Phase 3 (`aiCluster` affinity mapping): `canvasClusters.ts` (`clusterCommands`, `normalizeCanvasClusters`, `parseCanvasClusterResolution`, `buildCanvasClusterPrompt`) + `Canvas`'s `aiCluster`/`resolveClusters`, sharing `useCanvasCommands`' single in-flight slot and review panel ✅ shipped. Phase 4 (`aiDiagram`): `canvasDiagram.ts` (`breakDiagramCycles`, `rankDiagramNodes`, `layoutCanvasDiagram`, `diagramCommands`, `normalizeCanvasDiagram`, `parseCanvasDiagramResolution`) + `Canvas`'s `aiDiagram`/`resolveDiagram`, applied with an undo rather than staged because it is purely additive ✅ shipped. Phase 5 (the rest of the block catalogue): `code`, `table`, `link`, `checklist` and `chart` block kinds, `CanvasChecklist`, plus the viewport pass — free wheel/trackpad panning, Shift for sideways, Ctrl/Cmd to zoom, and a full keyboard set (arrows pan, `+`/`-`/`0`/`1`, PageUp/PageDown) ✅ shipped
+30. **SegmentTrack** — `SegmentTrack`, a horizontal duration-scaled track of disjoint labelled regions doubling as a review queue, built from a real consumer component request (see `docs/COMPONENT_LIST.md`) ✅ shipped
 
 Phase 28 is the library's first AI affordance that **changes structured
 state** rather than producing text. It was built in two halves on purpose.
@@ -228,6 +229,31 @@ clipped `CanvasShape` uses — so a diamond on a frame was invisible (a frame is
 now an unfilled boundary: dashed edge plus title).
 
 **2 phases remain, both backlog: 18 and 19** (see "Backlog: Phase 18 and 19" below). Phases 20-22 (AI integration) are an unrelated feature track that jumped ahead of 18-19 in build order — numbered to continue the existing sequence rather than interleave, with no dependency on Mobile Gestures/Remaining Utilities either direction. Phases 23-27 (AI Chat Components) are a third, later track building on Phase 20's infra (`useAIAction`'s status vocabulary, `AISuggestionPopover`'s composition patterns) but not on 18/19/21/22 — the entire track is now shipped, see "Shipped Phase Notes" below for the per-phase write-ups.
+
+Phase 30 is a single-component addition prompted by a real consuming app's
+component request (`docs/COMPONENT_LIST.md`'s entry records the request
+verbatim), not part of the dependency-ordered roadmap above — same
+"jumped ahead, numbered to continue the sequence" precedent as 20-22 and
+23-27, with no dependency on 18/19 either direction. `SegmentTrack` is a
+fully-controlled duration-scaled track: N independently-labelled, disjoint
+regions (`state: candidate | excluded | selected | accepted | rejected`)
+positioned by `start/duration`, reusing `Slider`'s `clamp`, `Video`'s
+`formatTime`, and the click-to-seek-via-`usePointerDrag` shape `Audio`'s
+waveform track already established — right down to isolating a segment's
+own `onPointerDown` so pressing a region doesn't also fire the track's
+seek handler for the same gesture (`Audio`'s `isolate()` precedent).
+Arrow-key navigation moves left-to-right by `start` via `useRovingFocus`,
+the same one-dimensional fit `ButtonGroup`/`Select` already use. The two
+status states (`accepted`/`rejected`) get a small `AlertVariantIcon`
+badge — deliberately floated _above_ the segment on the track's own
+neutral surface rather than inside the filled mark, the same "-on"
+contrast-role gap `ChartDataLabel` already works around by keeping labels
+outside their marks; the Foundation ships no guaranteed-readable
+icon-on-status-fill color yet. Considered and rejected: `Timeline` (an
+event log, not a duration-proportional axis) and a `RangeSlider`
+composition (one draggable min/max pair, not N independent regions with
+per-region review state). Drag-to-resize a segment's boundaries was
+explicitly scoped out by the request as a possible v2, not built here.
 
 Phase 2 added the shared value/field plumbing later Form components build
 on: **`useControllableState`** (`src/hooks`) is the standard controlled/
@@ -675,7 +701,7 @@ Overlays: Modal (covers via `Dialog`'s `Header`/`Body`/`Footer` parts +
 Sheet via a `placement` prop — see Build Order), Popover, Tooltip, Hover
 Card.
 
-Media: Image, Figure, Carousel, Video, Audio.
+Media: Image, Figure, Carousel, Video, Audio, SegmentTrack.
 
 Utilities: Portal, Focus Trap, Scroll Area, Infinite Scroll, Split Pane,
 Resizable, Masonry.
