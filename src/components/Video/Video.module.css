@@ -1,0 +1,129 @@
+.player {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-color-surface-inverse);
+}
+
+.player[data-fullscreen] {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--ds-radius-none);
+}
+
+.video {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: auto;
+  cursor: pointer;
+}
+
+.player[data-fullscreen] .video {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.bigPlayButton {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: none;
+  border-radius: var(--ds-radius-full);
+  background: var(--ds-color-surface-primary);
+  color: var(--ds-color-text-primary);
+  font-size: var(--ds-font-size-xl);
+  cursor: pointer;
+  box-shadow: var(--ds-elevation-md);
+}
+
+.bigPlayButton:hover {
+  background: var(--ds-color-surface-secondary);
+}
+
+.bigPlayButton:focus-visible {
+  outline: 2px solid var(--ds-color-border-focus);
+  outline-offset: 2px;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-sm);
+  box-sizing: border-box;
+  padding: var(--ds-space-sm) var(--ds-space-md);
+  background: var(--ds-color-surface-inverse);
+  color: var(--ds-color-text-inverse);
+}
+
+.controlButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: var(--ds-radius-sm);
+  background: transparent;
+  color: inherit;
+  font-size: var(--ds-font-size-lg);
+  cursor: pointer;
+}
+
+.controlButton:hover {
+  background: var(--ds-color-surface-overlay);
+}
+
+.controlButton:focus-visible {
+  outline: 2px solid var(--ds-color-border-focus);
+  outline-offset: 2px;
+}
+
+.controlButton[aria-pressed='true'] {
+  color: var(--ds-color-brand-primary);
+}
+
+.time {
+  flex-shrink: 0;
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.seekSlider {
+  flex: 1;
+}
+
+.volumeSlider {
+  flex: 0 0 90px;
+}
+
+/*
+  Slider.module.css's `.wrapper[data-orientation='horizontal']` sets
+  `min-width: 160px` at class+attribute specificity — a plain
+  `.volumeSlider` single-class rule can't reliably outrank it (import-order
+  dependent, see the cross-component CSS reuse convention). Doubling the
+  class and keeping the attribute selector, the same fix IconButton uses
+  over Button.module.css, wins regardless of load order.
+*/
+.volumeSlider.volumeSlider[data-orientation='horizontal'] {
+  min-width: 0;
+}

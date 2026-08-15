@@ -167,11 +167,15 @@ own `.tsx`, `.module.css`, `.test.tsx`, `.stories.tsx`, and `index.ts`.
 
 **Shipped so far:** 91 components (Phases 1-14, per `docs/SPEC.md`).
 
-**Not yet built** (Phases 18-19 roadmap, see `docs/SPEC.md`):
+**Not yet built** (Phase 18 roadmap, see `docs/SPEC.md`):
 
 - Mobile: Pull To Refresh, Swipe Actions (Action Sheet is covered by `Drawer`)
-- Media: Video, Audio
 - Utilities: Scroll Area, Infinite Scroll, Split Pane, Resizable, Masonry
+
+**Media: `Video`, `Audio`** — shipped (Phase 19, see `docs/SPEC.md`).
+`Audio` covers the trim-editing use case with real waveform rendering
+(`computePeaks`/`decodeAudioPeaks`) plus draggable trim handles; it
+reports `{ start, end }` only and never re-encodes audio itself.
 
 ---
 

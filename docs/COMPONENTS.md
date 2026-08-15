@@ -179,11 +179,13 @@ All accept `color` (`primary` `secondary` `inverse` `disabled` `brand`
 
 ## Media
 
-| Component  | What it does                      | Key props                                                                                                                                                 |
-| ---------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Image`    | Image with fit/ratio handling.    | `alt` **required** (pass `alt=""` explicitly for decorative), `fit` (`cover` `contain` `fill`), `ratio` `rounded`, `aiDescribe`                           |
-| `Figure`   | `<figure>` + `<figcaption>`.      | `caption`                                                                                                                                                 |
-| `Carousel` | Slideshow; each child is a slide. | `index`/`onIndexChange`, `autoPlay` `autoPlayInterval` (ignored — starts paused — under `prefers-reduced-motion`), `loop` `showControls` `showIndicators` |
+| Component  | What it does                                                                            | Key props                                                                                                                                                                                                                                                          |
+| ---------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Image`    | Image with fit/ratio handling.                                                          | `alt` **required** (pass `alt=""` explicitly for decorative), `fit` (`cover` `contain` `fill`), `ratio` `rounded`, `aiDescribe`                                                                                                                                    |
+| `Figure`   | `<figure>` + `<figcaption>`.                                                            | `caption`                                                                                                                                                                                                                                                          |
+| `Carousel` | Slideshow; each child is a slide.                                                       | `index`/`onIndexChange`, `autoPlay` `autoPlayInterval` (ignored — starts paused — under `prefers-reduced-motion`), `loop` `showControls` `showIndicators`                                                                                                          |
+| `Video`    | `<video>` with custom themed controls (play/pause, seek, volume, captions, fullscreen). | `src` **required**, `poster`, `captions` (WebVTT tracks — shows a CC toggle when present), `autoPlay` (always starts muted), `loop` `defaultMuted` `defaultVolume`, `onPlay`/`onPause`/`onEnded`                                                                   |
+| `Audio`    | Audio clip player with a real rendered waveform.                                        | `src` **required**, `trimmable` (adds draggable "Trim start"/"Trim end" handles), `trimRange`/`defaultTrimRange`/`onTrimChange` (`{ start, end }` seconds — reporting only, no re-encoding), `playTrimmedOnly`, `trimStep`, `waveformBars`, `loop` `defaultVolume` |
 
 ## Charts
 

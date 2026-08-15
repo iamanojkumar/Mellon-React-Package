@@ -144,3 +144,5 @@ export * from './CanvasOutline';
 export * from './Canvas';
 export * from './CanvasPromptBar';
 export * from './CanvasChangePreview';
+export * from './Video';
+export * from './Audio';

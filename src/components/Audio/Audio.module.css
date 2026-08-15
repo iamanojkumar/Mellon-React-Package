@@ -1,0 +1,148 @@
+.player {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-sm);
+}
+
+.waveform {
+  position: relative;
+  box-sizing: border-box;
+  height: 64px;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-color-surface-secondary);
+  overflow: hidden;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.bars {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 0 var(--ds-space-xs);
+  pointer-events: none;
+}
+
+.bar {
+  flex: 1;
+  min-width: 1px;
+  border-radius: var(--ds-radius-full);
+  background: var(--ds-color-brand-primary);
+}
+
+.trimDim {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--ds-color-surface-inverse);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.seekThumb {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  transform: translateX(-50%);
+  background: var(--ds-color-text-primary);
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.seekThumb::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 10px;
+  height: 10px;
+  border-radius: var(--ds-radius-full);
+  background: var(--ds-color-text-primary);
+}
+
+.seekThumb:focus-visible {
+  outline: 2px solid var(--ds-color-border-focus);
+  outline-offset: 2px;
+}
+
+.trimHandle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  box-sizing: border-box;
+  width: 10px;
+  transform: translateX(-50%);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-color-brand-primary);
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.trimHandle:focus-visible {
+  outline: 2px solid var(--ds-color-border-focus);
+  outline-offset: 2px;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-sm);
+}
+
+.controlButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: var(--ds-radius-full);
+  background: var(--ds-color-surface-secondary);
+  color: var(--ds-color-text-primary);
+  font-size: var(--ds-font-size-lg);
+  cursor: pointer;
+}
+
+.controlButton:hover {
+  background: var(--ds-color-surface-primary);
+  box-shadow: var(--ds-elevation-sm);
+}
+
+.controlButton:focus-visible {
+  outline: 2px solid var(--ds-color-border-focus);
+  outline-offset: 2px;
+}
+
+.controlButton[aria-pressed='true'] {
+  color: var(--ds-color-brand-primary);
+}
+
+.time {
+  flex-shrink: 0;
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-xs);
+  color: var(--ds-color-text-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.volumeSlider {
+  flex: 0 0 90px;
+}
+
+/*
+  Same doubled-class + attribute fix as Video.module.css's `.volumeSlider`
+  override — see that file's comment for why a single class can't reliably
+  outrank Slider.module.css's `.wrapper[data-orientation='horizontal']`.
+*/
+.volumeSlider.volumeSlider[data-orientation='horizontal'] {
+  min-width: 0;
+}

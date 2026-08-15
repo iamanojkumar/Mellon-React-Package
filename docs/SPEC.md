@@ -144,7 +144,7 @@ Build in **dependency order, not alphabetical order**:
 16. **Navigation Shell** — `Navbar`, `Sidebar`, `Breadcrumb`, `Pagination`, `Navigation Rail`, `Bottom Navigation` ✅ shipped
 17. **Dedicated Deep-Dive Sessions** — `Data Grid`, `Tree View`, `Command Palette`, `Color Picker`, `File Upload`/`Dropzone`, `Carousel` ✅ shipped
 18. **Mobile Gestures** — Pull To Refresh, Swipe Actions 🔲 backlog
-19. **Remaining Utilities & Media** — Scroll Area, Split Pane, Resizable, Infinite Scroll, Masonry, Video, Audio 🔲 backlog
+19. **Remaining Utilities & Media** — `Video`, `Audio` ✅ shipped. Scroll Area, Split Pane, Resizable, Infinite Scroll, Masonry 🔲 still backlog (unrelated to Video/Audio — see Backlog notes below)
 20. **AI Core Infra** — `AIContext`/`AIProvider`/`useAI`, `useAIAction`, `AITriggerButton`, `AISuggestionPopover` ✅ shipped
 21. **Flagship AI Components** — `TextArea` (`aiRewrite`), `SearchField` (`aiSearch`), `Alert` (`aiExplain`), `DataGrid` (`aiTableQuery`/`aiRowExplain`), `CommandPalette` (`aiSearch`), `EmptyState` (story only) ✅ shipped
 22. **AI Enhancement Backlog** — remaining 95 components' AI opportunities (26 with a real opportunity, 69 with none — see `docs/COMPONENT_LIST.md`); all 26 shipped ✅ shipped
@@ -522,19 +522,59 @@ Re-confirmed present and unfixed across three phases' worth of
 verification runs (15, 16, 17) — worth a dedicated fix pass rather than
 continuing to re-note it.
 
-### Backlog: Phase 18 and 19 (not started)
+### Phase 19 (partial): Video, Audio — shipped
 
-Phases 1-17 and 20-22 above are ✅ shipped. Phases 18-19 are 🔲 **backlog**
-— the remaining dependency-ordered roadmap for the rest of the Component
-Inventory, written down so a future session can pick either up without
-re-deriving the ordering. Neither depends on the other or on Phase 22.
+`Video` wraps a plain `<video>` with fully custom controls — the native
+`controls` attribute can't be themed with `--ds-*` tokens — reusing
+`Slider` directly for both seek and volume (the "thin wrapper" precedent)
+rather than hand-rolling a second thumb. Play/pause, mute, an optional
+captions (CC) toggle (only rendered when `captions` tracks are passed),
+and fullscreen (feature-detected — `requestFullscreen` doesn't exist in
+jsdom) round it out. All media-element state (`currentTime`, `duration`,
+`volume`, `muted`, `paused`) is read back off the element's own DOM events
+rather than tracked independently, so a browser-level gesture (a
+media-key press, an OS volume change) can't desync the UI. Loading a
+**local file** is deliberately not this component's job — that's
+`FileUpload`; a consumer wires `onFilesAdded` to an object URL and hands
+it to `Video`'s `src`.
+
+`Audio` covers the "Audio" backlog item and adds a real rendered
+waveform, since a trim UI without one isn't the shape anyone asked for.
+`computePeaks` (pure, unit-tested) downsamples decoded PCM channel data to
+per-bucket max-amplitude values; the actual decode
+(`AudioContext.decodeAudioData`, browser-only, feature-detected the same
+way `Video`'s fullscreen is) lives in `decodeAudioPeaks`, which resolves
+`null` on any failure — unreachable `src`, unsupported codec, CORS, no
+`AudioContext` at all — and the waveform falls back to flat placeholder
+bars rather than inventing data, the same refusal `LineChart` already
+applies to a missing reading. The waveform track carries up to three
+independent `role="slider"` thumbs sharing one pointer-math helper
+(`timeFromClientX`): a "Seek" thumb (always present, doubling as the
+playhead) and, when `trimmable`, "Trim start"/"Trim end" thumbs using
+`RangeSlider`'s cross-clamped closer-thumb-wins shape. Each thumb owns its
+own `usePointerDrag` instance and isolates its own `onPointerDown` (a
+small `isolate()` wrapper) so grabbing a thumb doesn't also fire the
+track's own click-to-seek handler for the same gesture. **Trim state is
+reporting-only** — `onTrimChange` fires with `{ start, end }` seconds;
+no audio is re-encoded in this library, the same boundary `AIClient`
+draws around completions. `playTrimmedOnly` constrains playback to the
+trimmed window without touching the underlying file.
+
+### Backlog: Phase 18 and the rest of Phase 19 (not started)
+
+Phases 1-17, 19 (Video/Audio), and 20-22 above are ✅ shipped. Phase 18 and
+the rest of Phase 19 are 🔲 **backlog** — the remaining dependency-ordered
+roadmap for the rest of the Component Inventory, written down so a future
+session can pick either up without re-deriving the ordering. Neither
+depends on the other, on Video/Audio, or on Phase 22.
 
 18. **Mobile Gestures** (backlog) — Pull To Refresh, Swipe Actions.
     Deferred to its own session; needs real-browser touch-simulation
     verification via `pnpm test:storybook`, not Vitest/jsdom.
-19. **Remaining Utilities & Media** (backlog) — Scroll Area, Split Pane,
-    Resizable (all reuse `usePointerDrag`), Infinite Scroll (needs a new
-    `useIntersectionObserver` hook), Masonry, Video, Audio.
+19. **Remaining Utilities** (backlog) — Scroll Area, Split Pane, Resizable
+    (all reuse `usePointerDrag`), Infinite Scroll (needs a new
+    `useIntersectionObserver` hook), Masonry. `Video`/`Audio` are done —
+    see above.
 
 ### AI Chat Components track: complete (Phases 23-27)
 
