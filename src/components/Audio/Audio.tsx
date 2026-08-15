@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { forwardRef, useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { usePointerDrag } from '../../hooks/usePointerDrag';
 import type { UsePointerDragHandlers } from '../../hooks/usePointerDrag';
 import { useControllableState } from '../../hooks/useControllableState';
 import { mergeClasses } from '../../utilities/mergeClasses';
+import { mergeRefs } from '../../utilities/mergeRefs';
 import { clamp } from '../Slider/Slider';
 import { Slider } from '../Slider/Slider';
 import { PlayIcon, PauseIcon, VolumeIcon, MuteIcon, formatTime } from '../Video/Video';
@@ -41,6 +42,13 @@ export interface AudioProps {
   onPlay?: () => void;
   onPause?: () => void;
   onEnded?: () => void;
+  /**
+   * Fires on every native `timeupdate`. For a one-off imperative read or
+   * to tap the element into a Web Audio graph (e.g.
+   * `AudioContext.createMediaElementSource`), prefer the forwarded `ref`
+   * instead — it's the real `HTMLAudioElement`.
+   */
+  onTimeUpdate?: (currentTime: number) => void;
 }
 
 /**
@@ -138,24 +146,33 @@ function isolate(handlers: UsePointerDragHandlers): UsePointerDragHandlers {
  * `onTrimChange` — no audio is re-encoded here (see that prop's doc
  * comment). `playTrimmedOnly` constrains playback to the trimmed window
  * without touching the underlying file at all.
+ *
+ * Forwards `ref` to the real `HTMLAudioElement` — the standard convention
+ * every component here follows, and also what unblocks tapping the
+ * element into a Web Audio graph (`AudioContext.createMediaElementSource`
+ * needs the actual DOM node, not a number or a synthetic wrapper).
  */
-export function Audio({
-  src,
-  trimmable = false,
-  trimRange: trimRangeProp,
-  defaultTrimRange,
-  onTrimChange,
-  playTrimmedOnly = false,
-  trimStep = 0.1,
-  loop = false,
-  defaultVolume = 1,
-  waveformBars = 96,
-  'aria-label': ariaLabel = 'Audio player',
-  className,
-  onPlay,
-  onPause,
-  onEnded,
-}: AudioProps) {
+export const Audio = forwardRef<HTMLAudioElement, AudioProps>(function Audio(
+  {
+    src,
+    trimmable = false,
+    trimRange: trimRangeProp,
+    defaultTrimRange,
+    onTrimChange,
+    playTrimmedOnly = false,
+    trimStep = 0.1,
+    loop = false,
+    defaultVolume = 1,
+    waveformBars = 96,
+    'aria-label': ariaLabel = 'Audio player',
+    className,
+    onPlay,
+    onPause,
+    onEnded,
+    onTimeUpdate,
+  }: AudioProps,
+  forwardedRef,
+) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const waveformRef = useRef<HTMLDivElement>(null);
 
@@ -223,14 +240,17 @@ export function Audio({
         if (config.loop) {
           audio.currentTime = config.trimRange.start;
           setCurrentTime(config.trimRange.start);
+          onTimeUpdate?.(config.trimRange.start);
         } else {
           audio.pause();
           audio.currentTime = config.trimRange.end;
           setCurrentTime(config.trimRange.end);
+          onTimeUpdate?.(config.trimRange.end);
         }
         return;
       }
       setCurrentTime(time);
+      onTimeUpdate?.(time);
     }
     function handlePlay() {
       setIsPlaying(true);
@@ -266,7 +286,7 @@ export function Audio({
       audio.removeEventListener('volumechange', handleVolumeChange);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onPlay, onPause, onEnded]);
+  }, [onPlay, onPause, onEnded, onTimeUpdate]);
 
   function togglePlay() {
     const audio = audioRef.current;
@@ -429,7 +449,13 @@ export function Audio({
   return (
     <div className={mergeClasses(styles.player, className)}>
       {/* eslint-disable-next-line jsx-a11y/media-has-caption -- audio clips generally have no caption track to attach; this is a clip player, not a captioned-media surface */}
-      <audio ref={audioRef} src={src} loop={loop} muted={muted} aria-label={ariaLabel} />
+      <audio
+        ref={mergeRefs(audioRef, forwardedRef)}
+        src={src}
+        loop={loop}
+        muted={muted}
+        aria-label={ariaLabel}
+      />
 
       <div ref={waveformRef} className={styles.waveform} {...trackHandlers}>
         <div className={styles.bars} aria-hidden="true">
@@ -540,6 +566,6 @@ export function Audio({
       </div>
     </div>
   );
-}
+});
 
 Audio.displayName = 'Audio';

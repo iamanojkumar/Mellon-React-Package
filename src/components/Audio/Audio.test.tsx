@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { act } from 'react';
+import { act, createRef } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { expectNoA11yViolations } from '../../../tests/axe';
 import { Audio, computePeaks } from './Audio';
@@ -182,5 +182,23 @@ describe('Audio', () => {
     loadDuration(audio, 20);
     expect(screen.queryByRole('slider', { name: 'Trim start' })).not.toBeInTheDocument();
     expect(screen.queryByRole('slider', { name: 'Trim end' })).not.toBeInTheDocument();
+  });
+
+  it('forwards ref to the underlying audio element', async () => {
+    const ref = createRef<HTMLAudioElement>();
+    render(<Audio ref={ref} src="clip.mp3" />);
+    await flushPeakDecode();
+    expect(ref.current).toBeInstanceOf(HTMLAudioElement);
+    expect(ref.current?.tagName).toBe('AUDIO');
+  });
+
+  it('calls onTimeUpdate as the media element reports timeupdate', async () => {
+    const onTimeUpdate = vi.fn();
+    const { container } = render(<Audio src="clip.mp3" onTimeUpdate={onTimeUpdate} />);
+    await flushPeakDecode();
+    const audio = container.querySelector('audio') as HTMLAudioElement;
+    Object.defineProperty(audio, 'currentTime', { value: 7.25, configurable: true });
+    fireEvent(audio, new Event('timeupdate'));
+    expect(onTimeUpdate).toHaveBeenCalledWith(7.25);
   });
 });

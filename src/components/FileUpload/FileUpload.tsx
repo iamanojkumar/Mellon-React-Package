@@ -6,6 +6,7 @@ import { mergeClasses } from '../../utilities/mergeClasses';
 import { useAI } from '../../hooks/useAI';
 import { useAIAction } from '../../hooks/useAIAction';
 import { AISuggestionPopover } from '../AISuggestionPopover/AISuggestionPopover';
+import buttonStyles from '../Button/Button.module.css';
 import visuallyHiddenStyles from '../VisuallyHidden/VisuallyHidden.module.css';
 import styles from './FileUpload.module.css';
 
@@ -20,6 +21,17 @@ function defaultBuildAIPrompt({ name, type, size }: FileUploadAIDescribeContext)
 }
 
 export type FileUploadStatus = 'pending' | 'uploading' | 'done' | 'error';
+
+/**
+ * `'dropzone'` (default) is the full drag-drop + per-file `Progress` list
+ * shape. `'button'` is for a one-shot "open a file" action that hands the
+ * `File` straight to the consumer — a plain themed trigger over the same
+ * hidden `<input type="file">`, no drop target, no rendered file list
+ * (there's nothing to track progress on if the caller isn't uploading
+ * anything). Same `onFilesAdded`/`onReject`/`accept`/`maxSize` contract
+ * either way — only the chrome around the input changes.
+ */
+export type FileUploadVariant = 'dropzone' | 'button';
 
 export interface FileUploadFile {
   id: string;
@@ -43,7 +55,8 @@ export interface FileUploadProps {
    * entries) is the consumer's job, the same "presentation only" split
    * `DataGrid` draws around its own `data` prop.
    */
-  files: FileUploadFile[];
+  /** Ignored (and unnecessary) when `variant="button"` — that variant renders no file list. Defaults to `[]`. */
+  files?: FileUploadFile[];
   /** Called with newly picked/dropped files that passed `accept`/`maxSize` validation — merging them into `files` (with ids, initial status) is the consumer's job. */
   onFilesAdded: (files: File[]) => void;
   onRemove?: (id: string) => void;
@@ -55,6 +68,10 @@ export interface FileUploadProps {
   /** Bytes. Files larger than this are rejected via `onReject` instead of `onFilesAdded`. */
   maxSize?: number;
   disabled?: boolean;
+  /** Defaults to `'dropzone'`. */
+  variant?: FileUploadVariant;
+  /** Visible trigger text when `variant="button"`. Defaults to `'Choose file'`. Ignored in `'dropzone'` mode. */
+  triggerLabel?: string;
   /** Defaults to `'Upload files'`. */
   'aria-label'?: string;
   className?: string;
@@ -128,7 +145,7 @@ function formatBytes(bytes: number): string {
  * component's "queued, not yet started" visual with no extra state needed.
  */
 export function FileUpload({
-  files,
+  files = [],
   onFilesAdded,
   onRemove,
   onReject,
@@ -136,6 +153,8 @@ export function FileUpload({
   multiple = true,
   maxSize,
   disabled = false,
+  variant = 'dropzone',
+  triggerLabel = 'Choose file',
   'aria-label': ariaLabel = 'Upload files',
   className,
   aiDescribe = false,
@@ -205,6 +224,31 @@ export function FileUpload({
       event.preventDefault();
       inputRef.current?.click();
     }
+  }
+
+  if (variant === 'button') {
+    return (
+      // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- same native <label>+<input> click-forwarding pattern as the dropzone variant above (and Checkbox); onKeyDown is Enter insurance, not new interaction semantics
+      <label
+        className={mergeClasses(buttonStyles.button, className)}
+        data-variant="secondary"
+        data-size="md"
+        aria-disabled={disabled || undefined}
+        onKeyDown={handleKeyDown}
+      >
+        <input
+          ref={inputRef}
+          type="file"
+          className={visuallyHiddenStyles.visuallyHidden}
+          accept={accept}
+          multiple={multiple}
+          disabled={disabled}
+          aria-label={ariaLabel}
+          onChange={handleInputChange}
+        />
+        {triggerLabel}
+      </label>
+    );
   }
 
   return (

@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { forwardRef, useEffect, useRef, useState } from 'react';
 import { mergeClasses } from '../../utilities/mergeClasses';
+import { mergeRefs } from '../../utilities/mergeRefs';
 import { Slider } from '../Slider/Slider';
 import styles from './Video.module.css';
 
@@ -29,6 +30,14 @@ export interface VideoProps {
   onPlay?: () => void;
   onPause?: () => void;
   onEnded?: () => void;
+  /**
+   * Fires on every native `timeupdate` (a few times a second during
+   * playback). For a one-off imperative read (e.g. "tag this moment at
+   * the exact current timestamp"), prefer reading `currentTime` straight
+   * off the forwarded `ref` instead — it's already the real
+   * `HTMLVideoElement`, no state round-trip needed.
+   */
+  onTimeUpdate?: (currentTime: number) => void;
 }
 
 export function PlayIcon() {
@@ -167,21 +176,31 @@ export function formatTime(seconds: number): string {
  * `requestFullscreen`/`exitFullscreen` are feature-detected for the same
  * jsdom-doesn't-implement-it reason `usePointerDrag` already documents for
  * `setPointerCapture`.
+ *
+ * Forwards `ref` to the real `HTMLVideoElement` — the standard convention
+ * every component here follows, but also the specific thing that unblocks
+ * a consumer needing the actual DOM node (e.g.
+ * `AudioContext.createMediaElementSource`, which cannot work off a number
+ * or a synthetic wrapper).
  */
-export function Video({
-  src,
-  poster,
-  captions,
-  autoPlay = false,
-  loop = false,
-  defaultMuted = false,
-  defaultVolume = 1,
-  'aria-label': ariaLabel = 'Video player',
-  className,
-  onPlay,
-  onPause,
-  onEnded,
-}: VideoProps) {
+export const Video = forwardRef<HTMLVideoElement, VideoProps>(function Video(
+  {
+    src,
+    poster,
+    captions,
+    autoPlay = false,
+    loop = false,
+    defaultMuted = false,
+    defaultVolume = 1,
+    'aria-label': ariaLabel = 'Video player',
+    className,
+    onPlay,
+    onPause,
+    onEnded,
+    onTimeUpdate,
+  }: VideoProps,
+  forwardedRef,
+) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -202,7 +221,9 @@ export function Video({
     video.volume = volume;
 
     function handleTimeUpdate() {
-      if (video) setCurrentTime(video.currentTime);
+      if (!video) return;
+      setCurrentTime(video.currentTime);
+      onTimeUpdate?.(video.currentTime);
     }
     function handleLoadedMetadata() {
       if (video && Number.isFinite(video.duration)) setDuration(video.duration);
@@ -241,7 +262,7 @@ export function Video({
       video.removeEventListener('volumechange', handleVolumeChange);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onPlay, onPause, onEnded]);
+  }, [onPlay, onPause, onEnded, onTimeUpdate]);
 
   useEffect(() => {
     function handleFullscreenChange() {
@@ -322,7 +343,7 @@ export function Video({
     >
       {/* eslint-disable-next-line jsx-a11y/media-has-caption -- captions are opt-in via the `captions` prop; a consumer's clip may genuinely have no track file (e.g. a silent screen recording), and enforcing one unconditionally isn't feasible for a component wrapping an arbitrary caller-supplied `src` */}
       <video
-        ref={videoRef}
+        ref={mergeRefs(videoRef, forwardedRef)}
         className={styles.video}
         src={src}
         poster={poster}
@@ -428,6 +449,6 @@ export function Video({
       </div>
     </div>
   );
-}
+});
 
 Video.displayName = 'Video';

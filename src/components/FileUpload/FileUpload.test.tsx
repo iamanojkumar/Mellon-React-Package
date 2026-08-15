@@ -142,6 +142,53 @@ describe('FileUpload', () => {
     await expectNoA11yViolations(container);
   });
 
+  describe('variant="button"', () => {
+    it('renders a plain trigger with no dropzone instructions or file list', () => {
+      const entries: FileUploadFile[] = [{ id: '1', file: makeFile('photo.png', 2048) }];
+      render(
+        <FileUpload variant="button" files={entries} onFilesAdded={vi.fn()} onRemove={vi.fn()} />,
+      );
+      expect(screen.getByText('Choose file')).toBeInTheDocument();
+      expect(screen.queryByText(/drag and drop/)).not.toBeInTheDocument();
+      expect(screen.queryByText('photo.png')).not.toBeInTheDocument();
+    });
+
+    it('uses a custom triggerLabel', () => {
+      render(<FileUpload variant="button" triggerLabel="Open video" onFilesAdded={vi.fn()} />);
+      expect(screen.getByText('Open video')).toBeInTheDocument();
+    });
+
+    it('still calls onFilesAdded/onReject through the same validation path', () => {
+      const onFilesAdded = vi.fn();
+      const onReject = vi.fn();
+      render(
+        <FileUpload
+          variant="button"
+          onFilesAdded={onFilesAdded}
+          onReject={onReject}
+          accept="video/*"
+        />,
+      );
+      const goodFile = makeFile('clip.mp4', 100, 'video/mp4');
+      fireEvent.change(screen.getByLabelText('Upload files'), { target: { files: [goodFile] } });
+      expect(onFilesAdded).toHaveBeenCalledWith([goodFile]);
+
+      const badFile = makeFile('notes.txt', 10, 'text/plain');
+      fireEvent.change(screen.getByLabelText('Upload files'), { target: { files: [badFile] } });
+      expect(onReject).toHaveBeenCalledWith([{ file: badFile, reason: 'type' }]);
+    });
+
+    it('disables the input', () => {
+      render(<FileUpload variant="button" onFilesAdded={vi.fn()} disabled />);
+      expect(screen.getByLabelText('Upload files')).toBeDisabled();
+    });
+
+    it('has no accessibility violations', async () => {
+      const { container } = render(<FileUpload variant="button" onFilesAdded={vi.fn()} />);
+      await expectNoA11yViolations(container);
+    });
+  });
+
   describe('aiDescribe', () => {
     const entries: FileUploadFile[] = [
       { id: '1', file: makeFile('photo.png', 2048), status: 'done' },

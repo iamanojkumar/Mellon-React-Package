@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { createRef } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { expectNoA11yViolations } from '../../../tests/axe';
 import { Video, formatTime } from './Video';
@@ -129,5 +130,21 @@ describe('Video', () => {
   it('toggles the fullscreen button label (requestFullscreen is feature-detected, unavailable in jsdom)', () => {
     render(<Video src="clip.mp4" />);
     expect(screen.getByRole('button', { name: 'Enter fullscreen' })).toBeInTheDocument();
+  });
+
+  it('forwards ref to the underlying video element', () => {
+    const ref = createRef<HTMLVideoElement>();
+    render(<Video ref={ref} src="clip.mp4" />);
+    expect(ref.current).toBeInstanceOf(HTMLVideoElement);
+    expect(ref.current?.tagName).toBe('VIDEO');
+  });
+
+  it('calls onTimeUpdate as the media element reports timeupdate', () => {
+    const onTimeUpdate = vi.fn();
+    const { container } = render(<Video src="clip.mp4" onTimeUpdate={onTimeUpdate} />);
+    const video = container.querySelector('video') as HTMLVideoElement;
+    Object.defineProperty(video, 'currentTime', { value: 12.5, configurable: true });
+    fireEvent(video, new Event('timeupdate'));
+    expect(onTimeUpdate).toHaveBeenCalledWith(12.5);
   });
 });

@@ -106,6 +106,30 @@ export const Disabled: Story = {
   render: () => <FileUpload files={[]} onFilesAdded={() => {}} disabled />,
 };
 
+/**
+ * The one-shot "open a file" shape: a plain themed trigger, no drop
+ * target, no rendered file list — for when the picked `File` goes
+ * straight into other state (e.g. an object URL handed to `Video`) rather
+ * than being tracked as an upload.
+ */
+export const ButtonVariant: Story = {
+  name: 'variant="button"',
+  render: function ButtonVariantFileUpload() {
+    const [pickedName, setPickedName] = useState<string | null>(null);
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <FileUpload
+          variant="button"
+          triggerLabel="Choose video"
+          accept="video/*"
+          onFilesAdded={(added) => setPickedName(added[0]?.name ?? null)}
+        />
+        {pickedName && <span>Selected: {pickedName}</span>}
+      </div>
+    );
+  },
+};
+
 export const Responsive: Story = {
   render: () => (
     <div style={{ maxWidth: 280 }}>
