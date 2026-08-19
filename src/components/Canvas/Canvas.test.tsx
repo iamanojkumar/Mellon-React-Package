@@ -1182,6 +1182,82 @@ describe('Canvas viewport', () => {
   });
 });
 
+describe('Canvas controlled viewport', () => {
+  function world(container: HTMLElement): HTMLElement {
+    return container.querySelector('svg')?.parentElement as HTMLElement;
+  }
+
+  it('renders the passed-in viewport rather than an internal one', () => {
+    const { container } = render(
+      <Canvas defaultScene={makeScene()} viewport={{ panX: 40, panY: 10, zoom: 2 }} />,
+    );
+
+    expect(world(container).style.transform).toBe('translate(40px, 10px) scale(2)');
+  });
+
+  it('reports pan/zoom changes via onViewportChange instead of moving on its own', async () => {
+    const user = userEvent.setup();
+    const onViewportChange = vi.fn();
+    const { container } = render(
+      <Canvas
+        defaultScene={makeScene()}
+        viewport={{ panX: 0, panY: 0, zoom: 1 }}
+        onViewportChange={onViewportChange}
+      />,
+    );
+
+    focusCanvas();
+    await user.keyboard('{ArrowRight}');
+
+    expect(onViewportChange).toHaveBeenCalledWith({ panX: -64, panY: 0, zoom: 1 });
+    // Controlled: nothing moves until the caller feeds the new value back in.
+    expect(world(container).style.transform).toBe('translate(0px, 0px) scale(1)');
+  });
+});
+
+describe('Canvas renderBackdrop', () => {
+  it('renders nothing extra when renderBackdrop is omitted', () => {
+    render(<Canvas defaultScene={makeScene()} />);
+    expect(screen.queryByTestId('pdf-backdrop')).not.toBeInTheDocument();
+  });
+
+  it('renders the backdrop inside the transformed world, ahead of every block', () => {
+    const { container } = render(
+      <Canvas
+        defaultScene={makeScene()}
+        renderBackdrop={() => <canvas data-testid="pdf-backdrop" />}
+      />,
+    );
+
+    const backdrop = screen.getByTestId('pdf-backdrop');
+    expect(backdrop).toBeInTheDocument();
+
+    const world = container.querySelector('svg')?.parentElement as HTMLElement;
+    expect(world.firstElementChild?.contains(backdrop)).toBe(true);
+  });
+
+  it('hides the backdrop from the accessibility tree — it carries no text of its own', () => {
+    render(
+      <Canvas
+        defaultScene={makeScene()}
+        renderBackdrop={() => <canvas data-testid="pdf-backdrop" />}
+      />,
+    );
+
+    expect(screen.getByTestId('pdf-backdrop').closest('[aria-hidden="true"]')).not.toBeNull();
+  });
+
+  it('has no accessibility violations with a backdrop rendered', async () => {
+    const { container } = render(
+      <Canvas
+        defaultScene={makeScene()}
+        renderBackdrop={() => <canvas data-testid="pdf-backdrop" />}
+      />,
+    );
+    await expectNoA11yViolations(container);
+  });
+});
+
 // ----------------------------------------------------------- block catalogue
 
 describe('Canvas block catalogue', () => {

@@ -147,3 +147,4 @@ export * from './CanvasChangePreview';
 export * from './Video';
 export * from './Audio';
 export * from './SegmentTrack';
+export * from './Panel';

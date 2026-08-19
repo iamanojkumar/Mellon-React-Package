@@ -1,11 +1,12 @@
 import React, { forwardRef } from 'react';
-import type { ElementType } from 'react';
+import type { ElementType, ReactNode } from 'react';
 import type { PolymorphicComponentPropWithRef } from '../../types/polymorphic';
 import { mergeClasses } from '../../utilities/mergeClasses';
 import styles from './Button.module.css';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 export type ButtonSize = 'sm' | 'md' | 'lg';
+export type ButtonIconPosition = 'start' | 'end';
 
 export interface ButtonOwnProps {
   variant?: ButtonVariant;
@@ -15,6 +16,16 @@ export interface ButtonOwnProps {
   loading?: boolean;
   /** Native button `type`. Ignored when `as` overrides to a non-button element. */
   type?: 'button' | 'submit' | 'reset';
+  /**
+   * Decorative glyph rendered alongside `children` (e.g. an inline SVG or an
+   * icon from a package like `@mellon-design/icons`). Always `aria-hidden` —
+   * the accessible name still comes from `children`/`aria-label`. Hidden
+   * while `loading`, since the spinner takes its slot. For an icon with no
+   * visible label, use `IconButton` instead.
+   */
+  icon?: ReactNode;
+  /** Where `icon` renders relative to `children`. Defaults to `start`. */
+  iconPosition?: ButtonIconPosition;
 }
 
 export type ButtonProps<C extends ElementType = 'button'> = PolymorphicComponentPropWithRef<
@@ -40,6 +51,8 @@ export const Button = forwardRef(function Button<C extends ElementType = 'button
     disabled = false,
     loading = false,
     type = 'button',
+    icon,
+    iconPosition = 'start',
     children,
     ...rest
   }: ButtonProps<C>,
@@ -48,6 +61,7 @@ export const Button = forwardRef(function Button<C extends ElementType = 'button
   const Component = as || 'button';
   const isNativeButton = Component === 'button';
   const isDisabled = disabled || loading;
+  const showIcon = Boolean(icon) && !loading;
 
   return (
     <Component
@@ -63,7 +77,17 @@ export const Button = forwardRef(function Button<C extends ElementType = 'button
       {...rest}
     >
       {loading && <span className={styles.spinner} aria-hidden="true" />}
+      {showIcon && iconPosition === 'start' && (
+        <span className={styles.icon} aria-hidden="true">
+          {icon}
+        </span>
+      )}
       {children}
+      {showIcon && iconPosition === 'end' && (
+        <span className={styles.icon} aria-hidden="true">
+          {icon}
+        </span>
+      )}
     </Component>
   );
 }) as unknown as ButtonComponent;

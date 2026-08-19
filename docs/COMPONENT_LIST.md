@@ -189,6 +189,36 @@ added `trimmable` — one continuous, draggable range independent of
 `segments`, reusing `Audio`'s own cross-clamped trim-handle shape, reporting-
 only since `SegmentTrack` owns no media element to constrain playback on.
 
+**Canvas: `renderBackdrop` + controlled `viewport`, and `Panel`** — shipped
+(Phase 31, see `docs/SPEC.md`), closing two entries a PDF editor consumer
+had logged as sanctioned stopgaps in its own `COMPONENT_REQUIREMENTS.md`:
+
+1. _"No first-class positioned-over-external-content canvas block kind"_ —
+   the consumer overlays selectable text/image/link elements on top of a
+   `pdf.js`-rendered page bitmap, and had been composing `useCanvasViewport()`
+   plus a manually-transformed wrapper `<div>` to keep the backdrop
+   pixel-locked to `Canvas`'s pan/zoom. `Canvas` now takes `renderBackdrop`
+   (rendered beneath every block, inside the same world transform, and
+   `aria-hidden` since a raster page carries no text of its own) and a
+   controlled `viewport`/`defaultViewport`/`onViewportChange` triple, so an
+   externally-rendered layer can read and drive the same viewport state
+   without reaching into `useCanvasViewport` directly.
+2. _"No persistent, non-modal docked panel container component"_ — the
+   consumer's property panel (select a block/run, see its font/size/color,
+   stay open while clicking around the canvas) had been `Box` + `Card`
+   composed by hand, because `Sidebar` is a fixed nav-item list and `Drawer`
+   is a portaled overlay that closes on outside click — wrong for a panel
+   meant to coexist with an interactive surface the user keeps clicking on.
+   `Panel` is the missing shape: non-modal, non-portaled, always in flow
+   like `Sidebar`'s default mode, with arbitrary `children` (plus `header`/
+   `footer` pinned rows) instead of a fixed nav-item API, and a `dock` prop
+   (`start` | `end`) controlling which edge loses its border.
+
+Both were "non-blocking" entries (a documented composition already covered
+them) rather than urgent fixes — promoted to first-class support once the
+design-system owner reviewed the request, not because the stopgaps were
+broken.
+
 ---
 
 ## Cross-check against the AI-chat-interface taxonomy

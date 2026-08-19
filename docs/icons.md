@@ -1,13 +1,20 @@
 # Icons
 
-`@mellon-design/react` ships no general icon set — only a handful of icons bundled inside
-specific components (`Video`'s `PlayIcon`/`PauseIcon`/`VolumeIcon`/`MuteIcon`/`CaptionsIcon`,
-`AITriggerButton`'s internal `SparkleIcon`). Per `CLAUDE.md`'s "No icon library" rule, every icon
-is authored as inline SVG (`currentColor`-stroked/filled so it inherits text color and theme
-automatically) and exported only when a _component_ reuses the exact shape — never as a
-standalone icon with no owning component. `src/icons/` exists in the repo layout but is
-deliberately empty; filling it is its own scope decision, not something to do as a side effect
-of closing an item on this list.
+`@mellon-design/react` takes `@mellon-design/icons` as a real dependency (added for the `Button.icon`
+work; see the changeset `add-button-icon-prop.md`). This supersedes the old "no icon library"
+rule for icons a **consumer** supplies through an existing slot prop — `Button.icon`, `IconButton`'s
+children, `Badge`/`Tag`/`Timeline`/`TreeView`/`Sidebar`/`NavigationRail`/`BottomNavigation`/
+`EmptyState`/`CommandPalette`/`SlashCommandPicker`/`StatusLine`'s `icon` — demonstrated in
+`Button.stories.tsx`'s and `IconButton.stories.tsx`'s `FromMellonIconsPackage` stories.
+
+What's unchanged: icons _owned by a specific component_ (`Video`'s `PlayIcon`/`PauseIcon`/
+`VolumeIcon`/`MuteIcon`/`CaptionsIcon`, `Alert`/`Banner`/`Toast`'s shared `AlertVariantIcon`,
+`AITriggerButton`'s internal `SparkleIcon`, `RichTextEditor`'s toolbar glyphs, `PasswordField`'s
+eye icons, …) are still authored as inline SVG, not pulled from the package — see `CLAUDE.md`'s
+"Icon library" note. A record/mic/folder/settings/save style shape still has no natural owning
+component here, so it stays something a consumer passes in via `@mellon-design/icons` rather than
+something this library exports standalone. `src/icons/` in the repo layout is still deliberately
+empty for the same reason.
 
 This file exists to track real icon needs surfaced by consumers of the library that the above
 scope doesn't cover — the same "requirements doc for a known gap" role `docs/CHART_TOKEN_REQUIREMENTS.md`
@@ -16,38 +23,38 @@ for, not a promise to build any of it.**
 
 ## From the recording/transcription app
 
-That app's own `CLAUDE.md` treats icons as the one exception to its "components only from
+That app's own `CLAUDE.md` used to treat icons as the one exception to its "components only from
 `@mellon-design/react`" rule — author them as inline SVG rather than pulling in an icon package.
-This is the full list it needed. Status = whether it's wired up today.
+That's superseded now that `@mellon-design/icons` exists on npm and this library depends on it
+directly. Status = whether it's wired up today.
 
-| Icon                         | Used for                             | Status                                                                                                      |
-| ---------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| Play                         | Video transport play button          | Done — reused `Video`'s exported `PlayIcon`                                                                 |
-| Pause                        | Video transport pause button         | Done — reused `Video`'s exported `PauseIcon`                                                                |
-| Record (dot)                 | Start-recording button               | Needed — currently a text-only `Button`                                                                     |
-| Stop (square)                | Stop-recording button                | Needed — currently a text-only `Button`                                                                     |
-| Pause (recording)            | Pause-in-progress-recording button   | Needed — currently a text-only `Button` (could reuse the Play/Pause icon pair above instead of a new glyph) |
-| Folder                       | "Choose output folder" header button | Needed — currently a text-only `Button`                                                                     |
-| Settings (gear)              | Settings header button               | Needed — currently a text-only `Button`                                                                     |
-| Save (disk / check)          | "Save clip" button                   | Needed — currently a text-only `Button`                                                                     |
-| Transcribe (waveform → text) | "Extract script" button              | Needed — currently a text-only `Button`                                                                     |
+| Icon                         | Used for                             | Status                                                                                      |
+| ---------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------- |
+| Play                         | Video transport play button          | Done — reused `Video`'s exported `PlayIcon`                                                 |
+| Pause                        | Video transport pause button         | Done — reused `Video`'s exported `PauseIcon`                                                |
+| Record (dot)                 | Start-recording button               | Done — `@mellon-design/icons`' `RecordIcon` via `Button`'s `icon` prop                      |
+| Stop (square)                | Stop-recording button                | Done — `@mellon-design/icons`' `StopIcon` via `Button`'s `icon` prop                        |
+| Pause (recording)            | Pause-in-progress-recording button   | Done — `@mellon-design/icons`' `PauseIcon` via `Button`'s `icon` prop                       |
+| Folder                       | "Choose output folder" header button | Done — `@mellon-design/icons`' `FolderIcon`/`DownloadFolderIcon` via `Button`'s `icon` prop |
+| Settings (gear)              | Settings header button               | Needed — not in `@mellon-design/icons` v0.1.0; still a text-only `Button`                   |
+| Save (disk / check)          | "Save clip" button                   | Needed — not in `@mellon-design/icons` v0.1.0; still a text-only `Button`                   |
+| Transcribe (waveform → text) | "Extract script" button              | Done — `@mellon-design/icons`' `AudioWaveTranscriptionIcon` via `Button`'s `icon` prop      |
 
 Not on this list because the library already renders them internally (not the consumer's to
 author): `FileUpload`'s upload/drag icon, `Banner`/`Alert`'s status icon, `Dialog`'s close "×",
 `AITriggerButton`'s sparkle, `PasswordField`'s show/hide-eye icon.
 
-## If this list is ever picked up
+## What actually shipped, for verification
 
-1. Match the sizing/stroke convention of `Video`'s exported icons (`viewBox="0 0 20 20"`,
-   `width="1em" height="1em"`, `currentColor`, `aria-hidden="true"` — see
-   `src/components/Video/Video.tsx`), so a new set doesn't visually clash with the ones already
-   shipped.
-2. Decide where they live _before_ writing any SVG. Every icon shipped so far belongs to a
-   component (`Video`, `AITriggerButton`, `Alert`/`Banner`/`Toast` via `AlertVariantIcon`); a
-   record/mic/folder/settings/save set has no natural owning component, so exporting them
-   standalone would be the first shared, no-owning-component icon surface in this library — the
-   deliberate architectural change `CLAUDE.md` flags `src/icons/` as waiting on. Confirm that
-   decision explicitly rather than defaulting into it here.
-3. Each entry above is a status-quo report from one consumer at one point in time — re-verify
-   the "Needed" rows are still unmet (and that no new component has since grown the icon it
-   needs) before treating this list as current.
+- `package.json` — `@mellon-design/icons` under `dependencies` (checked via `pnpm add`, confirmed
+  present in `node_modules/@mellon-design/icons`, not just `tokens-web`).
+- `@mellon-design/icons@0.1.0` exports (from its `dist/index.d.ts`): `PlayIcon`, `PauseIcon`,
+  `StopIcon`, `RecordIcon`, `DownloadIcon`, `FolderIcon`, `DownloadFolderIcon`, `AudioWaveIcon`,
+  `AudioWaveTranscriptionIcon`. No `Settings`/`Save` glyph exists in this version — re-check the
+  package's exports before assuming those two rows are still unmet.
+- `src/components/Button/Button.stories.tsx` and `src/components/IconButton/IconButton.stories.tsx`
+  each have a `FromMellonIconsPackage` story importing directly from `@mellon-design/icons` and
+  rendering through the real component (not a mock), verified live via `pnpm dev` in Storybook.
+
+Each status above is a report from one point in time — re-verify before treating this list as
+current if it's revisited later, especially the icon package's export list as it grows.

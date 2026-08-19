@@ -156,6 +156,7 @@ Build in **dependency order, not alphabetical order**:
 28. **Kanban Board** — phase A: `KanbanBoard`, `KanbanColumn`, `KanbanCard`, `applyKanbanCommands` ✅ shipped. Phase B: `KanbanPromptBar`, `KanbanChangePreview`, `useKanbanCommands`, `kanbanSnapshot`, `parseKanbanResolution` ✅ shipped
 29. **Canvas (phase 1 — no AI)** — `Canvas`, `CanvasBlock`, `CanvasConnector`, `CanvasOutline`, `StickyNote`, `CanvasShape`, `CanvasEmbed`, `CanvasFrame`, `useCanvasViewport`, `applyCanvasCommands`, `canvasGeometry` ✅ shipped. Phase 2 (prompt pipeline + per-note `aiRewrite`): `CanvasPromptBar`, `CanvasChangePreview`, `useCanvasCommands`, `canvasSnapshot`, `parseCanvasResolution` ✅ shipped. Phase 3 (`aiCluster` affinity mapping): `canvasClusters.ts` (`clusterCommands`, `normalizeCanvasClusters`, `parseCanvasClusterResolution`, `buildCanvasClusterPrompt`) + `Canvas`'s `aiCluster`/`resolveClusters`, sharing `useCanvasCommands`' single in-flight slot and review panel ✅ shipped. Phase 4 (`aiDiagram`): `canvasDiagram.ts` (`breakDiagramCycles`, `rankDiagramNodes`, `layoutCanvasDiagram`, `diagramCommands`, `normalizeCanvasDiagram`, `parseCanvasDiagramResolution`) + `Canvas`'s `aiDiagram`/`resolveDiagram`, applied with an undo rather than staged because it is purely additive ✅ shipped. Phase 5 (the rest of the block catalogue): `code`, `table`, `link`, `checklist` and `chart` block kinds, `CanvasChecklist`, plus the viewport pass — free wheel/trackpad panning, Shift for sideways, Ctrl/Cmd to zoom, and a full keyboard set (arrows pan, `+`/`-`/`0`/`1`, PageUp/PageDown) ✅ shipped
 30. **SegmentTrack** — `SegmentTrack`, a horizontal duration-scaled track of disjoint labelled regions doubling as a review queue, built from a real consumer component request (see `docs/COMPONENT_LIST.md`) ✅ shipped
+31. **Canvas backdrop/controlled viewport + Panel** — `Canvas`'s `renderBackdrop` and controlled `viewport`/`defaultViewport`/`onViewportChange`, plus the new `Panel` component, closing two sanctioned-stopgap entries from a real consumer's `COMPONENT_REQUIREMENTS.md` (see `docs/COMPONENT_LIST.md`) ✅ shipped
 
 Phase 28 is the library's first AI affordance that **changes structured
 state** rather than producing text. It was built in two halves on purpose.
@@ -268,6 +269,60 @@ now wraps only the segment `option` buttons in their own layer, not the
 whole track — the trim handles are `role="slider"`, and a `listbox`'s
 ARIA-required-children rule rejects any non-`option` sibling, which axe
 caught immediately once both affordances rendered together.
+
+Phase 31, like 30, is a real-consumer-request addition outside the
+dependency-ordered roadmap — this time two entries from a PDF editor's own
+`COMPONENT_REQUIREMENTS.md` log (verbatim in `docs/COMPONENT_LIST.md`),
+both previously marked "non-blocking" because a sanctioned composition
+already covered them. Promoting a documented workaround to first-class
+support doesn't require the workaround to be broken — it requires deciding
+the pattern is common enough to own.
+
+`Canvas` gained `renderBackdrop` and a controlled `viewport` triple. The
+consumer's stopgap had been `useCanvasViewport()` plus a hand-transformed
+wrapper `<div>`, reaching past `Canvas`'s black-box boundary to keep a
+`pdf.js` bitmap pixel-locked to the scene. Both additions close that gap
+without opening the block-kind union: `renderBackdrop` is a render prop,
+not a `CanvasBlockData.kind`, because a raster backdrop has no id, no
+selection state, and no reason to go through `applyCanvasCommands` — it
+is exactly the kind of thing the "one transform carries the viewport"
+architecture already generalizes to for free, once the transform itself
+can be read from outside. It renders inside `.world`, ahead of every
+block, so it inherits pan/zoom automatically and needs no coordinate math
+of its own; it is `aria-hidden`, on the same reasoning that keeps the
+connector SVG hidden — a raster page carries no text, and any actually
+readable content over it is its own `CanvasBlock`, which stays in the
+tree as usual. The controlled `viewport`/`defaultViewport`/
+`onViewportChange` triple threads straight through to
+`useCanvasViewport`, which now accepts the identical pair — the same
+controlled/uncontrolled contract `scene`/`selectedIds` already use, so a
+consumer state-managing its own `pdf.js` canvas can read and drive the
+same pan/zoom `Canvas` renders with, rather than maintaining a shadow copy.
+Internally this meant swapping the hook's raw `useState` for
+`useControllableState` and its functional (`(previous) => next`) updates
+for reads off the hook's own `viewport` closure — safe here because, as
+elsewhere in this library (`scene`, `selectedIds`), nothing calls the
+setter more than once per synchronous handler.
+
+`Panel` is new: a persistent, non-modal container meant to dock at a
+viewport edge and fill its height — the property-panel pattern (select a
+block, see its font/size/color, keep the panel open while clicking
+around the canvas beside it). The consumer's stopgap was `Box` + `Card`
+composed by hand, because neither existing candidate fit: `Sidebar`
+types its `children` as `Sidebar.Item`/`Sidebar.Group`, a nav list, not
+arbitrary panel content; `Drawer` renders through a `Portal`, traps
+focus, and closes on backdrop click, which is the right shape for a
+transient overlay and the wrong one for a panel meant to coexist with a
+surface the user keeps interacting with. `Panel` reuses `Sidebar`'s
+default (non-drawer, always-in-flow) contract with `Card`'s simplicity —
+a `dock` prop (`start` | `end`) picks which edge loses its border, and
+`header`/`footer` slots pin rows above and below a scrollable body.
+Deliberately **not** built on `Dialog.Header`/`.Body`/`.Footer` despite
+the "share parts across trees" precedent (`Drawer.Header` _is_
+`Dialog.Header`): `Dialog`'s header reserves `padding-right` for its
+absolute-positioned close button, which a docked, non-modal panel has no
+reason to carry, so reusing it would import unwanted spacing rather than
+save real duplication.
 
 Phase 2 added the shared value/field plumbing later Form components build
 on: **`useControllableState`** (`src/hooks`) is the standard controlled/

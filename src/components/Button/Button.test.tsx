@@ -98,4 +98,38 @@ describe('Button', () => {
     expect(button).toBeDisabled();
     expect(button.querySelector('[aria-hidden="true"]')).not.toBeNull();
   });
+
+  it('renders icon before children by default', () => {
+    render(<Button icon={<svg data-testid="icon" />}>Save</Button>);
+    const button = screen.getByRole('button', { name: 'Save' });
+    const icon = screen.getByTestId('icon');
+    expect(icon.closest('[aria-hidden="true"]')).not.toBeNull();
+    // Icon wrapper should precede the text node in DOM order.
+    expect(button.firstElementChild?.contains(icon)).toBe(true);
+  });
+
+  it('renders icon after children when iconPosition is end', () => {
+    render(
+      <Button icon={<svg data-testid="icon" />} iconPosition="end">
+        Save
+      </Button>,
+    );
+    const button = screen.getByRole('button', { name: 'Save' });
+    const icon = screen.getByTestId('icon');
+    expect(button.lastElementChild?.contains(icon)).toBe(true);
+  });
+
+  it('hides the icon in favor of the spinner while loading', () => {
+    render(
+      <Button icon={<svg data-testid="icon" />} loading>
+        Saving
+      </Button>,
+    );
+    expect(screen.queryByTestId('icon')).toBeNull();
+  });
+
+  it('has no accessibility violations with an icon', async () => {
+    const { container } = render(<Button icon={<svg data-testid="icon" />}>Save</Button>);
+    await expectNoA11yViolations(container);
+  });
 });

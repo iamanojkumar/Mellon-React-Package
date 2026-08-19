@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { Canvas } from './Canvas';
 import { Text } from '../Text/Text';
 import { Stack } from '../Stack/Stack';
+import { Inline } from '../Inline/Inline';
+import { Button } from '../Button/Button';
 import { AIProvider } from '../../providers/AIProvider';
 import { ToastProvider } from '../../providers/ToastProvider';
 import type { AIClient } from '../../contexts/AIContext';
@@ -398,6 +400,92 @@ export const Controlled: Story = {
         />
         <Text size="sm" color="secondary">
           {log.length === 0 ? 'No changes yet.' : `Commands: ${log.slice(0, 6).join(', ')}`}
+        </Text>
+      </Stack>
+    );
+  },
+};
+
+/**
+ * `renderBackdrop` renders beneath every block, inside the same world
+ * transform, so an externally-rendered layer (here a stand-in for a
+ * `pdf.js`-rasterized page) shares the canvas coordinate space and pans/
+ * zooms in lockstep with blocks placed over it — the sanctioned composition
+ * for overlaying selectable regions on external raster content (see
+ * `docs/COMPONENT_LIST.md`). The backdrop itself is `aria-hidden`, since a
+ * raster page carries no text of its own; any actually-readable content
+ * (here, the two sticky notes standing in for selectable text runs) stays a
+ * real block in the accessibility tree.
+ */
+export const ExternalBackdrop: Story = {
+  render: () => (
+    <Canvas
+      defaultScene={{
+        blocks: [
+          { id: 'a', kind: 'sticky', text: 'Selected run', x: 40, y: 40, width: 160, height: 60 },
+          { id: 'b', kind: 'sticky', text: 'Another run', x: 260, y: 160, width: 160, height: 60 },
+        ],
+        connectors: [],
+      }}
+      renderBackdrop={() => (
+        <div
+          style={{
+            width: 600,
+            height: 400,
+            background: 'var(--ds-color-surface-secondary)',
+            border: '1px solid var(--ds-color-border-primary)',
+          }}
+        />
+      )}
+      aria-label="Page workspace"
+    />
+  ),
+};
+
+/**
+ * Controlled viewport — the parent owns pan/zoom, the same shape a page that
+ * renders its own `pdf.js` canvas needs so the two stay pixel-locked
+ * (`useCanvasViewport`'s controlled mode under the hood). Try the zoom
+ * buttons, then pan the canvas: the readout below tracks every change.
+ */
+export const ControlledViewport: Story = {
+  render: function ControlledViewportCanvas() {
+    const [viewport, setViewport] = useState({ panX: 0, panY: 0, zoom: 1 });
+
+    return (
+      <Stack gap="sm" style={{ height: '100%' }}>
+        <Inline gap="sm">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setViewport((v) => ({ ...v, zoom: Math.min(4, v.zoom * 1.2) }))}
+          >
+            Zoom in
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setViewport((v) => ({ ...v, zoom: Math.max(0.1, v.zoom / 1.2) }))}
+          >
+            Zoom out
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setViewport({ panX: 0, panY: 0, zoom: 1 })}
+          >
+            Reset
+          </Button>
+        </Inline>
+        <Canvas
+          defaultScene={board}
+          viewport={viewport}
+          onViewportChange={setViewport}
+          aria-label="Workspace"
+        />
+        <Text size="sm" color="secondary">
+          pan {Math.round(viewport.panX)}, {Math.round(viewport.panY)} · zoom{' '}
+          {viewport.zoom.toFixed(2)}
         </Text>
       </Stack>
     );

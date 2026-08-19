@@ -45,6 +45,18 @@
   transform-origin: 0 0;
 }
 
+/* Renders beneath every block, inside the same world transform, so
+   consumer-supplied backdrop content (e.g. a rasterized page) shares the
+   canvas coordinate space and pans/zooms in lockstep with blocks placed over
+   it. Purely a positioning anchor at the world's own origin — the consumer's
+   content decides its own size and position within it, the same way a
+   block's x/y do. */
+.backdrop {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+}
+
 /* Overflow visible so edges leaving the nominal box still draw; the surface
    clips them at its own bounds. */
 .connectors {

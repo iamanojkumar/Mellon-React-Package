@@ -115,6 +115,7 @@
   ],
   "dependencies": {
     "@floating-ui/dom": "^1.8.0",
+    "@mellon-design/icons": "^0.1.0",
     "@mellon-design/tokens-web": "^1.0.0"
   }
 }

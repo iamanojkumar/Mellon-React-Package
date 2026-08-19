@@ -9,6 +9,7 @@ import { CanvasChangePreview } from '../CanvasChangePreview/CanvasChangePreview'
 import { VisuallyHidden } from '../VisuallyHidden/VisuallyHidden';
 import { useControllableState } from '../../hooks/useControllableState';
 import { MAX_CANVAS_ZOOM, MIN_CANVAS_ZOOM, useCanvasViewport } from '../../hooks/useCanvasViewport';
+import type { CanvasViewport } from '../../hooks/useCanvasViewport';
 import { useCanvasCommands } from '../../hooks/useCanvasCommands';
 import type {
   CanvasClusterResolver,
@@ -62,6 +63,27 @@ export interface CanvasOwnProps {
   renderBlock?: (block: CanvasBlockData) => ReactNode;
   /** Accessible name for the canvas region. */
   'aria-label'?: string;
+
+  /**
+   * Controlled pan/zoom state — pass this (with `onViewportChange`) so an
+   * externally-rendered layer (e.g. a `pdf.js`-rasterized page) can read and
+   * drive the same viewport the canvas uses, and stay pixel-locked to it.
+   * Omit for the canvas to manage its own viewport, same
+   * controlled/uncontrolled contract as `scene`/`selectedIds`.
+   */
+  viewport?: CanvasViewport;
+  defaultViewport?: Partial<CanvasViewport>;
+  onViewportChange?: (viewport: CanvasViewport) => void;
+
+  /**
+   * Renders beneath every block, inside the same world transform — so
+   * consumer-supplied backdrop content (a rasterized page, an embedded
+   * document) shares the canvas coordinate space and pans/zooms in lockstep
+   * with blocks placed over it. Purely a positioning anchor: the returned
+   * content decides its own size and position within canvas units, the same
+   * way a block's `x`/`y` do. Off by default — nothing renders without it.
+   */
+  renderBackdrop?: () => ReactNode;
 
   /**
    * Adds the natural-language prompt bar — "add three notes for the risks",
@@ -226,6 +248,10 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
     outlineVisible = false,
     readOnly = false,
     renderBlock,
+    viewport: controlledViewport,
+    defaultViewport,
+    onViewportChange,
+    renderBackdrop,
     aiPrompt = false,
     resolveCommands,
     snapshotOptions,
@@ -257,7 +283,11 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
     onChange: onSelectionChange,
   });
 
-  const viewport = useCanvasViewport();
+  const viewport = useCanvasViewport({
+    ...(controlledViewport ? { viewport: controlledViewport } : {}),
+    ...(defaultViewport ? { defaultViewport } : {}),
+    ...(onViewportChange ? { onViewportChange } : {}),
+  });
   const surfaceRef = useRef<HTMLDivElement>(null);
   const [gesture, setGesture] = useState<Gesture>({ kind: 'none' });
   const [editingId, setEditingId] = useState<string | undefined>(undefined);
@@ -843,6 +873,16 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
           as text — stays hidden.
         */}
         <div className={styles.world} style={{ transform: viewport.transform }}>
+          {/* aria-hidden: a raster backdrop (e.g. a rasterized page) carries no
+              text of its own — the same reasoning that keeps the connector SVG
+              hidden. Any actually-readable content over it is its own
+              `CanvasBlock`, which stays in the tree as usual. */}
+          {renderBackdrop && (
+            <div className={styles.backdrop} aria-hidden="true">
+              {renderBackdrop()}
+            </div>
+          )}
+
           {frames.map((block) => (
             <CanvasBlock
               key={block.id}

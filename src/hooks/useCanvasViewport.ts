@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { CanvasPoint, CanvasRect } from '../utilities/canvasGeometry';
+import { useControllableState } from './useControllableState';
 
 /**
  * Pan and zoom for a canvas, plus the conversion between screen pixels and
@@ -20,6 +21,16 @@ export interface UseCanvasViewportOptions {
   defaultViewport?: Partial<CanvasViewport>;
   minZoom?: number;
   maxZoom?: number;
+  /**
+   * Controlled viewport — pass this (with `onViewportChange`) so an
+   * externally-rendered layer (e.g. a `pdf.js` bitmap) can read and drive the
+   * same pan/zoom state the canvas uses, and the two stay pixel-locked.
+   * Omit for the hook to manage its own state, same controlled/uncontrolled
+   * contract as everywhere else in this library.
+   */
+  viewport?: CanvasViewport;
+  /** Fires on every pan/zoom change, controlled or not. */
+  onViewportChange?: (viewport: CanvasViewport) => void;
 }
 
 export interface UseCanvasViewportResult {
@@ -75,7 +86,11 @@ export function useCanvasViewport(options?: UseCanvasViewportOptions): UseCanvas
     [],
   );
 
-  const [viewport, setViewportState] = useState<CanvasViewport>(initial);
+  const [viewport, setViewportState] = useControllableState<CanvasViewport>({
+    value: options?.viewport,
+    defaultValue: initial,
+    onChange: options?.onViewportChange,
+  });
 
   const setViewport = useCallback(
     (next: CanvasViewport) => {
@@ -85,16 +100,15 @@ export function useCanvasViewport(options?: UseCanvasViewportOptions): UseCanvas
         zoom: clamp(next.zoom, minZoom, maxZoom),
       });
     },
-    [minZoom, maxZoom],
+    [minZoom, maxZoom, setViewportState],
   );
 
-  const panBy = useCallback((dx: number, dy: number) => {
-    setViewportState((previous) => ({
-      ...previous,
-      panX: previous.panX + dx,
-      panY: previous.panY + dy,
-    }));
-  }, []);
+  const panBy = useCallback(
+    (dx: number, dy: number) => {
+      setViewportState({ ...viewport, panX: viewport.panX + dx, panY: viewport.panY + dy });
+    },
+    [viewport, setViewportState],
+  );
 
   /**
    * Zooming about a point means the canvas coordinate under the cursor must
@@ -103,40 +117,42 @@ export function useCanvasViewport(options?: UseCanvasViewportOptions): UseCanvas
    */
   const zoomTo = useCallback(
     (zoom: number, origin?: CanvasPoint) => {
-      setViewportState((previous) => {
-        const nextZoom = clamp(zoom, minZoom, maxZoom);
-        if (!origin) return { ...previous, zoom: nextZoom };
+      const nextZoom = clamp(zoom, minZoom, maxZoom);
+      if (!origin) {
+        setViewportState({ ...viewport, zoom: nextZoom });
+        return;
+      }
 
-        const canvasX = (origin.x - previous.panX) / previous.zoom;
-        const canvasY = (origin.y - previous.panY) / previous.zoom;
+      const canvasX = (origin.x - viewport.panX) / viewport.zoom;
+      const canvasY = (origin.y - viewport.panY) / viewport.zoom;
 
-        return {
-          zoom: nextZoom,
-          panX: origin.x - canvasX * nextZoom,
-          panY: origin.y - canvasY * nextZoom,
-        };
+      setViewportState({
+        zoom: nextZoom,
+        panX: origin.x - canvasX * nextZoom,
+        panY: origin.y - canvasY * nextZoom,
       });
     },
-    [minZoom, maxZoom],
+    [viewport, minZoom, maxZoom, setViewportState],
   );
 
   const zoomBy = useCallback(
     (factor: number, origin?: CanvasPoint) => {
-      setViewportState((previous) => {
-        const nextZoom = clamp(previous.zoom * factor, minZoom, maxZoom);
-        if (!origin) return { ...previous, zoom: nextZoom };
+      const nextZoom = clamp(viewport.zoom * factor, minZoom, maxZoom);
+      if (!origin) {
+        setViewportState({ ...viewport, zoom: nextZoom });
+        return;
+      }
 
-        const canvasX = (origin.x - previous.panX) / previous.zoom;
-        const canvasY = (origin.y - previous.panY) / previous.zoom;
+      const canvasX = (origin.x - viewport.panX) / viewport.zoom;
+      const canvasY = (origin.y - viewport.panY) / viewport.zoom;
 
-        return {
-          zoom: nextZoom,
-          panX: origin.x - canvasX * nextZoom,
-          panY: origin.y - canvasY * nextZoom,
-        };
+      setViewportState({
+        zoom: nextZoom,
+        panX: origin.x - canvasX * nextZoom,
+        panY: origin.y - canvasY * nextZoom,
       });
     },
-    [minZoom, maxZoom],
+    [viewport, minZoom, maxZoom, setViewportState],
   );
 
   const fitTo = useCallback(
@@ -159,10 +175,10 @@ export function useCanvasViewport(options?: UseCanvasViewportOptions): UseCanvas
         panY: viewportSize.height / 2 - (rect.y + rect.height / 2) * zoom,
       });
     },
-    [minZoom, maxZoom],
+    [minZoom, maxZoom, setViewportState],
   );
 
-  const reset = useCallback(() => setViewportState(initial), [initial]);
+  const reset = useCallback(() => setViewportState(initial), [initial, setViewportState]);
 
   const toCanvas = useCallback(
     (point: CanvasPoint): CanvasPoint => ({

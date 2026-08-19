@@ -59,6 +59,12 @@
   color: var(--ds-color-text-inverse);
 }
 
+.icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+}
+
 .spinner {
   width: 1em;
   height: 1em;

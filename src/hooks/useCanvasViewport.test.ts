@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 import { useCanvasViewport, MIN_CANVAS_ZOOM, MAX_CANVAS_ZOOM } from './useCanvasViewport';
 
@@ -130,5 +130,32 @@ describe('useCanvasViewport', () => {
 
     act(() => result.current.zoomTo(10));
     expect(result.current.viewport.zoom).toBe(1.5);
+  });
+
+  describe('controlled viewport', () => {
+    it('reflects the passed-in viewport rather than managing its own state', () => {
+      const { result } = renderHook(() =>
+        useCanvasViewport({ viewport: { panX: 10, panY: 20, zoom: 2 } }),
+      );
+
+      expect(result.current.viewport).toEqual({ panX: 10, panY: 20, zoom: 2 });
+    });
+
+    it('calls onViewportChange instead of updating state itself', () => {
+      const onViewportChange = vi.fn();
+      const { result, rerender } = renderHook(
+        ({ viewport }) => useCanvasViewport({ viewport, onViewportChange }),
+        { initialProps: { viewport: { panX: 0, panY: 0, zoom: 1 } } },
+      );
+
+      act(() => result.current.panBy(10, 0));
+      expect(onViewportChange).toHaveBeenCalledWith({ panX: 10, panY: 0, zoom: 1 });
+      // Controlled: the hook's own viewport hasn't moved until the caller
+      // feeds the changed value back in as a prop.
+      expect(result.current.viewport).toEqual({ panX: 0, panY: 0, zoom: 1 });
+
+      rerender({ viewport: { panX: 10, panY: 0, zoom: 1 } });
+      expect(result.current.viewport).toEqual({ panX: 10, panY: 0, zoom: 1 });
+    });
   });
 });

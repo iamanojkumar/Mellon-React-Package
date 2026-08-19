@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import { AudioWaveTranscriptionIcon, RecordIcon, StopIcon, FolderIcon } from '@mellon-design/icons';
 import { IconButton } from './IconButton';
 import type { ButtonSize } from '../Button/Button';
 
@@ -46,5 +47,25 @@ export const Loading: Story = {
     <IconButton aria-label="Saving" loading>
       <span aria-hidden="true">✓</span>
     </IconButton>
+  ),
+};
+
+/** Icons sourced from the `@mellon-design/icons` package — verifies the package renders correctly inside `IconButton`. */
+export const FromMellonIconsPackage: Story = {
+  render: () => (
+    <div style={{ display: 'flex', gap: 'var(--ds-space-sm)', alignItems: 'center' }}>
+      <IconButton aria-label="Start recording" variant="danger">
+        <RecordIcon />
+      </IconButton>
+      <IconButton aria-label="Stop recording">
+        <StopIcon />
+      </IconButton>
+      <IconButton aria-label="Choose output folder" variant="secondary">
+        <FolderIcon />
+      </IconButton>
+      <IconButton aria-label="Extract script" variant="secondary">
+        <AudioWaveTranscriptionIcon />
+      </IconButton>
+    </div>
   ),
 };

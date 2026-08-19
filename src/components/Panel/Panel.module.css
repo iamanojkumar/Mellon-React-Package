@@ -1,0 +1,41 @@
+.panel {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  /* Component-intrinsic: a docked panel needs a resting width, same class of
+     exception as Sidebar's own fixed width. Overridable via className/style. */
+  width: 320px;
+  height: 100%;
+  background: var(--ds-color-surface-primary);
+}
+
+.panel[data-dock='end'] {
+  border-left: var(--ds-border-width-thin) solid var(--ds-color-border-primary);
+}
+
+.panel[data-dock='start'] {
+  border-right: var(--ds-border-width-thin) solid var(--ds-color-border-primary);
+}
+
+.header {
+  flex: none;
+  padding: var(--ds-space-md);
+  border-bottom: var(--ds-border-width-thin) solid var(--ds-color-border-primary);
+  color: var(--ds-color-text-primary);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-md);
+  font-weight: var(--ds-font-weight-bold);
+}
+
+.body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--ds-space-md);
+}
+
+.footer {
+  flex: none;
+  padding: var(--ds-space-md);
+  border-top: var(--ds-border-width-thin) solid var(--ds-color-border-primary);
+}
