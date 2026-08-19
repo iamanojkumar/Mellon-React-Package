@@ -1,5 +1,12 @@
 # @mellon-design/react
 
+## 0.7.0
+
+### Minor Changes
+
+- d1e2d2a: Add `icon`/`iconPosition` props to `Button` for a leading or trailing decorative glyph (hidden while `loading`). Add `@mellon-design/icons` as a dependency — this library previously shipped no icon package, authoring every icon as inline SVG owned by a specific component; the standing "no icon library" rule from `CLAUDE.md` is superseded for icons a consumer supplies through slot props like `Button.icon`, `IconButton`'s children, `Badge.icon`, etc. Icons still bundled inside individual components (`Video`, `Alert`/`Banner`/`Toast`'s `AlertVariantIcon`, ...) are unaffected.
+- d1e2d2a: Add `Panel`, a persistent non-modal container meant to dock at a viewport edge and fill its height (property-panel/inspector pattern) — `dock` (`start`/`end`), `header`/`footer` pinned rows around a scrollable body. Add `Canvas`'s `renderBackdrop` (renders beneath every block, inside the world transform, for overlaying selectable blocks on external raster content like a `pdf.js`-rendered page) and a controlled `viewport`/`defaultViewport`/`onViewportChange` triple, with the matching `viewport`/`onViewportChange` options added to `useCanvasViewport`. Both close sanctioned-stopgap entries from a real consumer's component-requirements log — see `docs/COMPONENT_LIST.md`'s Phase 31 entry.
+
 ## 0.6.0
 
 ### Minor Changes
