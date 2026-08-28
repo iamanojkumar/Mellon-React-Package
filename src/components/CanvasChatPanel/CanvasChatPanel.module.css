@@ -9,19 +9,30 @@
   z-index: 1;
   display: flex;
   flex-direction: column;
+  /* Default box — overridden inline once the corner handle (or Alt+Arrow)
+     has actually resized the panel, which is why these aren't `min-`/`max-`:
+     a resize should be free to shrink below this width, not just grow. */
   width: 20rem;
+  height: 26rem;
   max-width: calc(100% - 2 * var(--ds-space-md));
   background: var(--ds-color-surface-primary);
   border: var(--ds-border-width-thin) solid var(--ds-color-border-primary);
   border-radius: var(--ds-radius-lg);
-  box-shadow: var(--ds-elevation-md);
+  box-shadow: var(--ds-elevation-sm);
   overflow: hidden;
 }
 
-/* Promoted to its own compositor layer only while actually dragging — a
-   permanent `will-change` pins memory for a panel that spends nearly all its
-   life motionless. */
-.panel[data-dragging] {
+/* Minimized collapses to its header alone — the fixed `height` above would
+   otherwise leave a tall empty panel with nothing showing but a title bar. */
+.panel[data-minimized] {
+  height: auto;
+}
+
+/* Promoted to its own compositor layer only while actually dragging or
+   resizing — a permanent `will-change` pins memory for a panel that spends
+   nearly all its life motionless. */
+.panel[data-dragging],
+.panel[data-resizing] {
   user-select: none;
   will-change: transform;
 }
@@ -88,19 +99,23 @@
 }
 
 .body {
+  position: relative;
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   min-height: 0;
 }
 
-/* The scrollable exchange: last prompt, reasoning, reply. Capped and
-   scrollable, with its scrollbar hidden per the reference — the affordance is
-   the visible clipped text at the boundary, not a track. */
+/* The scrollable exchange: every turn so far, oldest first. Fills whatever
+   height the panel itself has (its default, or a resize) rather than a
+   fixed cap, with its scrollbar hidden per the reference — the affordance is
+   the visible clipped text at the scroll boundary, not a track. */
 .scroll {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: var(--ds-space-sm);
-  max-height: 14rem;
+  min-height: 0;
   padding: var(--ds-space-md);
   overflow-y: auto;
   scrollbar-width: none;
@@ -129,10 +144,6 @@
   align-items: center;
   gap: var(--ds-space-xs);
   font-weight: var(--ds-font-weight-medium);
-}
-
-.thinkingDots {
-  flex: none;
 }
 
 /* Single line, clipped — a compact account, never the full text, and never
@@ -194,4 +205,30 @@
 
 .promptBar {
   gap: 0;
+}
+
+/* Bottom-right corner grip — the same "small, low-contrast until it matters"
+   treatment as a native OS resize handle. `resizeHandlers` (usePointerDrag)
+   drives the drag; the visible mark is decorative only, so it's `aria-hidden`
+   like `Canvas`'s own resize handles, with Alt+Arrow as the keyboard path. */
+.resizeHandle {
+  position: absolute;
+  inset-inline-end: 1px;
+  inset-block-end: 1px;
+  width: 0.875rem;
+  height: 0.875rem;
+  cursor: nwse-resize;
+  touch-action: none;
+}
+
+.resizeHandle::before {
+  content: '';
+  position: absolute;
+  inset-inline-end: 3px;
+  inset-block-end: 3px;
+  width: 6px;
+  height: 6px;
+  border-inline-end: var(--ds-border-width-medium) solid var(--ds-color-border-primary);
+  border-block-end: var(--ds-border-width-medium) solid var(--ds-color-border-primary);
+  opacity: 0.6;
 }

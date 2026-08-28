@@ -1,0 +1,45 @@
+.group {
+  position: absolute;
+  box-sizing: border-box;
+  background: transparent;
+  border: var(--ds-border-width-thin) dashed var(--ds-color-border-primary);
+  border-radius: var(--ds-radius-lg);
+  pointer-events: none;
+}
+
+/* `groupBounds` already grows the box's own rect upward to reserve room for
+   this label (its `labelHeadroom`) — the label sits inside that reserved
+   space, at the box's own top edge, rather than pushed further negative
+   beyond it. The latter double-reserved the space and let the label clip
+   off-screen for any group near the canvas's top edge. */
+.label {
+  position: absolute;
+  inset-block-start: var(--ds-space-xs);
+  inset-inline-start: var(--ds-space-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-xs);
+  pointer-events: auto;
+}
+
+.name {
+  color: var(--ds-color-text-secondary);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-xs);
+  font-weight: var(--ds-font-weight-bold);
+}
+
+.nameInput {
+  padding: 0;
+  color: var(--ds-color-text-secondary);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-xs);
+  font-weight: var(--ds-font-weight-bold);
+  background: var(--ds-color-surface-primary);
+  border: var(--ds-border-width-thin) solid var(--ds-color-border-primary);
+  border-radius: var(--ds-radius-sm);
+}
+
+.nameInput:focus {
+  outline: none;
+}

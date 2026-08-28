@@ -12,11 +12,18 @@ import { Link } from '../Link/Link';
 import { ChartSurface } from '../ChartSurface/ChartSurface';
 import { CanvasChecklist } from '../CanvasChecklist/CanvasChecklist';
 import { CanvasFillPicker } from '../CanvasFillPicker/CanvasFillPicker';
+import { AISuggestionPopover } from '../AISuggestionPopover/AISuggestionPopover';
 import { Document } from '../Document/Document';
+import { useAI } from '../../hooks/useAI';
+import { useAIAction } from '../../hooks/useAIAction';
 import { mergeClasses } from '../../utilities/mergeClasses';
 import { canvasBlockLabel } from '../../utilities/canvasReducer';
 import type { CanvasBlockData } from '../../utilities/canvasReducer';
 import styles from './CanvasBlock.module.css';
+
+function defaultBuildShapeAIPrompt(text: string): string {
+  return `Rewrite this flowchart shape's label to be clearer and more concise, keeping its meaning. Reply with the rewritten label only, no punctuation beyond what the label itself needs.\n\n${text || '(no label yet — write a short one that fits a flowchart shape)'}`;
+}
 
 /** The eight handles around a selected block. */
 export const RESIZE_HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as const;
@@ -46,7 +53,17 @@ export interface CanvasBlockOwnProps {
   /** A `document` block's header/footer changed — typed while editing. */
   onHeaderChange?: (header: string) => void;
   onFooterChange?: (footer: string) => void;
-  /** Forwarded to text-bearing faces. Inert without an `AIProvider`. */
+  /**
+   * A "Rewrite with AI" trigger. Inert without an `AIProvider`. Only wired
+   * up for the two kinds with editable text of their own — `sticky`
+   * (`StickyNote`'s own internal trigger) and `shape` (a `CanvasBlock`-level
+   * overlay, since a clipped shape like `diamond`/`triangle` would clip a
+   * trigger drawn inside it). Every other kind (`text`, `image`, `embed`,
+   * `frame`, `code`, `table`, `link`, `checklist`, `chart`, `document`) has
+   * no click-to-edit text entry point on the canvas at all today, so this
+   * prop is silently a no-op for them rather than a partial rewrite affordance
+   * with nothing to accept a result into.
+   */
   aiRewrite?: boolean;
   /** Replaces the rendered face entirely, for block kinds a consumer owns. */
   renderBlock?: (block: CanvasBlockData) => ReactNode;
@@ -109,6 +126,9 @@ function BlockFace({
           {...(block.text ? { text: block.text } : {})}
           {...(block.tone ? { tone: block.tone } : {})}
           {...(block.color ? { color: block.color } : {})}
+          editing={editing ?? false}
+          {...(onTextChange ? { onTextChange } : {})}
+          {...(onEditingEnd ? { onEditingEnd } : {})}
         />
       );
 
@@ -282,6 +302,15 @@ export const CanvasBlock = forwardRef<HTMLDivElement, CanvasBlockProps>(function
 ) {
   const showFillPicker =
     selected && !editing && (block.kind === 'sticky' || block.kind === 'shape') && onColorChange;
+
+  // A `shape`'s AI trigger lives here, not inside `CanvasShape` — see the
+  // `.aiTrigger` CSS comment for why. `StickyNote` still owns its own
+  // trigger internally since it's never clip-path'd.
+  const aiClient = useAI();
+  const shapeAiAction = useAIAction();
+  const showShapeAI =
+    aiRewrite && selected && !editing && block.kind === 'shape' && !!aiClient && !!onTextChange;
+
   return (
     <div
       ref={ref}
@@ -359,6 +388,34 @@ export const CanvasBlock = forwardRef<HTMLDivElement, CanvasBlockProps>(function
           <CanvasFillPicker
             {...(block.color ? { value: block.color } : {})}
             onChange={(color) => onColorChange?.(color)}
+          />
+        </span>
+      )}
+
+      {showShapeAI && block.kind === 'shape' && (
+        <span
+          className={styles.aiTrigger}
+          data-canvas-block-actions=""
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <AISuggestionPopover
+            triggerLabel="Rewrite with AI"
+            status={shapeAiAction.status}
+            result={shapeAiAction.result}
+            {...(shapeAiAction.error ? { error: shapeAiAction.error } : {})}
+            onOpenChange={(open) => {
+              if (open)
+                shapeAiAction.trigger({ prompt: defaultBuildShapeAIPrompt(block.text ?? '') });
+              else shapeAiAction.reset();
+            }}
+            onAccept={(result) => {
+              onTextChange?.(result);
+              shapeAiAction.reset();
+            }}
+            onReject={() => shapeAiAction.reset()}
+            onRetry={() =>
+              shapeAiAction.trigger({ prompt: defaultBuildShapeAIPrompt(block.text ?? '') })
+            }
           />
         </span>
       )}

@@ -56,6 +56,22 @@ export const ReadOnlyExplanation: Story = {
   },
 };
 
+/**
+ * `editablePrompt` opens with a textarea pre-filled from the built prompt
+ * instead of fetching immediately — the person using the app can steer the
+ * instruction before it's sent, not just the integrating developer.
+ */
+export const EditablePrompt: Story = {
+  args: {
+    triggerLabel: 'Rewrite with AI',
+    status: 'idle',
+    result: '',
+    editablePrompt: 'Rewrite this note to be clearer and more concise, keeping its meaning.',
+    onSubmit: () => {},
+    defaultOpen: true,
+  },
+};
+
 export const ErrorState: Story = {
   name: 'Error',
   args: {

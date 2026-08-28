@@ -17,8 +17,6 @@
   /* A plain recessed surface. The workspace reads as a backdrop that blocks
      sit *on*, which is also why blocks use the lighter primary surface. */
   background: var(--ds-color-surface-secondary);
-  border: var(--ds-border-width-thin) solid var(--ds-color-border-primary);
-  border-radius: var(--ds-radius-lg);
   cursor: default;
   /* The canvas owns the wheel and every touch gesture; the page must not
      scroll underneath it. */

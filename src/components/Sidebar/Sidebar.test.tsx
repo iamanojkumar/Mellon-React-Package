@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { useState } from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expectNoA11yViolations } from '../../../tests/axe';
 import { Sidebar } from './Sidebar';
@@ -46,6 +46,40 @@ describe('Sidebar (in-flow)', () => {
     render(<BasicSidebar />);
     expect(screen.getByTestId('home-icon')).toBeInTheDocument();
     expect(screen.getByTestId('badge')).toBeInTheDocument();
+  });
+
+  it('renders actions as a sibling of the item link, not nested inside it', () => {
+    render(
+      <Sidebar>
+        <Sidebar.Item href="/" actions={<button type="button">Rename</button>}>
+          Dashboard
+        </Sidebar.Item>
+      </Sidebar>,
+    );
+    const link = screen.getByRole('link', { name: 'Dashboard' });
+    const actionButton = screen.getByRole('button', { name: 'Rename' });
+    expect(link).not.toContainElement(actionButton);
+    expect(actionButton.parentElement?.parentElement).toBe(link.parentElement);
+  });
+
+  it('renders no actions element when actions is omitted', () => {
+    const { container } = render(<BasicSidebar />);
+    expect(container.querySelector('[data-sidebar-item-actions]')).not.toBeInTheDocument();
+  });
+
+  it('stops a pointerdown on actions from bubbling past the item', () => {
+    const onPointerDown = vi.fn();
+    render(
+      <div onPointerDown={onPointerDown}>
+        <Sidebar>
+          <Sidebar.Item href="/" actions={<button type="button">Rename</button>}>
+            Dashboard
+          </Sidebar.Item>
+        </Sidebar>
+      </div>,
+    );
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Rename' }));
+    expect(onPointerDown).not.toHaveBeenCalled();
   });
 
   it('renders a group label above its items', () => {

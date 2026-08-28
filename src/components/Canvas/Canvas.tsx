@@ -109,6 +109,15 @@ export interface CanvasOwnProps {
    */
   aiPromptFloating?: boolean;
   /**
+   * Arbitrary extra context folded into every floating-chat prompt alongside
+   * the current selection — anything the consuming app wants the model to
+   * see that isn't canvas block data (the signed-in user, app-level state, a
+   * page's own metadata, ...). Only meaningful with `aiPromptFloating`; the
+   * static prompt bar has no equivalent slot. See `CanvasChatPanel`'s
+   * `context` prop.
+   */
+  chatContext?: unknown;
+  /**
    * Consumer-owned transport producing a `CanvasResolution`. Omit it and the
    * canvas falls back to `AIClient.complete` plus text parsing.
    *
@@ -269,6 +278,7 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
     renderBackdrop,
     aiPrompt = false,
     aiPromptFloating = false,
+    chatContext,
     resolveCommands,
     snapshotOptions,
     promptPlaceholder,
@@ -765,7 +775,7 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
 
     if (event.key === 'Enter') {
       const block = findCanvasBlock(scene, primary);
-      if (block?.kind === 'sticky') {
+      if (block?.kind === 'sticky' || block?.kind === 'shape') {
         event.preventDefault();
         setEditingId(primary);
       }
@@ -1108,7 +1118,7 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
               onResizeStart={(event, handle) => onResizeStart(event, block, handle)}
               onDoubleClick={() => {
                 if (readOnly) return;
-                if (block.kind === 'sticky') setEditingId(block.id);
+                if (block.kind === 'sticky' || block.kind === 'shape') setEditingId(block.id);
                 if (block.kind === 'document') {
                   setEditingId(block.id);
                   // Opening a document's editor defaults to locked focus —
@@ -1211,6 +1221,7 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
               ? { lastMessage: floatingLastMessage, lastMessageVariant: floatingLastMessageVariant }
               : {})}
             {...(commands.thinking ? { thinking: commands.thinking } : {})}
+            {...(chatContext !== undefined ? { context: chatContext } : {})}
             disabled={readOnly}
             {...(promptPlaceholder ? { placeholder: promptPlaceholder } : {})}
             boundsRef={surfaceRef}

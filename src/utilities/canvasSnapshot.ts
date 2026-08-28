@@ -130,15 +130,22 @@ export function buildCanvasPrompt(prompt: string, snapshot: CanvasSnapshot): str
     'Shape:',
     '{"thinking": "optional, one or two sentences", "commands": [...], "message": "optional prose", "highlightBlockIds": ["optional ids"]}',
     '',
+    // Two "create" examples, deliberately of different kinds — a single
+    // example anchors a model on whichever kind happens to illustrate the
+    // JSON shape, and in practice that meant every generated block came back
+    // `kind:"sticky"` regardless of content, even a decision point or a
+    // start/end state that would normally be a different shape in a
+    // flowchart. Neither example is "the" example to copy.
     'Allowed commands (use the exact ids from the scene below, never labels):',
     '{"op":"create","block":{"id":"...","kind":"sticky","text":"...","x":0,"y":0,"width":160,"height":160}}',
+    '{"op":"create","block":{"id":"...","kind":"shape","shape":"diamond","text":"...","x":0,"y":0,"width":160,"height":160}}',
     '{"op":"move","id":"...","x":0,"y":0}',
     '{"op":"resize","id":"...","width":160,"height":160}',
     '{"op":"update","id":"...","patch":{"text":"..."}}',
     '{"op":"connect","connector":{"id":"...","from":"...","to":"...","label":"optional"}}',
     '{"op":"delete","id":"..."}',
     '',
-    'Block kinds: sticky (text), shape (shape: rectangle|ellipse|diamond|triangle|parallelogram, text), frame (title), divider, text (html), image (src, alt), embed (title, url), code (code, language), table (columns, rows), link (url, title, description), checklist (title, items: [{text, done}]), chart (label, data: [{label, value}], chartType: bar|line). There is no separate "circle" kind — for a circle, use shape:"ellipse" with width equal to height.',
+    'Block kinds: sticky (text), shape (shape: rectangle|ellipse|diamond|triangle|parallelogram, text), frame (title), divider, text (html), image (src, alt), embed (title, url), code (code, language), table (columns, rows), link (url, title, description), checklist (title, items: [{text, done}]), chart (label, data: [{label, value}], chartType: bar|line), document (pages: string[] of HTML, header?, footer?). There is no separate "circle" kind — for a circle, use shape:"ellipse" with width equal to height. To write into a document block, use {"op":"update","id":"...","patch":{"pages":["<html>..."]}}.',
     '',
     'Rules:',
     '- Before deciding, state your reasoning in "thinking": one or two sentences on why these commands (or none) — not a transcript, and never a substitute for "message", which is the only part the request itself is answered in.',

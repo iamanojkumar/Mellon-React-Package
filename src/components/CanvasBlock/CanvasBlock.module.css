@@ -209,3 +209,15 @@
   inset-inline-start: var(--ds-space-xs);
   cursor: auto;
 }
+
+/* A `shape`'s own trigger, drawn here rather than inside `CanvasShape` —
+   `diamond`/`triangle`/`parallelogram` clip their content with `clip-path`,
+   which would clip a trigger drawn inside the shape's own box too. Top-right,
+   same corner `StickyNote`'s internal trigger uses, so it reads the same way
+   regardless of which face a selected block happens to have. */
+.aiTrigger {
+  position: absolute;
+  inset-block-start: var(--ds-space-xs);
+  inset-inline-end: var(--ds-space-xs);
+  cursor: auto;
+}

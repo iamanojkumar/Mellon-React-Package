@@ -803,6 +803,29 @@ describe('Canvas floating prompt', () => {
     expect(seenPrompt).toContain('"text":"Login"');
   });
 
+  it('folds a consumer-supplied chatContext into every floating prompt', async () => {
+    const user = userEvent.setup();
+    let seenPrompt = '';
+
+    render(
+      <Canvas
+        defaultScene={makeScene()}
+        aiPrompt
+        aiPromptFloating
+        chatContext={{ userPlan: 'pro' }}
+        resolveCommands={async ({ prompt }) => {
+          seenPrompt = prompt;
+          return { commands: [] };
+        }}
+      />,
+    );
+
+    await ask(user, 'summarize this');
+
+    expect(seenPrompt).toContain('Additional context:');
+    expect(seenPrompt).toContain('"userPlan":"pro"');
+  });
+
   it('still stages a multi-command reply for review, same as the static bar', async () => {
     const user = userEvent.setup();
     const batch = json({
@@ -1920,5 +1943,66 @@ describe('Canvas block catalogue', () => {
     const { container } = render(<Canvas defaultScene={catalogue} aria-label="Workspace" />);
 
     await expectNoA11yViolations(container);
+  });
+});
+
+describe('Canvas shape editing', () => {
+  function shapeScene(): CanvasScene {
+    return {
+      blocks: [
+        {
+          id: 's',
+          kind: 'shape',
+          shape: 'diamond',
+          text: 'Decide?',
+          x: 0,
+          y: 0,
+          width: 160,
+          height: 160,
+        },
+      ],
+      connectors: [],
+    };
+  }
+
+  it('double-clicking a shape enters editing, the same as a sticky note', () => {
+    render(<Canvas defaultScene={shapeScene()} />);
+
+    fireEvent.doubleClick(within(blockEl('Decide?')).getByText('Decide?'));
+
+    expect(screen.getByLabelText('Shape label')).toHaveValue('Decide?');
+  });
+
+  it('Enter with a shape selected enters editing', () => {
+    render(<Canvas defaultScene={shapeScene()} />);
+
+    fireEvent.pointerDown(blockEl('Decide?'));
+    focusCanvas();
+    fireEvent.keyDown(screen.getByRole('group', { name: 'Canvas' }), { key: 'Enter' });
+
+    expect(screen.getByLabelText('Shape label')).toHaveValue('Decide?');
+  });
+
+  it('typing while editing updates the block through the same reducer path as sticky text', () => {
+    render(<Canvas defaultScene={shapeScene()} />);
+
+    fireEvent.doubleClick(within(blockEl('Decide?')).getByText('Decide?'));
+    fireEvent.change(screen.getByLabelText('Shape label'), { target: { value: 'Approved?' } });
+    fireEvent.blur(screen.getByLabelText('Shape label'));
+
+    expect(within(blockEl('Approved?')).getByText('Approved?')).toBeInTheDocument();
+  });
+
+  it('offers a "Rewrite with AI" trigger on a selected shape block when aiRewrite and an AIProvider are both set', async () => {
+    const user = userEvent.setup();
+    const client: AIClient = { complete: vi.fn().mockResolvedValue('Approved?') };
+    render(
+      <AIProvider client={client}>
+        <Canvas defaultScene={shapeScene()} aiRewrite />
+      </AIProvider>,
+    );
+
+    await user.click(blockEl('Decide?'));
+    expect(screen.getByRole('button', { name: 'Rewrite with AI' })).toBeInTheDocument();
   });
 });

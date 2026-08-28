@@ -1,9 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
+import { useState } from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expectNoA11yViolations } from '../../../tests/axe';
 import { CanvasBlock } from './CanvasBlock';
 import { DEFAULT_CANVAS_FILL_PRESETS } from '../CanvasFillPicker/CanvasFillPicker';
+import { AIProvider } from '../../providers/AIProvider';
+import type { AIClient } from '../../contexts/AIContext';
 import type { CanvasBlockData } from '../../utilities/canvasReducer';
 
 function at(block: Partial<CanvasBlockData> & Pick<CanvasBlockData, 'kind'>): CanvasBlockData {
@@ -171,5 +174,96 @@ describe('CanvasBlock fill picker', () => {
     await user.click(screen.getByRole('button', { name: DEFAULT_CANVAS_FILL_PRESETS[0] }));
 
     expect(onColorChange).toHaveBeenCalledWith(expect.stringMatching(/^#[0-9a-f]{6}$/i));
+  });
+});
+
+describe('CanvasBlock shape editing', () => {
+  it('forwards editing/onTextChange to a shape block, the same way sticky already works', () => {
+    const onTextChange = vi.fn();
+    render(
+      <CanvasBlock
+        block={at({ kind: 'shape', shape: 'rectangle', text: 'Draft' })}
+        editing
+        onTextChange={onTextChange}
+      />,
+    );
+    expect(screen.getByLabelText('Shape label')).toHaveValue('Draft');
+  });
+});
+
+describe('CanvasBlock shape AI trigger', () => {
+  const shapeBlock = at({ kind: 'shape', shape: 'diamond', text: 'a draft label' });
+
+  it('offers it only for shape blocks, only while selected, not editing, and only with an AIProvider', () => {
+    // Not selected.
+    expect(
+      render(
+        <CanvasBlock block={shapeBlock} aiRewrite onTextChange={() => {}} />,
+      ).container.querySelector('button[aria-label="Rewrite with AI"]'),
+    ).toBeNull();
+
+    // Editing — pointer gestures belong to the input, not a popover trigger.
+    expect(
+      render(
+        <CanvasBlock block={shapeBlock} aiRewrite selected editing onTextChange={() => {}} />,
+      ).container.querySelector('button[aria-label="Rewrite with AI"]'),
+    ).toBeNull();
+
+    // No AIProvider mounted.
+    expect(
+      render(
+        <CanvasBlock block={shapeBlock} aiRewrite selected onTextChange={() => {}} />,
+      ).container.querySelector('button[aria-label="Rewrite with AI"]'),
+    ).toBeNull();
+  });
+
+  it('renders the trigger for a selected shape block with an AIProvider mounted', () => {
+    const client: AIClient = { complete: vi.fn().mockResolvedValue('x') };
+    render(
+      <AIProvider client={client}>
+        <CanvasBlock block={shapeBlock} aiRewrite selected onTextChange={() => {}} />
+      </AIProvider>,
+    );
+    expect(screen.getByRole('button', { name: 'Rewrite with AI' })).toBeInTheDocument();
+  });
+
+  it('accepting the suggestion calls onTextChange with the result', async () => {
+    const user = userEvent.setup();
+    const client: AIClient = { complete: vi.fn().mockResolvedValue('Decision?') };
+
+    function Controlled() {
+      const [text, setText] = useState('a draft label');
+      return (
+        <AIProvider client={client}>
+          <CanvasBlock
+            block={at({ kind: 'shape', shape: 'diamond', text })}
+            aiRewrite
+            selected
+            onTextChange={setText}
+          />
+        </AIProvider>
+      );
+    }
+    render(<Controlled />);
+
+    await user.click(screen.getByRole('button', { name: 'Rewrite with AI' }));
+    expect(client.complete).toHaveBeenCalledWith(
+      expect.objectContaining({ prompt: expect.stringContaining('a draft label') }),
+    );
+
+    await screen.findByText('Decision?');
+    await user.click(screen.getByRole('button', { name: 'Accept' }));
+
+    expect(screen.getByText('Decision?')).toBeInTheDocument();
+  });
+
+  it('has no accessibility violations with the trigger shown', async () => {
+    const client: AIClient = { complete: vi.fn().mockResolvedValue('x') };
+    const { container } = render(
+      <AIProvider client={client}>
+        <CanvasBlock block={shapeBlock} aiRewrite selected onTextChange={() => {}} />
+      </AIProvider>,
+    );
+    await expectNoA11yViolations(container);
   });
 });

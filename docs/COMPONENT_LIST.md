@@ -349,6 +349,31 @@ and present in the accessibility tree.
   and is the one item the original reasoning got right. Thousands of points per
   stroke as SVG paths is the case a raster layer genuinely serves better.
 
+### Node graph — new standalone family, built from a real feature request
+
+A directed graph of connectable, groupable nodes, each holding arbitrary data
+(a string, a form value, or an entire scene parsed from another module — a
+`Canvas` `scene`, a `Document`'s `pages`). Deliberately **not** a `Canvas`
+block kind: the request was for nodes and node groups "referred on other
+modules", which argues for a standalone family with its own exported data
+shape and pure functions (`NodeGraphData`, `computeNodeOutput`,
+`canConnect`/`wouldCreateCycle` in `utilities/nodeGraph.ts`) rather than
+coupling a flow-graph data model to `Canvas`'s block reducer and pan/zoom
+geometry, the same way `KanbanBoard` stayed separate from `Canvas` rather than
+becoming another block kind.
+
+- Node with input/output connections — ✅ `Node` (port buttons), `NodeConnector`
+  (the SVG edge), `NodeGraph` (owns dragging, click-to-connect, selection)
+- A connected node's output "holding all of" its upstream node's info — ✅
+  `computeNodeOutput`: derived on every read as `{ [upstream.id]:
+upstream.data, [this.id]: this.data }`, recursively through a chain, not a
+  value copied once at connect time — so it always reflects the current graph
+- Node groups with name + rename — ✅ `NodeGroup` (renamable label,
+  `onUngroup`), grouped via `G` with 2+ nodes selected
+- Nodes/groups referenced from other modules — ✅ the data (`NodeGraphData`)
+  and pure functions are the public surface; nothing needed lives only inside
+  `NodeGraph`'s own state
+
 ### File workspace / artifact panels
 
 - File explorer / folder tree (covers: `TreeView`)

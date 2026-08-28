@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Popover } from '../Popover/Popover';
 import type { Placement } from '@floating-ui/dom';
 import { AITriggerButton } from '../AITriggerButton/AITriggerButton';
@@ -20,6 +21,26 @@ export interface AISuggestionPopoverProps {
   onAccept?: (result: string) => void;
   onReject?: () => void;
   onRetry?: () => void;
+  /**
+   * Opens showing an editable textarea pre-filled with this text instead of
+   * firing the request immediately — lets the person using the app, not
+   * just the integrating developer, steer the instruction before it's sent.
+   * Needs `onSubmit`. Re-filled from this value every time the popover
+   * opens. Omit (the default) for the original "fetch on open" behaviour —
+   * trigger the request yourself from `onOpenChange`.
+   */
+  editablePrompt?: string;
+  /**
+   * Fires with the (possibly edited) prompt when the user submits it — via
+   * the send button or Ctrl/Cmd+Enter. The owning component is responsible
+   * for calling its own `useAIAction().trigger({ prompt })`; this popover
+   * doesn't call it directly.
+   */
+  onSubmit?: (prompt: string) => void;
+  /** Accessible label for the editable prompt textarea. Defaults to `'Instruction'`. */
+  promptLabel?: string;
+  /** Label for the submit button. Defaults to `'Send'`. */
+  submitLabel?: string;
   placement?: Placement;
   className?: string;
 }
@@ -55,14 +76,38 @@ export function AISuggestionPopover({
   onAccept,
   onReject,
   onRetry,
+  editablePrompt,
+  onSubmit,
+  promptLabel = 'Instruction',
+  submitLabel = 'Send',
   placement,
   className,
 }: AISuggestionPopoverProps) {
+  const [draft, setDraft] = useState(editablePrompt ?? '');
   const showResult = status === 'loading' || status === 'streaming' || status === 'done';
   const showActions = status === 'done' && (onAccept || onReject);
+  // Only meaningful when `editablePrompt` is supplied: the form stays up
+  // until the owning component actually triggers a request (status leaves
+  // `'idle'`) — nothing here calls `trigger()` itself.
+  const showPromptForm = editablePrompt !== undefined && status === 'idle';
+
+  function submit() {
+    onSubmit?.(draft);
+  }
 
   return (
-    <Popover open={open} defaultOpen={defaultOpen} onOpenChange={onOpenChange}>
+    <Popover
+      open={open}
+      defaultOpen={defaultOpen}
+      onOpenChange={(next) => {
+        // Re-fills the draft from the latest `editablePrompt` every time the
+        // popover opens, rather than carrying over whatever was last typed —
+        // the pre-fill is meant to reflect *this* open's context (e.g. the
+        // block's current text), not a stale previous instruction.
+        if (next) setDraft(editablePrompt ?? '');
+        onOpenChange?.(next);
+      }}
+    >
       <Popover.Trigger as={AITriggerButton} aria-label={triggerLabel} status={status} />
       <Popover.Content placement={placement}>
         <div
@@ -70,6 +115,38 @@ export function AISuggestionPopover({
           aria-label={triggerLabel}
           className={mergeClasses(styles.content, className)}
         >
+          {showPromptForm && (
+            <form
+              className={styles.promptForm}
+              onSubmit={(event) => {
+                event.preventDefault();
+                submit();
+              }}
+            >
+              <textarea
+                className={styles.promptInput}
+                aria-label={promptLabel}
+                value={draft}
+                rows={3}
+                onChange={(event) => setDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  // Plain Enter stays a newline — Ctrl/Cmd+Enter is the
+                  // explicit "send" chord, same convention `StickyNote`'s
+                  // own editable textarea uses for "done".
+                  if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+                    event.preventDefault();
+                    submit();
+                  }
+                }}
+              />
+              <div className={styles.actions}>
+                <Button type="submit" variant="primary" size="sm">
+                  {submitLabel}
+                </Button>
+              </div>
+            </form>
+          )}
+
           {status === 'error' && (
             <div className={styles.error} role="alert">
               <span>{error}</span>

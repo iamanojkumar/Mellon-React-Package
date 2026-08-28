@@ -18,6 +18,7 @@
 
 .itemWrapper {
   display: flex;
+  align-items: center;
 }
 
 .item {
@@ -25,12 +26,17 @@
   display: flex;
   align-items: center;
   gap: var(--ds-space-sm);
-  width: 100%;
+  /* `flex: 1` rather than `width: 100%` — `actions`, when present, is a
+     sibling within the same row, and a fixed 100% width would push it onto
+     a second line instead of trailing this element. */
+  flex: 1;
+  min-width: 0;
   padding: var(--ds-space-sm) var(--ds-space-sm);
   border-radius: var(--ds-radius-sm);
   color: var(--ds-color-text-secondary);
   font-family: var(--ds-font-family-base);
   font-size: var(--ds-font-size-md);
+  text-align: left;
   text-decoration: none;
   cursor: pointer;
 }
@@ -67,6 +73,13 @@
 
 .badge {
   flex-shrink: 0;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-inline-start: var(--ds-space-xs);
 }
 
 .group {

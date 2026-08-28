@@ -31,6 +31,11 @@ export const AllShapes: Story = {
   ),
 };
 
+/** Double-clicking a shape block on `Canvas` swaps this in, the same as a sticky note. */
+export const Editing: Story = {
+  args: { text: 'Process', editing: true },
+};
+
 export const Tones: Story = {
   render: () => (
     <div style={{ display: 'flex', gap: 'var(--ds-space-md)' }}>

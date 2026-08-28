@@ -43,6 +43,14 @@ export interface StickyNoteOwnProps {
   buildAIPrompt?: (text: string) => string;
   /** Accessible label for the AI trigger. Defaults to `'Rewrite with AI'`. */
   aiRewriteLabel?: string;
+  /**
+   * The trigger opens with `buildAIPrompt`'s result shown in an editable
+   * textarea instead of firing immediately — lets the person using the app,
+   * not just the integrating developer, steer the instruction before it's
+   * sent. Off by default: an existing `aiRewrite` consumer's fetch-on-open
+   * behaviour stays exactly as it was.
+   */
+  aiRewriteEditable?: boolean;
 }
 
 function defaultBuildAIPrompt(text: string): string {
@@ -68,6 +76,7 @@ export const StickyNote = forwardRef<HTMLDivElement, StickyNoteProps>(function S
     aiRewrite = false,
     buildAIPrompt = defaultBuildAIPrompt,
     aiRewriteLabel = 'Rewrite with AI',
+    aiRewriteEditable = false,
     className,
     style,
     ...rest
@@ -80,6 +89,16 @@ export const StickyNote = forwardRef<HTMLDivElement, StickyNoteProps>(function S
   const aiClient = useAI();
   const aiAction = useAIAction();
   const showAI = aiRewrite && !!aiClient && !!onTextChange;
+
+  // Retry re-sends whatever was actually submitted — the default prompt in
+  // "fetch on open" mode, or the user's edited instruction in
+  // `aiRewriteEditable` mode — rather than always falling back to
+  // `buildAIPrompt(text)`, which would silently discard an edit on retry.
+  const lastPromptRef = useRef<string>('');
+  function triggerRewrite(prompt: string) {
+    lastPromptRef.current = prompt;
+    aiAction.trigger({ prompt });
+  }
 
   useEffect(() => {
     if (!editing) return;
@@ -145,15 +164,21 @@ export const StickyNote = forwardRef<HTMLDivElement, StickyNoteProps>(function S
             result={aiAction.result}
             {...(aiAction.error ? { error: aiAction.error } : {})}
             onOpenChange={(open) => {
-              if (open) aiAction.trigger({ prompt: buildAIPrompt(text) });
-              else aiAction.reset();
+              if (open) {
+                if (!aiRewriteEditable) triggerRewrite(buildAIPrompt(text));
+              } else {
+                aiAction.reset();
+              }
             }}
+            {...(aiRewriteEditable
+              ? { editablePrompt: buildAIPrompt(text), onSubmit: triggerRewrite }
+              : {})}
             onAccept={(result) => {
               onTextChange?.(result);
               aiAction.reset();
             }}
             onReject={() => aiAction.reset()}
-            onRetry={() => aiAction.trigger({ prompt: buildAIPrompt(text) })}
+            onRetry={() => triggerRewrite(lastPromptRef.current || buildAIPrompt(text))}
           />
         </span>
       )}

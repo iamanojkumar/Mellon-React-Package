@@ -77,6 +77,40 @@ export const WithIcons: Story = {
 };
 
 /**
+ * `actions` renders as a sibling of the item's own link/button, inside the
+ * same `<li>` — a real "⋮" trigger next to the label rather than a second
+ * interactive element nested inside the first (invalid HTML, and it would
+ * break the item's own click handling).
+ */
+export const WithActions: Story = {
+  render: () => (
+    <Sidebar>
+      <Sidebar.Item
+        href="/"
+        active
+        actions={
+          <Button size="sm" variant="ghost" aria-label="Rename Dashboard">
+            ⋮
+          </Button>
+        }
+      >
+        Dashboard
+      </Sidebar.Item>
+      <Sidebar.Item
+        href="/projects"
+        actions={
+          <Button size="sm" variant="ghost" aria-label="Rename Projects">
+            ⋮
+          </Button>
+        }
+      >
+        Projects
+      </Sidebar.Item>
+    </Sidebar>
+  ),
+};
+
+/**
  * `asDrawer` renders the same items through `Drawer` (`placement="left"`)
  * instead of an in-flow panel — pass this from your own responsive/
  * breakpoint logic to get a collapsible mobile Sidebar.

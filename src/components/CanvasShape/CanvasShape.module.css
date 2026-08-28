@@ -62,3 +62,21 @@
   text-align: center;
   overflow-wrap: anywhere;
 }
+
+/* Borderless: the shape is already the visible container, so an input chrome
+   inside it would be a second box — same reasoning as StickyNote's `.input`. */
+.input {
+  width: 100%;
+  padding: 0;
+  color: var(--ds-color-text-primary);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  line-height: var(--ds-line-height-tight);
+  text-align: center;
+  background: transparent;
+  border: none;
+}
+
+.input:focus {
+  outline: none;
+}

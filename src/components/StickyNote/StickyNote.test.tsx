@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
+import { useState } from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expectNoA11yViolations } from '../../../tests/axe';
 import { StickyNote } from './StickyNote';
+import { AIProvider } from '../../providers/AIProvider';
+import type { AIClient } from '../../contexts/AIContext';
 
 describe('StickyNote', () => {
   it('renders its text', () => {
@@ -81,5 +84,77 @@ describe('StickyNote', () => {
 
     const write = render(<StickyNote text="Ship it" editing />);
     await expectNoA11yViolations(write.container);
+  });
+
+  describe('aiRewrite', () => {
+    it('renders no AI trigger when aiRewrite is omitted', () => {
+      render(<StickyNote text="Ship it" />);
+      expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    });
+
+    it('renders no AI trigger when aiRewrite is true but no AIProvider is mounted', () => {
+      render(<StickyNote text="Ship it" aiRewrite onTextChange={vi.fn()} />);
+      expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    });
+
+    it('fetch-on-open (default): triggers the client immediately, no textarea shown', async () => {
+      const user = userEvent.setup();
+      const client: AIClient = { complete: vi.fn().mockResolvedValue('a tighter note') };
+
+      function Controlled() {
+        const [text, setText] = useState('a draft note');
+        return (
+          <AIProvider client={client}>
+            <StickyNote text={text} aiRewrite onTextChange={setText} />
+          </AIProvider>
+        );
+      }
+      render(<Controlled />);
+
+      await user.click(screen.getByRole('button', { name: 'Rewrite with AI' }));
+      expect(client.complete).toHaveBeenCalledWith(
+        expect.objectContaining({ prompt: expect.stringContaining('a draft note') }),
+      );
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+
+      await screen.findByText('a tighter note');
+      await user.click(screen.getByRole('button', { name: 'Accept' }));
+      expect(screen.getByText('a tighter note')).toBeInTheDocument();
+    });
+
+    it('aiRewriteEditable: opens with an editable textarea instead of fetching immediately', async () => {
+      const user = userEvent.setup();
+      const client: AIClient = { complete: vi.fn().mockResolvedValue('unused') };
+      render(
+        <AIProvider client={client}>
+          <StickyNote text="a draft note" aiRewrite aiRewriteEditable onTextChange={vi.fn()} />
+        </AIProvider>,
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Rewrite with AI' }));
+      const textarea = screen.getByRole('textbox', { name: 'Instruction' }) as HTMLTextAreaElement;
+      expect(textarea.value).toContain('a draft note');
+      expect(client.complete).not.toHaveBeenCalled();
+    });
+
+    it('aiRewriteEditable: sends the edited instruction, not the default prompt', async () => {
+      const user = userEvent.setup();
+      const client: AIClient = { complete: vi.fn().mockResolvedValue('rewritten') };
+      render(
+        <AIProvider client={client}>
+          <StickyNote text="a draft note" aiRewrite aiRewriteEditable onTextChange={vi.fn()} />
+        </AIProvider>,
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Rewrite with AI' }));
+      const textarea = screen.getByRole('textbox', { name: 'Instruction' });
+      await user.clear(textarea);
+      await user.type(textarea, 'Make it punchier');
+      await user.click(screen.getByRole('button', { name: 'Send' }));
+
+      expect(client.complete).toHaveBeenCalledWith(
+        expect.objectContaining({ prompt: 'Make it punchier' }),
+      );
+    });
   });
 });

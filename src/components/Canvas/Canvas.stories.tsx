@@ -771,13 +771,17 @@ export const AIPrompt: Story = {
 
 /**
  * Same pipeline as `AIPrompt`, decoupled from the top row: `aiPromptFloating`
- * moves the prompt into a `CanvasChatPanel` — a draggable, minimizable panel
- * over the canvas itself, styled as a compact card with a bare drag-handle
- * bar, a borderless input, and its scrollbar hidden on the response area.
- * Drag it by its header; double-click the header (or its hover-revealed
- * icon button, or a host-supplied `minimizeShortcut`) to minimize — there is
- * no close control, only expanded/minimized, so the assistant is always
- * reachable.
+ * moves the prompt into a `CanvasChatPanel` — a draggable, resizable,
+ * minimizable panel over the canvas itself, styled as a compact card with a
+ * bare drag-handle bar, a borderless input, and its scrollbar hidden on the
+ * scrollable history. Drag it by its header; double-click the header (or its
+ * hover-revealed icon button, or a host-supplied `minimizeShortcut`) to
+ * minimize — there is no close control, only expanded/minimized, so the
+ * assistant is always reachable. Drag the corner handle (or Alt+Arrow with
+ * the panel focused) to resize it.
+ *
+ * Every exchange stays in the scrollable history, not just the most recent
+ * one — ask more than once to see earlier turns still there, scrolled past.
  *
  * Select the "Sign-in flow" frame — every note visually inside a frame
  * moves with it (drag or keyboard nudge alike, geometric membership, not a
@@ -792,15 +796,45 @@ export const AIPromptFloating: Story = {
       <AIProvider client={mockClient}>
         <Stack gap="sm" style={{ height: '100%' }}>
           <Text size="sm">
-            Drag the panel by its header; double-click to minimize. Drag the &ldquo;Sign-in
-            flow&rdquo; frame and its notes move with it. Select the frame and ask about it for
-            group-aware context.
+            Drag the panel by its header; double-click to minimize. Drag the corner handle to resize
+            it. Ask more than once — every exchange stays in the scrollable history. Drag the
+            &ldquo;Sign-in flow&rdquo; frame and its notes move with it. Select the frame and ask
+            about it for group-aware context.
           </Text>
           <Canvas
             defaultScene={board}
             aiPrompt
             aiPromptFloating
             defaultSelectedIds={['f1']}
+            aria-label="Workspace"
+          />
+        </Stack>
+      </AIProvider>
+    </ToastProvider>
+  ),
+};
+
+/**
+ * `chatContext` folds arbitrary consumer data into every floating-chat
+ * prompt alongside the current selection — anything the host app wants the
+ * model to see that isn't canvas block data. Here it's the signed-in user
+ * and the workspace's plan; a real app might send its own app-level state,
+ * a page's metadata, or anything else it owns.
+ */
+export const AIPromptFloatingWithContext: Story = {
+  render: () => (
+    <ToastProvider>
+      <AIProvider client={mockClient}>
+        <Stack gap="sm" style={{ height: '100%' }}>
+          <Text size="sm">
+            Every prompt also carries <code>chatContext</code> — the user and plan below — folded in
+            alongside the selection.
+          </Text>
+          <Canvas
+            defaultScene={board}
+            aiPrompt
+            aiPromptFloating
+            chatContext={{ user: { name: 'Priya', role: 'admin' }, plan: 'pro' }}
             aria-label="Workspace"
           />
         </Stack>

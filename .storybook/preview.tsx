@@ -31,6 +31,7 @@ const preview: Preview = {
           'Data Display',
           'Board',
           'Canvas',
+          'Node',
           'Feedback',
           'Overlays',
           'Media',

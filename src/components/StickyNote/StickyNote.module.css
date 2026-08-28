@@ -9,9 +9,6 @@
   /* The lighter surface: blocks sit on the canvas's recessed grey backdrop,
      so they must not share its fill. */
   background: var(--ds-color-surface-primary);
-  border: var(--ds-border-width-thin) solid var(--ds-color-border-primary);
-  border-radius: var(--ds-radius-md);
-  box-shadow: var(--ds-elevation-sm);
 }
 
 /* Tone is decoration, never the carrier of meaning — the note's own text says

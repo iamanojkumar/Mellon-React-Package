@@ -21,6 +21,10 @@
 
 .bubble.bubble {
   box-sizing: border-box;
+  /* Overrides `Card`'s `--ds-radius-lg` — that radius is tuned for a card's
+     larger box and rounds a short one-line bubble's corners into each
+     other, reading as a pill/button rather than a chat bubble. */
+  border-radius: var(--ds-radius-md);
   padding: var(--ds-space-sm) var(--ds-space-md);
   font-family: var(--ds-font-family-base);
   font-size: var(--ds-font-size-sm);

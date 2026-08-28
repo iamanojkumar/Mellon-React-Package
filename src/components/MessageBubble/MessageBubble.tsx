@@ -16,13 +16,15 @@ export interface MessageBubbleOwnProps {
 export type MessageBubbleProps = ComponentPropsWithoutRef<'div'> & MessageBubbleOwnProps;
 
 /**
- * A single chat turn. Reuses `Card`'s base box (`background`/`border-radius`)
- * for the bubble itself via a doubled-class override
- * (`.bubble.bubble[data-variant=...]`, per CLAUDE.md's cross-component-CSS
- * hazard #2) rather than duplicating that box styling — `Card`'s own
- * `data-variant` vocabulary ('elevated'/'outlined') never matches ours, so
- * reusing the same attribute name is safe, just two unrelated vocabularies
- * sharing the established "variant → data-attribute" convention.
+ * A single chat turn. Reuses `Card`'s base box (`background`) for the
+ * bubble itself via a doubled-class override (`.bubble.bubble[data-variant=...]`,
+ * per CLAUDE.md's cross-component-CSS hazard #2) rather than duplicating
+ * that box styling — `Card`'s own `data-variant` vocabulary
+ * ('elevated'/'outlined') never matches ours, so reusing the same attribute
+ * name is safe, just two unrelated vocabularies sharing the established
+ * "variant → data-attribute" convention. `border-radius` is its own
+ * smaller, explicit value rather than inherited from `Card` — `Card`'s
+ * larger `--ds-radius-lg` rounds a short one-line bubble into a pill.
  *
  * `variant='user'` reverses the row (avatar/bubble on the right) — the
  * standard sent-vs-received chat layout — purely via CSS, no extra `align`

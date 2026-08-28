@@ -152,3 +152,7 @@ export * from './Video';
 export * from './Audio';
 export * from './SegmentTrack';
 export * from './Panel';
+export * from './Node';
+export * from './NodeConnector';
+export * from './NodeGroup';
+export * from './NodeGraph';

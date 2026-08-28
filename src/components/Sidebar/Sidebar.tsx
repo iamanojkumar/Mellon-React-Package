@@ -69,6 +69,16 @@ export interface SidebarItemOwnProps {
   active?: boolean;
   icon?: ReactNode;
   badge?: ReactNode;
+  /**
+   * Secondary controls (e.g. a "⋮" rename/delete trigger), rendered as a
+   * sibling of the item's own interactive element within the same `<li>`
+   * rather than nested inside it — nesting a real `<button>` inside this
+   * item's own `<a>`/`<button>` is invalid HTML and breaks click handling
+   * (the outer element's click would also fire). Marked so a press on an
+   * action reads as a click on that action, not on the item itself, the
+   * same guard `KanbanCard`'s own `actions` slot uses.
+   */
+  actions?: ReactNode;
 }
 
 export type SidebarItemProps<C extends ElementType = 'a'> = PolymorphicComponentPropWithRef<
@@ -82,7 +92,7 @@ type SidebarItemComponent = <C extends ElementType = 'a'>(
 
 /** Fixed `<li>` wrapper around the polymorphic (default `<a>`) interactive element — same "structural wrapper + polymorphic child" split `ButtonGroup` uses, so `as` never has to also mean "and also be a `<li>`". */
 const SidebarItem = forwardRef(function SidebarItem<C extends ElementType = 'a'>(
-  { as, className, active = false, icon, badge, children, ...rest }: SidebarItemProps<C>,
+  { as, className, active = false, icon, badge, actions, children, ...rest }: SidebarItemProps<C>,
   ref: React.ForwardedRef<Element>,
 ) {
   const Component = as ?? 'a';
@@ -104,6 +114,16 @@ const SidebarItem = forwardRef(function SidebarItem<C extends ElementType = 'a'>
         <span className={styles.label}>{children}</span>
         {badge && <span className={styles.badge}>{badge}</span>}
       </Component>
+
+      {actions && (
+        <span
+          className={styles.actions}
+          data-sidebar-item-actions=""
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          {actions}
+        </span>
+      )}
     </li>
   );
 }) as unknown as SidebarItemComponent;

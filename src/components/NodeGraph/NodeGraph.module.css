@@ -1,0 +1,22 @@
+.graph {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--ds-color-surface-secondary);
+}
+
+.connectors {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* Re-enabled only on the connectors' own hit areas, so the empty space between them still reaches the background press below. */
+.connectors :global(path) {
+  pointer-events: auto;
+}

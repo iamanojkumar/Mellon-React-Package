@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { useRef, useState } from 'react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expectNoA11yViolations } from '../../../tests/axe';
 import {
@@ -24,6 +25,30 @@ describe('buildCanvasChatPrompt', () => {
     expect(result).toContain('Selected elements (full content):');
     expect(result).toContain('"id":"b2"');
     expect(result).toContain('"text":"Auth service"');
+  });
+
+  it('appends a string context verbatim', () => {
+    const result = buildCanvasChatPrompt('tidy up', [], 'The user is on the free plan.');
+    expect(result).toContain('Additional context:');
+    expect(result).toContain('The user is on the free plan.');
+  });
+
+  it('JSON-serializes a non-string context', () => {
+    const result = buildCanvasChatPrompt('tidy up', [], { plan: 'pro', locale: 'en-GB' });
+    expect(result).toContain('Additional context:');
+    expect(result).toContain('"plan":"pro"');
+  });
+
+  it('omits the context section entirely when context is undefined', () => {
+    const result = buildCanvasChatPrompt('tidy up', []);
+    expect(result).not.toContain('Additional context:');
+  });
+
+  it('carries both the selection and the extra context in one prompt', () => {
+    const result = buildCanvasChatPrompt('what is wrong here', [blocks[1]!], { plan: 'pro' });
+    expect(result).toContain('Selected elements (full content):');
+    expect(result).toContain('Additional context:');
+    expect(result.indexOf('Selected elements')).toBeLessThan(result.indexOf('Additional context'));
   });
 });
 
@@ -252,6 +277,198 @@ describe('CanvasChatPanel', () => {
         thinking="Two notes mention the same flow."
       />,
     );
+
+    await expectNoA11yViolations(container);
+  });
+});
+
+/**
+ * Simulates how `Canvas` actually drives the panel: each submit flips
+ * `status` to `'loading'`, then resolves to a new `lastMessage`/`thinking`
+ * pair — the same two-step update `useCanvasCommands` performs.
+ */
+function LiveChatPanel({
+  blocks: liveBlocks,
+  resolveRef,
+}: {
+  blocks: CanvasBlockData[];
+  /** The test controls exactly when a reply "arrives" by calling this. */
+  resolveRef?: { current: () => void };
+}) {
+  const [status, setStatus] = useState<'idle' | 'loading' | 'done'>('idle');
+  const [lastMessage, setLastMessage] = useState<string | undefined>(undefined);
+  const [thinking, setThinking] = useState<string | undefined>(undefined);
+  const repliesRef = useRef(0);
+
+  function resolve() {
+    repliesRef.current += 1;
+    setThinking(`Reasoning for reply ${repliesRef.current}`);
+    setLastMessage(`Reply ${repliesRef.current}`);
+    setStatus('done');
+  }
+
+  function handleSubmit() {
+    setStatus('loading');
+    if (resolveRef) {
+      resolveRef.current = resolve;
+    } else {
+      resolve();
+    }
+  }
+
+  return (
+    <CanvasChatPanel
+      blocks={liveBlocks}
+      selectedBlocks={[]}
+      onSubmit={handleSubmit}
+      status={status}
+      {...(lastMessage ? { lastMessage, thinking } : {})}
+    />
+  );
+}
+
+describe('CanvasChatPanel history', () => {
+  it('keeps every past turn rather than replacing it with the newest', async () => {
+    const user = userEvent.setup();
+    render(<LiveChatPanel blocks={blocks} />);
+
+    await user.type(screen.getByLabelText('Ask or instruct the canvas'), 'first ask{Enter}');
+    await screen.findByText('Reply 1');
+
+    await user.type(screen.getByLabelText('Ask or instruct the canvas'), 'second ask{Enter}');
+    await screen.findByText('Reply 2');
+
+    expect(screen.getByText('first ask')).toBeInTheDocument();
+    expect(screen.getByText('Reply 1')).toBeInTheDocument();
+    expect(screen.getByText('second ask')).toBeInTheDocument();
+    expect(screen.getByText('Reply 2')).toBeInTheDocument();
+  });
+
+  it('shows the typing indicator only while a reply is in flight, not once it has arrived', async () => {
+    const user = userEvent.setup();
+    const resolveRef = { current: () => {} };
+    render(<LiveChatPanel blocks={blocks} resolveRef={resolveRef} />);
+
+    await user.type(screen.getByLabelText('Ask or instruct the canvas'), 'ask{Enter}');
+    expect(screen.getByRole('status', { name: 'Waiting for a reply' })).toBeInTheDocument();
+
+    act(() => resolveRef.current());
+    await screen.findByText('Reply 1');
+    expect(screen.queryByRole('status', { name: 'Waiting for a reply' })).not.toBeInTheDocument();
+  });
+
+  it('keeps a completed turn\u2019s "Thinking" text static, not an ongoing animated indicator', async () => {
+    const user = userEvent.setup();
+    const resolveRef = { current: () => {} };
+    render(<LiveChatPanel blocks={blocks} resolveRef={resolveRef} />);
+
+    await user.type(screen.getByLabelText('Ask or instruct the canvas'), 'ask{Enter}');
+    act(() => resolveRef.current());
+    await screen.findByText('Reply 1');
+
+    expect(screen.getByText('Reasoning for reply 1')).toBeInTheDocument();
+    // The only busy indicator left, if any, is the request-in-flight one —
+    // and there is none once the reply has landed.
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('shows a message already known on mount, without requiring a submit first', () => {
+    render(
+      <CanvasChatPanel
+        blocks={blocks}
+        selectedBlocks={[]}
+        onSubmit={vi.fn()}
+        lastMessage="Restored from earlier."
+      />,
+    );
+    expect(screen.getByText('Restored from earlier.')).toBeInTheDocument();
+  });
+
+  it('does not duplicate a message when the same lastMessage re-renders unchanged', () => {
+    const { rerender } = render(
+      <CanvasChatPanel
+        blocks={blocks}
+        selectedBlocks={[]}
+        onSubmit={vi.fn()}
+        lastMessage="Added a note."
+      />,
+    );
+    rerender(
+      <CanvasChatPanel
+        blocks={blocks}
+        selectedBlocks={[]}
+        onSubmit={vi.fn()}
+        disabled
+        lastMessage="Added a note."
+      />,
+    );
+    expect(screen.getAllByText('Added a note.')).toHaveLength(1);
+  });
+});
+
+describe('CanvasChatPanel context', () => {
+  it('folds a consumer-supplied context object into the submitted prompt', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    render(
+      <CanvasChatPanel
+        blocks={blocks}
+        selectedBlocks={[]}
+        onSubmit={onSubmit}
+        context={{ userPlan: 'pro' }}
+      />,
+    );
+
+    await user.type(screen.getByLabelText('Ask or instruct the canvas'), 'summarize{Enter}');
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.stringContaining('"userPlan":"pro"'));
+  });
+});
+
+describe('CanvasChatPanel resizing', () => {
+  it('applies a pointer drag on the resize handle as a width/height change', () => {
+    const { container } = render(
+      <CanvasChatPanel blocks={blocks} selectedBlocks={[]} onSubmit={vi.fn()} />,
+    );
+    const panel = container.querySelector('[class*="panel"]') as HTMLElement;
+    const handle = container.querySelector('[class*="resizeHandle"]') as HTMLElement;
+
+    fireEvent(handle, new MouseEvent('pointerdown', { bubbles: true, clientX: 0, clientY: 0 }));
+    fireEvent(handle, new MouseEvent('pointermove', { bubbles: true, clientX: 40, clientY: 20 }));
+    fireEvent(handle, new MouseEvent('pointerup', { bubbles: true, clientX: 40, clientY: 20 }));
+
+    expect(panel.style.width).not.toBe('');
+    expect(panel.style.height).not.toBe('');
+  });
+
+  it('resizes via Alt+Arrow when the panel has focus, without requiring a pointer', () => {
+    const { container } = render(
+      <CanvasChatPanel blocks={blocks} selectedBlocks={[]} onSubmit={vi.fn()} />,
+    );
+    const panel = container.querySelector('[class*="panel"]') as HTMLElement;
+
+    fireEvent.keyDown(panel, { key: 'ArrowRight', altKey: true });
+
+    expect(panel.style.width).not.toBe('');
+  });
+
+  it('ignores arrow keys without Alt held, so typing/navigation elsewhere is unaffected', () => {
+    const { container } = render(
+      <CanvasChatPanel blocks={blocks} selectedBlocks={[]} onSubmit={vi.fn()} />,
+    );
+    const panel = container.querySelector('[class*="panel"]') as HTMLElement;
+
+    fireEvent.keyDown(panel, { key: 'ArrowRight' });
+
+    expect(panel.style.width).toBe('');
+  });
+
+  it('has no accessibility violations after resizing', async () => {
+    const { container } = render(
+      <CanvasChatPanel blocks={blocks} selectedBlocks={[]} onSubmit={vi.fn()} />,
+    );
+    const panel = container.querySelector('[class*="panel"]') as HTMLElement;
+    fireEvent.keyDown(panel, { key: 'ArrowRight', altKey: true });
 
     await expectNoA11yViolations(container);
   });

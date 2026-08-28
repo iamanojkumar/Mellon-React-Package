@@ -132,6 +132,13 @@ describe('buildCanvasPrompt', () => {
     expect(prompt).toContain('Do not guess');
   });
 
+  it('illustrates "create" with more than one kind, so kind selection is not anchored to a single example', () => {
+    const prompt = buildCanvasPrompt('add a note', canvasSnapshot(scene()));
+
+    expect(prompt).toContain('"kind":"sticky"');
+    expect(prompt).toContain('"kind":"shape"');
+  });
+
   it('states truncation only when it happened', () => {
     expect(buildCanvasPrompt('x', canvasSnapshot(scene()))).not.toContain('truncated');
     expect(buildCanvasPrompt('x', canvasSnapshot(scene(), { maxBlocks: 1 }))).toContain(

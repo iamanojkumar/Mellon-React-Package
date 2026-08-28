@@ -10,6 +10,31 @@
   max-width: 20rem;
 }
 
+.promptForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-sm);
+}
+
+.promptInput {
+  box-sizing: border-box;
+  width: 100%;
+  padding: var(--ds-space-sm);
+  color: var(--ds-color-text-primary);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  line-height: var(--ds-line-height-base);
+  background: var(--ds-color-surface-primary);
+  border: var(--ds-border-width-thin) solid var(--ds-color-border-primary);
+  border-radius: var(--ds-radius-sm);
+  resize: vertical;
+}
+
+.promptInput:focus {
+  outline: var(--ds-border-width-medium) solid var(--ds-color-border-focus);
+  outline-offset: -1px;
+}
+
 .resultText {
   white-space: pre-wrap;
   font-family: var(--ds-font-family-base);
