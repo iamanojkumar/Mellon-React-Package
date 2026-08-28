@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { useState } from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expectNoA11yViolations } from '../../../tests/axe';
 import { CanvasBlock } from './CanvasBlock';
@@ -69,6 +69,11 @@ describe('CanvasBlock faces', () => {
     expect(screen.getByRole('group', { name: 'Risks' })).toBeInTheDocument();
   });
 
+  it('renders a node as a single labelled group, not doubly-labelled by the wrapper', () => {
+    render(<CanvasBlock block={at({ kind: 'node', name: 'Auth service' })} />);
+    expect(screen.getAllByRole('group', { name: 'Auth service' })).toHaveLength(1);
+  });
+
   it('renders a divider', () => {
     const { container } = render(<CanvasBlock block={at({ kind: 'divider' })} />);
     expect(container.querySelector('[role="separator"], hr')).toBeInTheDocument();
@@ -120,9 +125,10 @@ describe('CanvasBlock handles', () => {
 });
 
 describe('CanvasBlock fill picker', () => {
-  it('offers it only for sticky/shape, only while selected, and only when a handler is given', () => {
+  it('offers it only for sticky/shape/node, only while selected, and only when a handler is given', () => {
     const sticky = at({ kind: 'sticky', text: 'Note' });
     const shape = at({ kind: 'shape', shape: 'rectangle' });
+    const node = at({ kind: 'node', name: 'Auth' });
     const frame = at({ kind: 'frame', title: 'Group' });
 
     expect(
@@ -134,6 +140,12 @@ describe('CanvasBlock fill picker', () => {
     expect(
       render(
         <CanvasBlock block={shape} selected onColorChange={() => {}} />,
+      ).container.querySelector('button[aria-label="Change fill color"]'),
+    ).toBeInTheDocument();
+
+    expect(
+      render(
+        <CanvasBlock block={node} selected onColorChange={() => {}} />,
       ).container.querySelector('button[aria-label="Change fill color"]'),
     ).toBeInTheDocument();
 
@@ -265,5 +277,59 @@ describe('CanvasBlock shape AI trigger', () => {
       </AIProvider>,
     );
     await expectNoA11yViolations(container);
+  });
+});
+
+describe('CanvasBlock node ports and renaming', () => {
+  it('reports output/input port clicks and reflects the armed state via nodeConnecting', () => {
+    const onOutputPortClick = vi.fn();
+    const onInputPortClick = vi.fn();
+    render(
+      <CanvasBlock
+        block={at({ kind: 'node', name: 'Auth' })}
+        onOutputPortClick={onOutputPortClick}
+        onInputPortClick={onInputPortClick}
+        nodeConnecting
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: /output/i })).toHaveAttribute('data-connecting', '');
+
+    fireEvent.click(screen.getByRole('button', { name: /output/i }));
+    expect(onOutputPortClick).toHaveBeenCalledWith('x');
+
+    fireEvent.click(screen.getByRole('button', { name: /input/i }));
+    expect(onInputPortClick).toHaveBeenCalledWith('x');
+  });
+
+  it('renders ports as inert spans without click handlers', () => {
+    render(<CanvasBlock block={at({ kind: 'node', name: 'Auth' })} />);
+    expect(screen.queryByRole('button', { name: /output/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /input/i })).not.toBeInTheDocument();
+  });
+
+  it('renaming a node reports through onNameChange', () => {
+    const onNameChange = vi.fn();
+    render(<CanvasBlock block={at({ kind: 'node', name: 'Auth' })} onNameChange={onNameChange} />);
+
+    fireEvent.doubleClick(screen.getByText('Auth'));
+    fireEvent.change(screen.getByLabelText('Node name'), { target: { value: 'Auth service' } });
+    fireEvent.keyDown(screen.getByLabelText('Node name'), { key: 'Enter' });
+
+    expect(onNameChange).toHaveBeenCalledWith('Auth service');
+  });
+});
+
+describe('CanvasBlock document chrome', () => {
+  const documentBlock = at({ kind: 'document', pages: ['<p>Resume text</p>'] });
+
+  it('embeds bare by default — no standalone view/zoom chrome', () => {
+    render(<CanvasBlock block={documentBlock} />);
+    expect(screen.queryByRole('button', { name: 'List view' })).not.toBeInTheDocument();
+  });
+
+  it('renders Document’s standalone chrome when chrome is set', () => {
+    render(<CanvasBlock block={documentBlock} chrome />);
+    expect(screen.getByRole('button', { name: 'List view' })).toBeInTheDocument();
   });
 });

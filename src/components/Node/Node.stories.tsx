@@ -46,6 +46,33 @@ export const NoInput: Story = {
   ),
 };
 
+/**
+ * With no `children`, a node has no body — just a name in a fully-rounded
+ * chip, optionally filled with an arbitrary `color`. This is the shape a
+ * `Canvas` `node` block uses.
+ */
+export const ColoredPillChips: Story = {
+  render: () => (
+    <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+      {[
+        { id: 'a', name: 'Vague brief', color: '#c9e4d0' },
+        { id: 'b', name: 'Competitor results', color: '#f6d9b8' },
+        { id: 'c', name: 'User persona 1', color: '#dcd3f5' },
+        { id: 'd', name: 'Wireframes', color: undefined },
+      ].map((node) => (
+        <div key={node.id} style={{ position: 'relative', width: '10rem', height: '2.75rem' }}>
+          <Node
+            id={node.id}
+            name={node.name}
+            {...(node.color ? { color: node.color } : {})}
+            style={{ left: 0, top: 0, width: '100%', height: '100%' }}
+          />
+        </div>
+      ))}
+    </div>
+  ),
+};
+
 /** Double-clicking the name swaps it for an input when `onRename` is supplied. */
 export const Renamable: Story = {
   render: () => {

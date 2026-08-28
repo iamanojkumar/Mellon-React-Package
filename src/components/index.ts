@@ -146,6 +146,7 @@ export * from './CanvasPromptBar';
 export * from './CanvasChangePreview';
 export * from './CanvasChatPanel';
 export * from './CanvasFillPicker';
+export * from './CanvasToolbar';
 export * from './DocumentPage';
 export * from './Document';
 export * from './Video';

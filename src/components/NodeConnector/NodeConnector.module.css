@@ -1,7 +1,7 @@
 .path {
   fill: none;
   stroke: var(--ds-color-text-secondary);
-  stroke-width: var(--ds-border-width-medium);
+  stroke-width: var(--ds-border-width-thin);
   stroke-linecap: round;
   stroke-linejoin: round;
 }

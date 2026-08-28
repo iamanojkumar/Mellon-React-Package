@@ -242,6 +242,17 @@ describe('helpers', () => {
     expect(canvasBlockLabel({ id: 'd', kind: 'divider', x: 0, y: 0, width: 1, height: 1 })).toBe(
       'Divider',
     );
+    expect(
+      canvasBlockLabel({
+        id: 'n',
+        kind: 'node',
+        name: 'Auth service',
+        x: 0,
+        y: 0,
+        width: 1,
+        height: 1,
+      }),
+    ).toBe('Auth service');
   });
 
   it('prefers an explicit label over the derived one', () => {

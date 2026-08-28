@@ -336,6 +336,7 @@ export function NodeGraph<T = unknown>({
           name={node.name}
           selected={selectedIds.includes(node.id)}
           connecting={pendingSource === node.id}
+          {...(node.color ? { color: node.color } : {})}
           onRename={readOnly ? undefined : (name) => renameNode(node.id, name)}
           onSelect={selectNode}
           onHeaderPointerDown={(event) => onNodeHeaderPointerDown(event, node)}

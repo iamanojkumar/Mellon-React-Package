@@ -17,6 +17,18 @@ export interface NodeProps {
   connecting?: boolean;
   width?: number;
   height?: number;
+  /**
+   * An arbitrary hex fill — user content, not a design token, the same
+   * free-fill escape hatch as `StickyNote`/`CanvasShape`'s `color`. Drops
+   * the default border/shadow for a flat chip look.
+   */
+  color?: string;
+  /**
+   * Fills its parent instead of self-positioning — for embedding inside an
+   * already-positioned wrapper (a `CanvasBlock`), as opposed to the default
+   * standalone use where `NodeGraph` places it via `style.left`/`style.top`.
+   */
+  fill?: boolean;
   style?: CSSProperties;
   className?: string;
   /** The node's held data, rendered however the consumer chooses — a string, a form, or an embedded `Canvas`/`Document`. */
@@ -48,6 +60,8 @@ export function Node({
   connecting = false,
   width,
   height,
+  color,
+  fill = false,
   style,
   className,
   children,
@@ -80,16 +94,30 @@ export function Node({
     <div
       className={mergeClasses(styles.node, className)}
       data-selected={selected ? '' : undefined}
-      style={{ ...style, width, height }}
+      data-fill={fill ? '' : undefined}
+      data-filled={color ? '' : undefined}
+      style={{
+        ...style,
+        ...(fill ? {} : { width, height }),
+        ...(color ? { backgroundColor: color } : {}),
+      }}
       role="group"
       aria-label={name}
-      onPointerDown={(event) => {
-        // Selecting a node must not also read as a background press — a
-        // `NodeGraph` clears its selection on that, which would undo the
-        // selection this very press just made.
-        event.stopPropagation();
-        onSelect?.(id, event.shiftKey);
-      }}
+      // `onSelect` is only ever omitted when a `CanvasBlock` already owns
+      // selection for this element (embedded via `fill`) — stopping
+      // propagation unconditionally would swallow the press before Canvas's
+      // own drag/select handling ever saw it.
+      {...(onSelect
+        ? {
+            onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => {
+              // Selecting a node must not also read as a background press — a
+              // `NodeGraph` clears its selection on that, which would undo the
+              // selection this very press just made.
+              event.stopPropagation();
+              onSelect(id, event.shiftKey);
+            },
+          }
+        : {})}
     >
       {hasInput &&
         (onInputPortClick ? (
@@ -119,6 +147,11 @@ export function Node({
             onChange={(event) => setDraft(event.target.value)}
             onBlur={commit}
             onKeyDown={(event) => {
+              // Stays inside the input rather than reaching an ancestor's
+              // keyboard handling — `NodeGraph`'s own arrow-key nudge and
+              // Delete/Backspace would otherwise fire while typing a rename,
+              // the same leak `CanvasShape`'s label input already guards.
+              event.stopPropagation();
               if (event.key === 'Enter') {
                 event.preventDefault();
                 commit();
@@ -135,7 +168,10 @@ export function Node({
         )}
       </div>
 
-      <div className={styles.body}>{children}</div>
+      {/* Only rendered when there's held data — an empty body would add a
+          padded, divider-bearing region under a node that's really just a
+          label chip. */}
+      {children != null && <div className={styles.body}>{children}</div>}
 
       {hasOutput &&
         (onOutputPortClick ? (

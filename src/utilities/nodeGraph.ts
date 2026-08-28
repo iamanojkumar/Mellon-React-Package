@@ -22,6 +22,8 @@ export interface NodeData<T = unknown> {
   y: number;
   width?: number;
   height?: number;
+  /** Same free-fill escape hatch as `CanvasStickyBlock.color` — see there. */
+  color?: string;
 }
 
 /** A directed edge: `source`'s output feeds `target`'s input. */

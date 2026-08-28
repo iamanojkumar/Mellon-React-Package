@@ -1,0 +1,17 @@
+.toolbar {
+  position: absolute;
+  left: 50%;
+  bottom: var(--ds-space-lg);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-xs);
+  padding: var(--ds-space-xs);
+  background: var(--ds-color-surface-primary);
+  border: var(--ds-border-width-thin) solid var(--ds-color-border-primary);
+  border-radius: var(--ds-radius-full);
+  box-shadow: var(--ds-elevation-md);
+  /* Same tier `CanvasChatPanel` uses for its own screen-space chrome —
+     both are siblings of `.world`, clear of its internal 1/2 stacking. */
+  z-index: 1;
+}

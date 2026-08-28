@@ -2,6 +2,7 @@ import { forwardRef } from 'react';
 import type { ComponentPropsWithoutRef, PointerEvent, ReactNode } from 'react';
 import { StickyNote } from '../StickyNote/StickyNote';
 import { CanvasShape } from '../CanvasShape/CanvasShape';
+import { Node } from '../Node/Node';
 import { CanvasEmbed } from '../CanvasEmbed/CanvasEmbed';
 import { CanvasFrame } from '../CanvasFrame/CanvasFrame';
 import { Image } from '../Image/Image';
@@ -53,6 +54,14 @@ export interface CanvasBlockOwnProps {
   /** A `document` block's header/footer changed — typed while editing. */
   onHeaderChange?: (header: string) => void;
   onFooterChange?: (footer: string) => void;
+  /** A `node` block was renamed — double-click its label, the same UX as standalone `Node`. */
+  onNameChange?: (name: string) => void;
+  /** A `node` block's output port was clicked — arms or disarms a pending connection. */
+  onOutputPortClick?: (id: string) => void;
+  /** A `node` block's input port was clicked — completes a pending connection when one is armed. */
+  onInputPortClick?: (id: string) => void;
+  /** This `node` block is the armed source of a pending connection. */
+  nodeConnecting?: boolean;
   /**
    * A "Rewrite with AI" trigger. Inert without an `AIProvider`. Only wired
    * up for the two kinds with editable text of their own — `sticky`
@@ -65,6 +74,17 @@ export interface CanvasBlockOwnProps {
    * with nothing to accept a result into.
    */
   aiRewrite?: boolean;
+  /**
+   * Overrides a `document` block's `Document.chrome` (list/grid view, zoom,
+   * self-contained scrollable viewport). Defaults `false` — `document`
+   * blocks otherwise always embed bare, sized and scrolled by the block box
+   * itself. A host that wants one specific document-kind block to drop a
+   * user into its standalone, self-contained viewer (a "focused page" view,
+   * independent of anything driving `Canvas`'s own pan/zoom) can flip this
+   * on for that one `CanvasBlock` — `Canvas` itself never sets it, so
+   * nothing changes unless a consumer opts in. Ignored by every other kind.
+   */
+  chrome?: boolean;
   /** Replaces the rendered face entirely, for block kinds a consumer owns. */
   renderBlock?: (block: CanvasBlockData) => ReactNode;
 }
@@ -92,7 +112,12 @@ function BlockFace({
   onPagesChange,
   onHeaderChange,
   onFooterChange,
+  onNameChange,
+  onOutputPortClick,
+  onInputPortClick,
+  nodeConnecting,
   aiRewrite,
+  chrome,
 }: Pick<
   CanvasBlockOwnProps,
   | 'block'
@@ -103,7 +128,12 @@ function BlockFace({
   | 'onPagesChange'
   | 'onHeaderChange'
   | 'onFooterChange'
+  | 'onNameChange'
+  | 'onOutputPortClick'
+  | 'onInputPortClick'
+  | 'nodeConnecting'
   | 'aiRewrite'
+  | 'chrome'
 >) {
   switch (block.kind) {
     case 'sticky':
@@ -129,6 +159,22 @@ function BlockFace({
           editing={editing ?? false}
           {...(onTextChange ? { onTextChange } : {})}
           {...(onEditingEnd ? { onEditingEnd } : {})}
+        />
+      );
+
+    case 'node':
+      return (
+        <Node
+          id={block.id}
+          name={block.name}
+          fill
+          {...(block.color ? { color: block.color } : {})}
+          hasInput={block.hasInput ?? true}
+          hasOutput={block.hasOutput ?? true}
+          connecting={nodeConnecting ?? false}
+          {...(onNameChange ? { onRename: onNameChange } : {})}
+          {...(onOutputPortClick ? { onOutputPortClick } : {})}
+          {...(onInputPortClick ? { onInputPortClick } : {})}
         />
       );
 
@@ -255,7 +301,7 @@ function BlockFace({
           {...(block.footer ? { footer: <RawHtml html={block.footer} /> } : {})}
           {...editableHeaderFooter}
           editable={editing ?? false}
-          chrome={false}
+          chrome={chrome ?? false}
           aria-label={canvasBlockLabel(block)}
           {...(onPagesChange ? { onPagesChange } : {})}
           {...(onHeaderChange ? { onHeaderChange } : {})}
@@ -292,7 +338,12 @@ export const CanvasBlock = forwardRef<HTMLDivElement, CanvasBlockProps>(function
     onPagesChange,
     onHeaderChange,
     onFooterChange,
+    onNameChange,
+    onOutputPortClick,
+    onInputPortClick,
+    nodeConnecting,
     aiRewrite = false,
+    chrome,
     renderBlock,
     className,
     style,
@@ -301,7 +352,10 @@ export const CanvasBlock = forwardRef<HTMLDivElement, CanvasBlockProps>(function
   ref,
 ) {
   const showFillPicker =
-    selected && !editing && (block.kind === 'sticky' || block.kind === 'shape') && onColorChange;
+    selected &&
+    !editing &&
+    (block.kind === 'sticky' || block.kind === 'shape' || block.kind === 'node') &&
+    onColorChange;
 
   // A `shape`'s AI trigger lives here, not inside `CanvasShape` — see the
   // `.aiTrigger` CSS comment for why. `StickyNote` still owns its own
@@ -330,11 +384,14 @@ export const CanvasBlock = forwardRef<HTMLDivElement, CanvasBlockProps>(function
       // boundary is genuinely useful — you need to know where one ends and the
       // next begins.
       //
-      // Except for `frame`, `checklist`, and `document`, whose faces are
-      // already labelled groups of their own; labelling the wrapper too
+      // Except for `frame`, `checklist`, `document`, and `node`, whose faces
+      // are already labelled groups of their own; labelling the wrapper too
       // would announce the same name twice around nested groups that mean
       // the same thing.
-      {...(block.kind === 'frame' || block.kind === 'checklist' || block.kind === 'document'
+      {...(block.kind === 'frame' ||
+      block.kind === 'checklist' ||
+      block.kind === 'document' ||
+      block.kind === 'node'
         ? {}
         : {
             role: 'group',
@@ -356,6 +413,11 @@ export const CanvasBlock = forwardRef<HTMLDivElement, CanvasBlockProps>(function
           {...(onPagesChange ? { onPagesChange } : {})}
           {...(onHeaderChange ? { onHeaderChange } : {})}
           {...(onFooterChange ? { onFooterChange } : {})}
+          {...(onNameChange ? { onNameChange } : {})}
+          {...(onOutputPortClick ? { onOutputPortClick } : {})}
+          {...(onInputPortClick ? { onInputPortClick } : {})}
+          {...(nodeConnecting !== undefined ? { nodeConnecting } : {})}
+          {...(chrome !== undefined ? { chrome } : {})}
         />
       )}
 
@@ -375,22 +437,23 @@ export const CanvasBlock = forwardRef<HTMLDivElement, CanvasBlockProps>(function
         </span>
       )}
 
-      {/* Only offered for the two kinds with a `color` field, and only while
+      {/* Only offered for the kinds with a `color` field, and only while
           selected — same "pointer-only, appears on selection" shape as the
           resize handles, marked so a press opens the popover instead of
           starting a drag. */}
-      {showFillPicker && (block.kind === 'sticky' || block.kind === 'shape') && (
-        <span
-          className={styles.fillPicker}
-          data-canvas-block-actions=""
-          onPointerDown={(event) => event.stopPropagation()}
-        >
-          <CanvasFillPicker
-            {...(block.color ? { value: block.color } : {})}
-            onChange={(color) => onColorChange?.(color)}
-          />
-        </span>
-      )}
+      {showFillPicker &&
+        (block.kind === 'sticky' || block.kind === 'shape' || block.kind === 'node') && (
+          <span
+            className={styles.fillPicker}
+            data-canvas-block-actions=""
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <CanvasFillPicker
+              {...(block.color ? { value: block.color } : {})}
+              onChange={(color) => onColorChange?.(color)}
+            />
+          </span>
+        )}
 
       {showShapeAI && block.kind === 'shape' && (
         <span

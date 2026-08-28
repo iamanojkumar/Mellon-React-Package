@@ -72,6 +72,17 @@ export interface CanvasShapeBlock extends CanvasBlockCommon {
   color?: string;
 }
 
+export interface CanvasNodeBlock extends CanvasBlockCommon {
+  kind: 'node';
+  name: string;
+  /** Same free-fill escape hatch as `CanvasStickyBlock.color` — see there. */
+  color?: string;
+  /** Set false for a source node with nothing feeding it. Defaults true. */
+  hasInput?: boolean;
+  /** Set false for a sink node nothing reads from. Defaults true. */
+  hasOutput?: boolean;
+}
+
 export interface CanvasDividerBlock extends CanvasBlockCommon {
   kind: 'divider';
   orientation?: 'horizontal' | 'vertical';
@@ -151,6 +162,7 @@ export type CanvasBlockData =
   | CanvasTextBlock
   | CanvasImageBlock
   | CanvasShapeBlock
+  | CanvasNodeBlock
   | CanvasDividerBlock
   | CanvasEmbedBlock
   | CanvasFrameBlock
@@ -386,6 +398,8 @@ export function canvasBlockLabel(block: CanvasBlockData): string {
       return block.alt || 'Image';
     case 'shape':
       return block.text || block.shape;
+    case 'node':
+      return block.name;
     case 'divider':
       return 'Divider';
     case 'embed':

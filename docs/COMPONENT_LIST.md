@@ -374,6 +374,24 @@ upstream.data, [this.id]: this.data }`, recursively through a chain, not a
   and pure functions are the public surface; nothing needed lives only inside
   `NodeGraph`'s own state
 
+**Restyled to a pill/chip look and reused on `Canvas`** (real consumer
+request: rebuild the node and arrow visuals from a reference diagram, and
+make nodes placeable on the canvas). `Node` gained `color` (the same
+free-fill escape hatch as `StickyNote`/`CanvasShape`) and `fill` (fills an
+already-positioned wrapper instead of self-positioning), which is what lets
+the same component back a new `Canvas` `node` block kind without a second
+implementation. This is **not** a reversal of "the graph's data is the
+public surface" above — `NodeGraphData`/`computeNodeOutput` stay exactly as
+they were, unrelated to `Canvas`'s own scene model. What's shared is only
+the presentational half: a `node` block's arrows are `Canvas`'s own
+`CanvasConnector`, not `NodeConnector` (which remains standalone-`NodeGraph`-only),
+connected the same click-driven way (arm an output port, click a target's
+input port) through `Canvas`'s existing command reducer. A new `CanvasToolbar`
+(rendered via `Canvas`'s `shapeToolbar` prop) adds a small floating bar for
+inserting a sticky note, shape, node, or frame by a single click — the first
+Canvas affordance that needs no `AIProvider` or resolver, since it makes no
+model call at all.
+
 ### File workspace / artifact panels
 
 - File explorer / folder tree (covers: `TreeView`)

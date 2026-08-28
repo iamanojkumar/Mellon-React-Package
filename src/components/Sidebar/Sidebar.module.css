@@ -33,6 +33,16 @@
   min-width: 0;
   padding: var(--ds-space-sm) var(--ds-space-sm);
   border-radius: var(--ds-radius-sm);
+  /* No-ops for the default `as="a"`/`as="div"` targets, but required for
+     `as="button"` — a native <button> carries browser chrome (background,
+     beveled border, platform font) that reads as a literal OS button sitting
+     in the nav list otherwise. `font: inherit` must precede the explicit
+     `font-family`/`font-size` below so those still win; it only resets the
+     sub-properties (weight, line-height, style) neither one sets. */
+  background: none;
+  border: none;
+  appearance: none;
+  font: inherit;
   color: var(--ds-color-text-secondary);
   font-family: var(--ds-font-family-base);
   font-size: var(--ds-font-size-md);

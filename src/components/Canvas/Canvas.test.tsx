@@ -238,6 +238,133 @@ describe('Canvas block fill', () => {
   });
 });
 
+describe('Canvas node blocks', () => {
+  function nodeScene(): CanvasScene {
+    return {
+      blocks: [
+        { id: 'src', kind: 'node', name: 'Source', x: 0, y: 0, width: 160, height: 44 },
+        { id: 'dst', kind: 'node', name: 'Target', x: 300, y: 0, width: 160, height: 44 },
+      ],
+      connectors: [],
+    };
+  }
+
+  it('connects two nodes via click-to-connect: arm the output, then click the target input', () => {
+    const onSceneChange = vi.fn();
+    render(<Canvas defaultScene={nodeScene()} onSceneChange={onSceneChange} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Connect Source's output/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Connect to Target's input/ }));
+
+    const next: CanvasScene = onSceneChange.mock.calls.at(-1)?.[0];
+    expect(next.connectors).toHaveLength(1);
+    expect(next.connectors[0]).toMatchObject({ from: 'src', to: 'dst' });
+  });
+
+  function fanScene(): CanvasScene {
+    return {
+      blocks: [
+        { id: 'src', kind: 'node', name: 'Source', x: 0, y: 0, width: 160, height: 44 },
+        { id: 'a', kind: 'node', name: 'Target A', x: 300, y: 0, width: 160, height: 44 },
+        { id: 'b', kind: 'node', name: 'Target B', x: 300, y: 120, width: 160, height: 44 },
+        { id: 'sink', kind: 'node', name: 'Sink', x: 600, y: 60, width: 160, height: 44 },
+      ],
+      connectors: [],
+    };
+  }
+
+  it('a node can fan its output out to more than one target', () => {
+    const onSceneChange = vi.fn();
+    render(<Canvas defaultScene={fanScene()} onSceneChange={onSceneChange} />);
+
+    // Re-arming the same output port after each connect is what lets one
+    // source feed more than one target — nothing in `applyCanvasCommands`
+    // caps how many edges a port may carry.
+    fireEvent.click(screen.getByRole('button', { name: /Connect Source's output/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Connect to Target A's input/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Connect Source's output/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Connect to Target B's input/ }));
+
+    const next: CanvasScene = onSceneChange.mock.calls.at(-1)?.[0];
+    expect(next.connectors).toHaveLength(2);
+    expect(next.connectors.every((connector) => connector.from === 'src')).toBe(true);
+    expect(next.connectors.map((connector) => connector.to).sort()).toEqual(['a', 'b']);
+  });
+
+  it('a node can take more than one input', () => {
+    const onSceneChange = vi.fn();
+    render(<Canvas defaultScene={fanScene()} onSceneChange={onSceneChange} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Connect Target A's output/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Connect to Sink's input/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Connect Target B's output/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Connect to Sink's input/ }));
+
+    const next: CanvasScene = onSceneChange.mock.calls.at(-1)?.[0];
+    expect(next.connectors).toHaveLength(2);
+    expect(next.connectors.every((connector) => connector.to === 'sink')).toBe(true);
+    expect(next.connectors.map((connector) => connector.from).sort()).toEqual(['a', 'b']);
+  });
+
+  it('Escape cancels an armed connection without connecting', () => {
+    const onSceneChange = vi.fn();
+    render(<Canvas defaultScene={nodeScene()} onSceneChange={onSceneChange} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Connect Source's output/ }));
+    focusCanvas();
+    fireEvent.keyDown(screen.getByRole('group', { name: 'Canvas' }), { key: 'Escape' });
+    fireEvent.click(screen.getByRole('button', { name: /Connect to Target's input/ }));
+
+    expect(onSceneChange).not.toHaveBeenCalled();
+  });
+
+  it('renaming a node through the canvas turns it into an update command', () => {
+    const onSceneChange = vi.fn();
+    render(<Canvas defaultScene={nodeScene()} onSceneChange={onSceneChange} />);
+
+    // `CanvasOutline` renders the same name as a navigation entry, so the
+    // node's own label (rendered first, inside the world) is the first match.
+    fireEvent.doubleClick(screen.getAllByText('Source')[0]!);
+    fireEvent.change(screen.getByLabelText('Node name'), { target: { value: 'Renamed' } });
+    fireEvent.keyDown(screen.getByLabelText('Node name'), { key: 'Enter' });
+
+    const next: CanvasScene = onSceneChange.mock.calls.at(-1)?.[0];
+    expect(next.blocks.find((block) => block.id === 'src')).toMatchObject({ name: 'Renamed' });
+  });
+});
+
+describe('Canvas shape toolbar', () => {
+  it('renders nothing without the shapeToolbar prop', () => {
+    render(<Canvas defaultScene={{ blocks: [], connectors: [] }} />);
+    expect(screen.queryByRole('toolbar', { name: 'Add to canvas' })).not.toBeInTheDocument();
+  });
+
+  it('inserts a node block through the reducer, then selects it', () => {
+    const onSceneChange = vi.fn();
+    const onSelectionChange = vi.fn();
+    render(
+      <Canvas
+        defaultScene={{ blocks: [], connectors: [] }}
+        shapeToolbar
+        onSceneChange={onSceneChange}
+        onSelectionChange={onSelectionChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add node' }));
+
+    const next: CanvasScene = onSceneChange.mock.calls.at(-1)?.[0];
+    expect(next.blocks).toHaveLength(1);
+    expect(next.blocks[0]).toMatchObject({ kind: 'node', name: 'Node' });
+    expect(onSelectionChange).toHaveBeenCalledWith([next.blocks[0]!.id]);
+  });
+
+  it('renders nothing when readOnly, even with shapeToolbar set', () => {
+    render(<Canvas defaultScene={{ blocks: [], connectors: [] }} shapeToolbar readOnly />);
+    expect(screen.queryByRole('toolbar', { name: 'Add to canvas' })).not.toBeInTheDocument();
+  });
+});
+
 describe('Canvas document block', () => {
   function docScene(): CanvasScene {
     return {

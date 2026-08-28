@@ -7,6 +7,8 @@ import { CanvasOutline } from '../CanvasOutline/CanvasOutline';
 import { CanvasPromptBar } from '../CanvasPromptBar/CanvasPromptBar';
 import { CanvasChangePreview } from '../CanvasChangePreview/CanvasChangePreview';
 import { CanvasChatPanel } from '../CanvasChatPanel/CanvasChatPanel';
+import { CanvasToolbar } from '../CanvasToolbar/CanvasToolbar';
+import type { CanvasInsertKind } from '../CanvasToolbar/CanvasToolbar';
 import { ThinkingBlock } from '../ThinkingBlock/ThinkingBlock';
 import { VisuallyHidden } from '../VisuallyHidden/VisuallyHidden';
 import { useControllableState } from '../../hooks/useControllableState';
@@ -63,6 +65,12 @@ export interface CanvasOwnProps {
   grid?: number;
   /** Shows the outline as a visible side panel as well as an accessible one. */
   outlineVisible?: boolean;
+  /**
+   * Adds a small floating toolbar for inserting shapes, sticky notes, nodes
+   * and frames by hand — no `AIProvider` or resolver needed, unlike every
+   * other Canvas affordance gated behind an opt-in. Off by default.
+   */
+  shapeToolbar?: boolean;
   /** Blocks all editing. The canvas still pans, zooms and reads. */
   readOnly?: boolean;
   renderBlock?: (block: CanvasBlockData) => ReactNode;
@@ -184,6 +192,27 @@ const PAN_STEP_LARGE = 240;
 /** Multiplier per zoom step, shared by the wheel and the keyboard. */
 const ZOOM_STEP = 1.2;
 
+/** First `prefix-n` not already taken by any block or connector — same "collision-free counter" shape as `canvasDiagram.ts`'s own `nextId`. */
+function nextSceneId(scene: CanvasScene, prefix: string): string {
+  const taken = new Set<string>([
+    ...scene.blocks.map((block) => block.id),
+    ...scene.connectors.map((connector) => connector.id),
+  ]);
+  let index = 1;
+  while (taken.has(`${prefix}-${index}`)) index += 1;
+  return `${prefix}-${index}`;
+}
+
+/** Default size for a block the toolbar inserts by hand — a pill-shaped node reads as a short, wide chip; everything else keeps its usual proportions. */
+const TOOLBAR_INSERT_SIZE: Record<CanvasInsertKind, { width: number; height: number }> = {
+  sticky: { width: 200, height: 160 },
+  'shape-rectangle': { width: 160, height: 100 },
+  'shape-ellipse': { width: 160, height: 100 },
+  'shape-diamond': { width: 160, height: 120 },
+  node: { width: 160, height: 44 },
+  frame: { width: 360, height: 260 },
+};
+
 /**
  * Anything inside a block that owns its own press: a checklist's boxes and
  * their labels, a link card's anchor, a note's textarea, the AI trigger.
@@ -270,6 +299,7 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
     onSelectionChange,
     grid = 8,
     outlineVisible = false,
+    shapeToolbar = false,
     readOnly = false,
     renderBlock,
     viewport: controlledViewport,
@@ -324,6 +354,8 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
   const [focusedId, setFocusedId] = useState<string | undefined>(undefined);
   /** Only meaningful while `focusedId` is set — freezes pan/zoom/scroll. */
   const [focusLocked, setFocusLocked] = useState(false);
+  /** The `node` block whose output port is armed, waiting for a target's input port. `undefined` when no connection is in progress. */
+  const [pendingNodeSource, setPendingNodeSource] = useState<string | undefined>(undefined);
 
   const run = useCallback(
     (commands: CanvasCommand[]) => {
@@ -334,6 +366,97 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
       return result.scene;
     },
     [scene, setScene, onCommand],
+  );
+
+  // ------------------------------------------------------------- node ports
+
+  /** Arms (or, clicked again, disarms) a `node` block's output as a connection's source. */
+  const handleNodeOutputPortClick = useCallback(
+    (id: string) => {
+      setPendingNodeSource((current) => {
+        const next = current === id ? undefined : id;
+        const source = next ? findCanvasBlock(scene, next) : undefined;
+        setAnnouncement(
+          next && source
+            ? `Connecting from ${canvasBlockLabel(source)}. Select another node's input to connect, or press Escape to cancel.`
+            : '',
+        );
+        return next;
+      });
+    },
+    [scene],
+  );
+
+  /** Completes a pending connection at this `node` block's input, through the same reducer every other mutation goes through. */
+  const handleNodeInputPortClick = useCallback(
+    (id: string) => {
+      if (!pendingNodeSource || pendingNodeSource === id) {
+        setPendingNodeSource(undefined);
+        return;
+      }
+      run([
+        {
+          op: 'connect',
+          connector: {
+            id: nextSceneId(scene, 'connector'),
+            from: pendingNodeSource,
+            to: id,
+            arrow: 'end',
+          },
+        },
+      ]);
+      setPendingNodeSource(undefined);
+      setAnnouncement('');
+    },
+    [pendingNodeSource, scene, run],
+  );
+
+  /** Inserts a new block of the toolbar's choosing at the current viewport centre, offset a little further each time so repeated clicks don't stack blocks exactly on top of one another. */
+  const insertCascadeRef = useRef(0);
+  const handleToolbarInsert = useCallback(
+    (kind: CanvasInsertKind) => {
+      const rect = surfaceRef.current?.getBoundingClientRect();
+      const centre = viewport.toCanvas({
+        x: (rect?.width ?? 0) / 2,
+        y: (rect?.height ?? 0) / 2,
+      });
+      const cascade = (insertCascadeRef.current % 6) * 24;
+      insertCascadeRef.current += 1;
+
+      const { width, height } = TOOLBAR_INSERT_SIZE[kind];
+      const x = centre.x - width / 2 + cascade;
+      const y = centre.y - height / 2 + cascade;
+      const id = nextSceneId(
+        scene,
+        kind === 'node' ? 'node' : kind.startsWith('shape') ? 'shape' : kind,
+      );
+
+      const block: CanvasBlockData =
+        kind === 'sticky'
+          ? { id, kind: 'sticky', x, y, width, height, text: '' }
+          : kind === 'node'
+            ? { id, kind: 'node', x, y, width, height, name: 'Node' }
+            : kind === 'frame'
+              ? { id, kind: 'frame', x, y, width, height, title: 'Frame' }
+              : {
+                  id,
+                  kind: 'shape',
+                  x,
+                  y,
+                  width,
+                  height,
+                  shape:
+                    kind === 'shape-ellipse'
+                      ? 'ellipse'
+                      : kind === 'shape-diamond'
+                        ? 'diamond'
+                        : 'rectangle',
+                };
+
+      run([{ op: 'create', block }]);
+      setSelectedIds([id]);
+    },
+    [scene, viewport, run, setSelectedIds],
   );
 
   /** Pointer position in canvas units, relative to the canvas box. */
@@ -659,8 +782,13 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
     const primary = selectedIds[0];
 
     if (event.key === 'Escape') {
-      // Escape backs out of focus mode first — the narrower state — rather
-      // than also clearing the selection in the same keystroke.
+      // Narrowest state first: a pending connection, then focus mode, then
+      // the selection — never more than one of these unwinds per keystroke.
+      if (pendingNodeSource) {
+        setPendingNodeSource(undefined);
+        setAnnouncement('Connection cancelled.');
+        return;
+      }
       if (focusedId) {
         exitFocus();
         return;
@@ -1141,10 +1269,20 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
                       run([{ op: 'update', id: block.id, patch: { footer } }]),
                   }
                 : {})}
-              {...((block.kind === 'sticky' || block.kind === 'shape') && !readOnly
+              {...((block.kind === 'sticky' || block.kind === 'shape' || block.kind === 'node') &&
+              !readOnly
                 ? {
                     onColorChange: (color: string) =>
                       run([{ op: 'update', id: block.id, patch: { color } }]),
+                  }
+                : {})}
+              {...(block.kind === 'node' && !readOnly
+                ? {
+                    onNameChange: (name: string) =>
+                      run([{ op: 'update', id: block.id, patch: { name } }]),
+                    onOutputPortClick: handleNodeOutputPortClick,
+                    onInputPortClick: handleNodeInputPortClick,
+                    nodeConnecting: pendingNodeSource === block.id,
                   }
                 : {})}
               {...(block.kind === 'checklist' && !readOnly
@@ -1227,6 +1365,12 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
             boundsRef={surfaceRef}
           />
         )}
+
+        {/* Also a sibling of `.world` — a screen-space control, not scene
+            content, so it stays put while the surface pans and zooms
+            underneath it. No `AIProvider`/resolver needed, unlike every
+            other Canvas affordance. */}
+        {shapeToolbar && !readOnly && <CanvasToolbar onInsert={handleToolbarInsert} />}
       </div>
 
       <CanvasOutline

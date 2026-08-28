@@ -359,6 +359,64 @@ export const Connectors: Story = {
   },
 };
 
+/**
+ * `node` blocks: pill-shaped, colored, connected by click-to-connect ports —
+ * click a source's right-hand output dot, then a target's left-hand input
+ * dot. Connections reuse `Canvas`'s own connector system, not the standalone
+ * `NodeGraph`'s.
+ */
+export const NodeDiagram: Story = {
+  args: {
+    'aria-label': 'Node diagram',
+    defaultScene: {
+      blocks: [
+        {
+          id: 'brief',
+          kind: 'node',
+          name: 'Vague brief',
+          color: '#c9e4d0',
+          x: 40,
+          y: 40,
+          width: 150,
+          height: 44,
+        },
+        {
+          id: 'reports',
+          kind: 'node',
+          name: 'Public reports',
+          x: 260,
+          y: 40,
+          width: 150,
+          height: 44,
+        },
+        {
+          id: 'summary',
+          kind: 'node',
+          name: 'Aggregated summary',
+          color: '#f6c9d6',
+          x: 480,
+          y: 40,
+          width: 170,
+          height: 44,
+        },
+      ],
+      connectors: [
+        { id: 'c1', from: 'brief', to: 'reports', arrow: 'end' },
+        { id: 'c2', from: 'reports', to: 'summary', arrow: 'end' },
+      ],
+    },
+  },
+};
+
+/** No `AIProvider` or resolver needed — a click-driven way to add sticky notes, shapes, nodes and frames. */
+export const ShapeToolbar: Story = {
+  args: {
+    'aria-label': 'Shape toolbar',
+    shapeToolbar: true,
+    defaultScene: { blocks: [], connectors: [] },
+  },
+};
+
 /** HTML and external pages, each isolated in a sandboxed iframe without `allow-same-origin`. */
 export const Embeds: Story = {
   args: {
