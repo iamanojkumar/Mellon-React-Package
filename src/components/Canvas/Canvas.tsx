@@ -6,6 +6,8 @@ import { CanvasConnector } from '../CanvasConnector/CanvasConnector';
 import { CanvasOutline } from '../CanvasOutline/CanvasOutline';
 import { CanvasPromptBar } from '../CanvasPromptBar/CanvasPromptBar';
 import { CanvasChangePreview } from '../CanvasChangePreview/CanvasChangePreview';
+import { CanvasChatPanel } from '../CanvasChatPanel/CanvasChatPanel';
+import { ThinkingBlock } from '../ThinkingBlock/ThinkingBlock';
 import { VisuallyHidden } from '../VisuallyHidden/VisuallyHidden';
 import { useControllableState } from '../../hooks/useControllableState';
 import { MAX_CANVAS_ZOOM, MIN_CANVAS_ZOOM, useCanvasViewport } from '../../hooks/useCanvasViewport';
@@ -36,11 +38,14 @@ import {
   boundsOf,
   outlineOrder,
   pointInRect,
+  rectBounds,
   rectFromPoints,
   rectsIntersect,
   snapToGrid,
+  snapToObjects,
+  withFrameMembers,
 } from '../../utilities/canvasGeometry';
-import type { CanvasPoint } from '../../utilities/canvasGeometry';
+import type { CanvasAlignmentGuide, CanvasPoint } from '../../utilities/canvasGeometry';
 import styles from './Canvas.module.css';
 
 export interface CanvasOwnProps {
@@ -93,6 +98,16 @@ export interface CanvasOwnProps {
    * the canvas's output is byte-identical to the non-AI rendering.
    */
   aiPrompt?: boolean;
+  /**
+   * Decouples the prompt bar from the static row above the surface and
+   * floats it as a draggable, minimizable panel over the canvas instead —
+   * same `aiPrompt` gate, same `resolveCommands`/`submit` pipeline, just a
+   * different position. Movable and minimizable, but never closable: it has
+   * no unmounted state, only expanded/minimized. Always carries the current
+   * selection's full block data as extra context on every prompt, and shows
+   * the single most recent reply as one message bubble.
+   */
+  aiPromptFloating?: boolean;
   /**
    * Consumer-owned transport producing a `CanvasResolution`. Omit it and the
    * canvas falls back to `AIClient.complete` plus text parsing.
@@ -253,6 +268,7 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
     onViewportChange,
     renderBackdrop,
     aiPrompt = false,
+    aiPromptFloating = false,
     resolveCommands,
     snapshotOptions,
     promptPlaceholder,
@@ -292,6 +308,12 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
   const [gesture, setGesture] = useState<Gesture>({ kind: 'none' });
   const [editingId, setEditingId] = useState<string | undefined>(undefined);
   const [announcement, setAnnouncement] = useState('');
+  /** Ephemeral — only ever non-empty mid-drag, cleared the moment the gesture ends. */
+  const [alignmentGuides, setAlignmentGuides] = useState<CanvasAlignmentGuide[]>([]);
+  /** The one block focus mode isolates. `undefined` means focus mode is off. */
+  const [focusedId, setFocusedId] = useState<string | undefined>(undefined);
+  /** Only meaningful while `focusedId` is set — freezes pan/zoom/scroll. */
+  const [focusLocked, setFocusLocked] = useState(false);
 
   const run = useCallback(
     (commands: CanvasCommand[]) => {
@@ -326,6 +348,10 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
     const point = pointerToCanvas(event);
 
     if (isPanGesture(event)) {
+      // Locked focus freezes panning along with everything else; unlocked
+      // focus still allows it — looking around is not the interaction focus
+      // mode restricts.
+      if (focusedId && focusLocked) return;
       setGesture({
         kind: 'pan',
         startX: event.clientX,
@@ -334,6 +360,9 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
         panY: viewport.viewport.panY,
       });
     } else {
+      // Focused: the surface itself is off-limits — no marquee, no
+      // click-to-deselect. Only the focused block responds to anything.
+      if (focusedId) return;
       setGesture({ kind: 'marquee', origin: point, current: point });
       if (!event.shiftKey) setSelectedIds([]);
     }
@@ -348,6 +377,13 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
     // otherwise panning is impossible anywhere the canvas is actually full,
     // which is exactly when you need it. Left un-stopped so it bubbles.
     if (isPanGesture(event)) return;
+
+    // Focused: every other block is off-limits, stopped here so it doesn't
+    // fall through to the surface and start a marquee instead.
+    if (focusedId && block.id !== focusedId) {
+      event.stopPropagation();
+      return;
+    }
 
     // A press on a control inside a block is a click on that control, not the
     // start of a drag. Starting one would call `setPointerCapture` on the
@@ -374,9 +410,11 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
 
     // Every selected block moves together, so each one's starting position has
     // to be captured up front — deriving it from a running delta would compound
-    // rounding on every frame.
+    // rounding on every frame. A selected frame also carries whatever sits
+    // visually inside it, without adding those blocks to the selection itself
+    // — dragging a frame shouldn't make Delete remove its contents too.
     const starts = new Map<string, { x: number; y: number }>();
-    for (const id of next) {
+    for (const id of withFrameMembers(next, scene.blocks)) {
       const member = findCanvasBlock(scene, id);
       if (member) starts.set(id, { x: member.x, y: member.y });
     }
@@ -435,12 +473,36 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
       // jsdom like every other pointer-capture call in this library.
       event.currentTarget.setPointerCapture?.(event.pointerId);
 
-      run(
-        [...gesture.starts.entries()].map(([id, start]) => ({
-          op: 'move' as const,
+      const draggedIds = new Set(gesture.starts.keys());
+      const proposed = [...gesture.starts.entries()].map(([id, start]) => {
+        const block = findCanvasBlock(scene, id);
+        return {
           id,
-          x: snapToGrid(start.x + dx, grid),
-          y: snapToGrid(start.y + dy, grid),
+          x: start.x + dx,
+          y: start.y + dy,
+          width: block?.width ?? 0,
+          height: block?.height ?? 0,
+        };
+      });
+      const groupRect = rectBounds(proposed);
+
+      // Object-snap is computed against the group's own bounding box, not
+      // each block individually — dragging a multi-selection (or a frame and
+      // its members) snaps the whole thing as one unit, the same as every
+      // other multi-block move already treats the selection as one.
+      const candidates = scene.blocks.filter((block) => !draggedIds.has(block.id)).map(blockRect);
+      const snap = groupRect ? snapToObjects(groupRect, candidates) : undefined;
+      setAlignmentGuides(snap?.guides ?? []);
+
+      const groupDx = snap ? snap.x - (groupRect?.x ?? 0) : 0;
+      const groupDy = snap ? snap.y - (groupRect?.y ?? 0) : 0;
+
+      run(
+        proposed.map((block) => ({
+          op: 'move' as const,
+          id: block.id,
+          x: snap?.snappedX ? block.x + groupDx : snapToGrid(block.x, grid),
+          y: snap?.snappedY ? block.y + groupDy : snapToGrid(block.y, grid),
         })),
       );
       return;
@@ -479,6 +541,7 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
       }
     }
     setGesture({ kind: 'none' });
+    if (alignmentGuides.length > 0) setAlignmentGuides([]);
   };
 
   /**
@@ -496,6 +559,7 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
 
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
+      if (focusedId && focusLocked) return;
       const rect = surface.getBoundingClientRect();
 
       if (event.ctrlKey || event.metaKey) {
@@ -518,7 +582,7 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
 
     surface.addEventListener('wheel', onWheel, { passive: false });
     return () => surface.removeEventListener('wheel', onWheel);
-  }, [viewport]);
+  }, [viewport, focusedId, focusLocked]);
 
   // --------------------------------------------------------------- keyboard
 
@@ -537,14 +601,84 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
     );
   };
 
+  /**
+   * Zooms/centres the viewport on one block and narrows the selection to it
+   * — entering focus mode always isolates exactly one block, however many
+   * were selected going in. `locked` defaults to `false` (the `F` key's own
+   * behaviour); a `document` block entering its editor passes `true`, since
+   * editing it is the one case this library defaults focus to locked rather
+   * than leaving the viewport free.
+   */
+  const enterFocus = (id: string, locked = false) => {
+    const block = findCanvasBlock(scene, id);
+    const rect = surfaceRef.current?.getBoundingClientRect();
+    if (block && rect) {
+      viewport.fitTo(blockRect(block), { width: rect.width, height: rect.height }, 96);
+    }
+    setSelectedIds([id]);
+    setFocusedId(id);
+    setFocusLocked(locked);
+    setAnnouncement(
+      `Focused on ${block ? canvasBlockLabel(block) : id}. Press L to lock, Escape to exit.`,
+    );
+  };
+
+  const exitFocus = () => {
+    setFocusedId(undefined);
+    setFocusLocked(false);
+    // A document block entering focus locked came from opening its editor —
+    // leaving focus is the same gesture as closing it again, so the two
+    // states never drift apart into "unfocused but still mid-edit".
+    setEditingId((current) => {
+      const block = current ? findCanvasBlock(scene, current) : undefined;
+      return block?.kind === 'document' ? undefined : current;
+    });
+    setAnnouncement('Focus exited.');
+  };
+
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    // Keys aimed at a control inside a block (a note's textarea) belong to it.
-    if (editingId) return;
+    // Keys aimed at a control inside a block (a note's textarea) belong to
+    // it — except Escape while focused, which still needs to reach the
+    // focus-exit branch below. A sticky's own textarea already stops
+    // Escape from bubbling this far (it handles it locally), and plain
+    // editing with no focus mode active never reaches here either way, so
+    // this only ever matters for a `document` block's editor, which enters
+    // focus on double-click and has no local Escape handling of its own.
+    if (editingId && !(event.key === 'Escape' && focusedId)) return;
 
     const primary = selectedIds[0];
 
     if (event.key === 'Escape') {
+      // Escape backs out of focus mode first — the narrower state — rather
+      // than also clearing the selection in the same keystroke.
+      if (focusedId) {
+        exitFocus();
+        return;
+      }
       setSelectedIds([]);
+      return;
+    }
+
+    // ---- focus mode --------------------------------------------------------
+    //
+    // F isolates the primary selection: zooms/centres it and dims everything
+    // else. L only means something while focused, so it's read alongside F
+    // rather than among the viewport keys below, which L partly gates.
+
+    if (event.key === 'f' || event.key === 'F') {
+      event.preventDefault();
+      if (focusedId && focusedId === primary) {
+        exitFocus();
+      } else if (primary) {
+        enterFocus(primary);
+      }
+      return;
+    }
+
+    if ((event.key === 'l' || event.key === 'L') && focusedId) {
+      event.preventDefault();
+      setFocusLocked((value) => !value);
+      setAnnouncement(focusLocked ? 'Focus unlocked.' : 'Focus locked.');
       return;
     }
 
@@ -553,27 +687,31 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
     // Zoom and pan stay available with no selection and in `readOnly`: looking
     // around is not editing. Without these the canvas was pointer-only for
     // navigation, which made every off-screen block unreachable by keyboard.
+    // Locked focus is the one thing that overrides this: every branch here
+    // pans or zooms the viewport, which is exactly what locked means frozen —
+    // nudging the focused block itself, below, is a separate, ungated path.
+    const viewportLocked = Boolean(focusedId && focusLocked);
 
-    if (event.key === '+' || event.key === '=') {
+    if (!viewportLocked && (event.key === '+' || event.key === '=')) {
       event.preventDefault();
       zoomFromKeyboard(ZOOM_STEP);
       return;
     }
 
-    if (event.key === '-' || event.key === '_') {
+    if (!viewportLocked && (event.key === '-' || event.key === '_')) {
       event.preventDefault();
       zoomFromKeyboard(1 / ZOOM_STEP);
       return;
     }
 
-    if (event.key === '0') {
+    if (!viewportLocked && event.key === '0') {
       event.preventDefault();
       viewport.reset();
       announceZoom(1);
       return;
     }
 
-    if (event.key === '1') {
+    if (!viewportLocked && event.key === '1') {
       event.preventDefault();
       const bounds = boundsOf(scene.blocks);
       const rect = surfaceRef.current?.getBoundingClientRect();
@@ -586,7 +724,7 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
 
     const panStep = event.shiftKey ? PAN_STEP_LARGE : PAN_STEP;
 
-    if (event.key === 'PageUp' || event.key === 'PageDown') {
+    if (!viewportLocked && (event.key === 'PageUp' || event.key === 'PageDown')) {
       event.preventDefault();
       viewport.panBy(0, event.key === 'PageUp' ? PAN_STEP_LARGE : -PAN_STEP_LARGE);
       return;
@@ -603,7 +741,7 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
     // the view — the keyboard equivalent of a two-finger swipe. Ctrl/Cmd forces
     // the same thing even when a block *is* selected.
     const panDelta = panDeltas[event.key];
-    if (panDelta && (!primary || event.ctrlKey || event.metaKey)) {
+    if (!viewportLocked && panDelta && (!primary || event.ctrlKey || event.metaKey)) {
       event.preventDefault();
       viewport.panBy(panDelta[0] * panStep, panDelta[1] * panStep);
       return;
@@ -669,8 +807,10 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
       return;
     }
 
+    // Same cohesion as a pointer drag: a selected frame's geometric contents
+    // nudge along with it, without joining the selection itself.
     const moved = run(
-      selectedIds.flatMap((id) => {
+      withFrameMembers(selectedIds, scene.blocks).flatMap((id) => {
         const block = findCanvasBlock(scene, id);
         if (!block) return [];
         return [{ op: 'move' as const, id, x: block.x + dx * step, y: block.y + dy * step }];
@@ -707,9 +847,37 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
 
   const { outcome } = commands;
   const showPrompt = aiPrompt && commands.available;
+  const showStaticPrompt = showPrompt && !aiPromptFloating;
+  const showFloatingPrompt = showPrompt && aiPromptFloating;
   const showCluster = aiCluster && commands.clusterAvailable && !readOnly;
   const showDiagram = aiDiagram && commands.diagramAvailable && !readOnly;
+  // Gates the staged-review panel too, so a change the floating chat proposes
+  // still gets the same review UI a change from the static bar would.
   const showAIPanels = showPrompt || showCluster || showDiagram;
+
+  // A selected frame hands the chat its own data plus every block visually
+  // inside it — "what's wrong with this group" needs the group's members,
+  // not just the frame's title.
+  const contextBlockIds = withFrameMembers(selectedIds, scene.blocks);
+  const selectedBlocks = scene.blocks.filter((block) => contextBlockIds.includes(block.id));
+
+  // The floating panel keeps its own "one visible last chat" line, since it
+  // has no top-of-canvas `.answer` paragraph to share — the same outcome the
+  // static bar renders inline, reduced to one line each.
+  const floatingLastMessage = (() => {
+    if (outcome.kind === 'answer') return outcome.message;
+    if (outcome.kind === 'applied') {
+      const summary =
+        outcome.commands.length === 1
+          ? '1 change applied.'
+          : `${outcome.commands.length} changes applied.`;
+      return outcome.message ? `${summary} ${outcome.message}` : summary;
+    }
+    if (outcome.kind === 'staged') return outcome.message ?? 'Reviewing suggested changes…';
+    if (outcome.kind === 'error') return outcome.error;
+    return undefined;
+  })();
+  const floatingLastMessageVariant = outcome.kind === 'error' ? 'error' : 'ai';
 
   // A selection of two or more scopes the grouping to it; otherwise every
   // text-bearing block is in play. Frames are never members — membership is
@@ -762,7 +930,7 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
 
   return (
     <div className={mergeClasses(styles.canvas, className)}>
-      {showPrompt && (
+      {showStaticPrompt && (
         <CanvasPromptBar
           blocks={scene.blocks}
           onSubmit={commands.submit}
@@ -815,11 +983,20 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
         </p>
       )}
 
+      {/* The model's own account of why it answered or acted this way, shown
+          collapsed by default. Skipped when the floating panel is mounted —
+          it renders the same `commands.thinking` above its own reply. */}
+      {showAIPanels && !showFloatingPrompt && commands.thinking && (
+        <ThinkingBlock>{commands.thinking}</ThinkingBlock>
+      )}
+
       {/* A question's answer is shown, not just announced — reading it is the
           entire point of the query path. An applied change carries a message
           too when something was dropped on the way, and that path has no review
-          panel to report it in. */}
+          panel to report it in. Skipped when the floating panel is mounted —
+          it already shows the same reply as its own "last chat" bubble. */}
       {showAIPanels &&
+        !showFloatingPrompt &&
         (outcome.kind === 'answer' || outcome.kind === 'applied') &&
         outcome.message && <p className={styles.answer}>{outcome.message}</p>}
 
@@ -890,6 +1067,7 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
               selected={selectedIds.includes(block.id)}
               highlighted={highlightedIds.includes(block.id)}
               resizable={!readOnly}
+              {...(block.id === focusedId ? { style: { zIndex: 2 } } : {})}
               {...(renderBlock ? { renderBlock } : {})}
               onPointerDown={(event) => onBlockPointerDown(event, block)}
               onResizeStart={(event, handle) => onResizeStart(event, block, handle)}
@@ -908,6 +1086,13 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
             ))}
           </svg>
 
+          {/* Everything but the focused block sits beneath this — pure
+              layering (the overlay's z-index, the focused block's own bump
+              below), no per-block opacity and so no new opacity token
+              needed. `pointer-events: none` since interaction is already
+              restricted in the pointer handlers themselves. */}
+          {focusedId && <div className={styles.focusOverlay} aria-hidden="true" />}
+
           {content.map((block) => (
             <CanvasBlock
               key={block.id}
@@ -917,14 +1102,41 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
               editing={editingId === block.id}
               resizable={!readOnly}
               aiRewrite={aiRewrite && !readOnly}
+              {...(block.id === focusedId ? { style: { zIndex: 2 } } : {})}
               {...(renderBlock ? { renderBlock } : {})}
               onPointerDown={(event) => onBlockPointerDown(event, block)}
               onResizeStart={(event, handle) => onResizeStart(event, block, handle)}
               onDoubleClick={() => {
-                if (!readOnly && block.kind === 'sticky') setEditingId(block.id);
+                if (readOnly) return;
+                if (block.kind === 'sticky') setEditingId(block.id);
+                if (block.kind === 'document') {
+                  setEditingId(block.id);
+                  // Opening a document's editor defaults to locked focus —
+                  // the one case in this library where entering focus isn't
+                  // the free-to-look-around default, since editing text
+                  // while the viewport can still be panned/zoomed out from
+                  // under you is the actual bad experience being avoided.
+                  enterFocus(block.id, true);
+                }
               }}
               onTextChange={(text) => run([{ op: 'update', id: block.id, patch: { text } }])}
               onEditingEnd={() => setEditingId(undefined)}
+              {...(block.kind === 'document' && !readOnly
+                ? {
+                    onPagesChange: (pages: string[]) =>
+                      run([{ op: 'update', id: block.id, patch: { pages } }]),
+                    onHeaderChange: (header: string) =>
+                      run([{ op: 'update', id: block.id, patch: { header } }]),
+                    onFooterChange: (footer: string) =>
+                      run([{ op: 'update', id: block.id, patch: { footer } }]),
+                  }
+                : {})}
+              {...((block.kind === 'sticky' || block.kind === 'shape') && !readOnly
+                ? {
+                    onColorChange: (color: string) =>
+                      run([{ op: 'update', id: block.id, patch: { color } }]),
+                  }
+                : {})}
               {...(block.kind === 'checklist' && !readOnly
                 ? {
                     // Through the reducer like everything else, so a box ticked
@@ -956,7 +1168,54 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
               }}
             />
           )}
+
+          {/* Ephemeral, mid-drag only — pure geometry like the connector SVG,
+              so hidden the same way. */}
+          {alignmentGuides.length > 0 && (
+            <svg className={styles.guides} aria-hidden="true">
+              {alignmentGuides.map((guide, index) =>
+                guide.orientation === 'vertical' ? (
+                  <line
+                    key={index}
+                    className={styles.guideLine}
+                    x1={guide.position}
+                    x2={guide.position}
+                    y1={guide.start}
+                    y2={guide.end}
+                  />
+                ) : (
+                  <line
+                    key={index}
+                    className={styles.guideLine}
+                    x1={guide.start}
+                    x2={guide.end}
+                    y1={guide.position}
+                    y2={guide.position}
+                  />
+                ),
+              )}
+            </svg>
+          )}
         </div>
+
+        {/* Sibling of `.world`, not inside it — the panel lives in screen
+            space, so panning and zooming the scene never drags it along. */}
+        {showFloatingPrompt && (
+          <CanvasChatPanel
+            blocks={scene.blocks}
+            selectedBlocks={selectedBlocks}
+            onSubmit={commands.submit}
+            status={commands.status}
+            {...(outcome.kind === 'error' ? { error: outcome.error } : {})}
+            {...(floatingLastMessage
+              ? { lastMessage: floatingLastMessage, lastMessageVariant: floatingLastMessageVariant }
+              : {})}
+            {...(commands.thinking ? { thinking: commands.thinking } : {})}
+            disabled={readOnly}
+            {...(promptPlaceholder ? { placeholder: promptPlaceholder } : {})}
+            boundsRef={surfaceRef}
+          />
+        )}
       </div>
 
       <CanvasOutline

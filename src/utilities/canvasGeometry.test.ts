@@ -11,11 +11,18 @@ import {
   outlineOrder,
   buildCanvasOutline,
   rectCentre,
+  frameMembers,
+  withFrameMembers,
+  snapToObjects,
 } from './canvasGeometry';
 import type { CanvasBlockData, CanvasScene } from './canvasReducer';
 
 function block(id: string, x: number, y: number, width = 100, height = 100): CanvasBlockData {
   return { id, kind: 'sticky', text: id, x, y, width, height };
+}
+
+function frame(id: string, x: number, y: number, width: number, height: number): CanvasBlockData {
+  return { id, kind: 'frame', title: id, x, y, width, height };
 }
 
 describe('snapToGrid', () => {
@@ -74,6 +81,127 @@ describe('rect helpers', () => {
 
   it('centres a rect', () => {
     expect(rectCentre({ x: 0, y: 0, width: 10, height: 20 })).toEqual({ x: 5, y: 10 });
+  });
+});
+
+describe('snapToObjects', () => {
+  it('snaps a left edge to a nearby left edge, within threshold', () => {
+    const dragged = { x: 104, y: 0, width: 100, height: 100 };
+    const other = { x: 100, y: 300, width: 100, height: 100 };
+    const result = snapToObjects(dragged, [other], 6);
+
+    expect(result.x).toBe(100);
+    expect(result.snappedX).toBe(true);
+    expect(result.y).toBe(0);
+    expect(result.snappedY).toBe(false);
+  });
+
+  it('snaps centres to each other, not just edges', () => {
+    // dragged centre x = 54; other centre x = 50 -- 4px off, within threshold.
+    const dragged = { x: 4, y: 0, width: 100, height: 100 };
+    const other = { x: 0, y: 300, width: 100, height: 100 };
+    const result = snapToObjects(dragged, [other], 6);
+
+    expect(result.x).toBe(0);
+    expect(result.snappedX).toBe(true);
+  });
+
+  it('does nothing beyond the threshold', () => {
+    const dragged = { x: 120, y: 0, width: 100, height: 100 };
+    const other = { x: 100, y: 300, width: 100, height: 100 };
+    const result = snapToObjects(dragged, [other], 6);
+
+    expect(result.x).toBe(120);
+    expect(result.snappedX).toBe(false);
+    expect(result.guides).toEqual([]);
+  });
+
+  it('picks the closest match when several edges are within threshold', () => {
+    const dragged = { x: 103, y: 0, width: 100, height: 100 };
+    // Left edge at 100 (3px away) and right-edge-of-other at 105 (2px away
+    // from dragged's own left edge) both qualify; 105 is closer.
+    const near = { x: -5, y: 300, width: 110, height: 100 }; // right edge = 105
+    const far = { x: 100, y: 300, width: 50, height: 50 }; // left edge = 100
+    const result = snapToObjects(dragged, [near, far], 6);
+
+    expect(result.x).toBe(105);
+  });
+
+  it('draws a guide for every candidate that ends up aligned, not just the closest', () => {
+    const dragged = { x: 104, y: 0, width: 100, height: 100 };
+    // Both share a left edge at 100 once snapped, and are sized so no other
+    // edge (centre/right) coincidentally lines up too.
+    const a = { x: 100, y: 300, width: 30, height: 30 };
+    const b = { x: 100, y: 500, width: 30, height: 30 };
+    const result = snapToObjects(dragged, [a, b], 6);
+
+    const leftEdgeGuides = result.guides.filter(
+      (g) => g.orientation === 'vertical' && g.position === 100,
+    );
+    expect(leftEdgeGuides).toHaveLength(2);
+  });
+
+  it('still draws a guide when already exactly flush, not just when it moved', () => {
+    const dragged = { x: 100, y: 0, width: 100, height: 100 };
+    const other = { x: 100, y: 300, width: 100, height: 100 };
+    const result = snapToObjects(dragged, [other], 6);
+
+    expect(result.x).toBe(100);
+    expect(result.snappedX).toBe(true);
+    expect(result.guides.some((g) => g.orientation === 'vertical')).toBe(true);
+  });
+
+  it('snaps x and y independently', () => {
+    const dragged = { x: 103, y: 203, width: 100, height: 100 };
+    const other = { x: 100, y: 200, width: 100, height: 100 };
+    const result = snapToObjects(dragged, [other], 6);
+
+    expect(result.x).toBe(100);
+    expect(result.y).toBe(200);
+  });
+});
+
+describe('frameMembers', () => {
+  it('includes a block whose centre falls inside the frame', () => {
+    const f = frame('f', 0, 0, 400, 300);
+    const inside = block('a', 50, 50, 100, 100);
+    expect(frameMembers(f, [f, inside])).toEqual([inside]);
+  });
+
+  it('excludes a block whose centre falls outside, even if it overlaps the edge', () => {
+    const f = frame('f', 0, 0, 100, 100);
+    // Centre at (120, 50) — outside, despite the block overlapping the frame's edge.
+    const straddling = block('a', 80, 0, 80, 100);
+    expect(frameMembers(f, [f, straddling])).toEqual([]);
+  });
+
+  it('never treats another frame as a member', () => {
+    const outer = frame('outer', 0, 0, 400, 400);
+    const inner = frame('inner', 50, 50, 100, 100);
+    expect(frameMembers(outer, [outer, inner])).toEqual([]);
+  });
+});
+
+describe('withFrameMembers', () => {
+  it('adds a frame’s members without duplicating an id already present', () => {
+    const f = frame('f', 0, 0, 400, 300);
+    const a = block('a', 50, 50);
+    const b = block('b', 500, 500);
+    expect(withFrameMembers(['f', 'a'], [f, a, b])).toEqual(['f', 'a']);
+  });
+
+  it('leaves a plain selection of non-frame blocks untouched', () => {
+    const a = block('a', 0, 0);
+    const b = block('b', 200, 0);
+    expect(withFrameMembers(['a'], [a, b])).toEqual(['a']);
+  });
+
+  it('expands every frame in a multi-selection', () => {
+    const f1 = frame('f1', 0, 0, 200, 200);
+    const f2 = frame('f2', 400, 0, 200, 200);
+    const a = block('a', 50, 50);
+    const b = block('b', 450, 50);
+    expect(withFrameMembers(['f1', 'f2'], [f1, f2, a, b])).toEqual(['f1', 'f2', 'a', 'b']);
   });
 });
 

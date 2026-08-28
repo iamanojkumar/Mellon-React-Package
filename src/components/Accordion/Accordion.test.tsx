@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { useState } from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expectNoA11yViolations } from '../../../tests/axe';
@@ -242,6 +243,59 @@ describe('Accordion', () => {
         </AIProvider>,
       );
       await expectNoA11yViolations(container);
+    });
+  });
+  // Reported as a suspected bug from a consumer app (a keyword-match figure
+  // inside an Accordion.Content looking stale after edits). It does not
+  // reproduce, and there's nothing in Accordion that could cause it —
+  // Accordion.Content renders `{children}` unconditionally, with no memo,
+  // no cloning and no cached element. Kept as a regression test so the
+  // claim stays answered rather than re-investigated.
+  describe('content freshness', () => {
+    it("re-renders an open item's content when the parent passes new children", () => {
+      const { rerender } = render(
+        <Accordion defaultValue="a">
+          <Accordion.Item value="a">
+            <Accordion.Trigger>Job match</Accordion.Trigger>
+            <Accordion.Content>Match 42%</Accordion.Content>
+          </Accordion.Item>
+        </Accordion>,
+      );
+      expect(screen.getByText('Match 42%')).toBeInTheDocument();
+
+      rerender(
+        <Accordion defaultValue="a">
+          <Accordion.Item value="a">
+            <Accordion.Trigger>Job match</Accordion.Trigger>
+            <Accordion.Content>Match 88%</Accordion.Content>
+          </Accordion.Item>
+        </Accordion>,
+      );
+      expect(screen.getByText('Match 88%')).toBeInTheDocument();
+    });
+
+    it("re-renders a closed item's content too, so reopening never shows a stale value", async () => {
+      const user = userEvent.setup();
+
+      function Host() {
+        const [count, setCount] = useState(1);
+        return (
+          <>
+            <button onClick={() => setCount(count + 1)}>edit</button>
+            <Accordion>
+              <Accordion.Item value="a">
+                <Accordion.Trigger>Job match</Accordion.Trigger>
+                <Accordion.Content>Match {count}0%</Accordion.Content>
+              </Accordion.Item>
+            </Accordion>
+          </>
+        );
+      }
+
+      render(<Host />);
+      await user.click(screen.getByRole('button', { name: 'edit' }));
+      await user.click(screen.getByRole('button', { name: 'Job match' }));
+      expect(screen.getByRole('region')).toHaveTextContent('Match 20%');
     });
   });
 });

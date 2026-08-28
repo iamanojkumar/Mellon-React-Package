@@ -1,0 +1,197 @@
+/* Floats above `.world`, so pan/zoom on the scene underneath never moves it —
+   anchored to the surface's own corner, dragging only ever adds a translate
+   on top of that anchor. No `transition` on `transform`: smoothing a drag
+   fights the pointer instead of tracking it. */
+.panel {
+  position: absolute;
+  inset-block-end: var(--ds-space-md);
+  inset-inline-end: var(--ds-space-md);
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: 20rem;
+  max-width: calc(100% - 2 * var(--ds-space-md));
+  background: var(--ds-color-surface-primary);
+  border: var(--ds-border-width-thin) solid var(--ds-color-border-primary);
+  border-radius: var(--ds-radius-lg);
+  box-shadow: var(--ds-elevation-md);
+  overflow: hidden;
+}
+
+/* Promoted to its own compositor layer only while actually dragging — a
+   permanent `will-change` pins memory for a panel that spends nearly all its
+   life motionless. */
+.panel[data-dragging] {
+  user-select: none;
+  will-change: transform;
+}
+
+.header {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.75rem;
+  padding: var(--ds-space-xs) var(--ds-space-md);
+  cursor: grab;
+  touch-action: none;
+  transition: min-height var(--ds-motion-duration-fast) var(--ds-motion-easing-standard);
+}
+
+.panel[data-dragging] .header {
+  cursor: grabbing;
+}
+
+/* Minimized reads as a title bar, not a bare handle — thicker, and
+   left-aligned so the title has somewhere to sit. */
+.panel[data-minimized] .header {
+  min-height: 2.75rem;
+  justify-content: flex-start;
+  border-block-end: var(--ds-border-width-thin) solid var(--ds-color-border-primary);
+}
+
+.handleBar {
+  display: block;
+  width: 2rem;
+  height: 0.25rem;
+  background: var(--ds-color-border-primary);
+  border-radius: var(--ds-radius-sm);
+}
+
+.title {
+  overflow: hidden;
+  color: var(--ds-color-text-primary);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  font-weight: var(--ds-font-weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Hidden until hovered or focused — the header's handle bar (or title, once
+   minimized) carries the idle look; double-click and `minimizeShortcut` are
+   the fast paths, and this stays reachable by keyboard and touch without
+   cluttering the default appearance. */
+.toggle.toggle {
+  position: absolute;
+  inset-inline-end: var(--ds-space-xs);
+  inset-block-start: 50%;
+  transform: translateY(-50%);
+  opacity: 0;
+  transition: opacity var(--ds-motion-duration-fast) var(--ds-motion-easing-standard);
+}
+
+.header:hover .toggle,
+.toggle:focus-visible {
+  opacity: 1;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* The scrollable exchange: last prompt, reasoning, reply. Capped and
+   scrollable, with its scrollbar hidden per the reference — the affordance is
+   the visible clipped text at the boundary, not a track. */
+.scroll {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-sm);
+  max-height: 14rem;
+  padding: var(--ds-space-md);
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.turn {
+  flex: none;
+}
+
+.thinking {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--ds-space-xs);
+  color: var(--ds-color-text-secondary);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-xs);
+}
+
+.thinkingHeading {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-xs);
+  font-weight: var(--ds-font-weight-medium);
+}
+
+.thinkingDots {
+  flex: none;
+}
+
+/* Single line, clipped — a compact account, never the full text, and never
+   expandable: there is deliberately no control that reveals more of it. */
+.thinkingExcerpt {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.response {
+  flex: none;
+  margin: 0;
+  color: var(--ds-color-text-secondary);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  line-height: var(--ds-line-height-base);
+  white-space: pre-wrap;
+}
+
+.responseError {
+  color: var(--ds-color-status-danger);
+}
+
+/* The divider above the prompt row doubles as its focus indicator — the
+   whole footer, not just the input, since the minimal-variant input has no
+   border of its own to carry a focus ring. */
+.footer {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--ds-space-xs);
+  padding: var(--ds-space-sm) var(--ds-space-md);
+  border-block-start: var(--ds-border-width-thin) solid var(--ds-color-border-primary);
+  transition: border-color var(--ds-motion-duration-fast) var(--ds-motion-easing-standard);
+}
+
+.footer:focus-within {
+  border-block-start-color: var(--ds-color-border-focus);
+}
+
+/* Wraps rather than scrolling — a handful of chips is meant to be scanned at
+   a glance, not clipped; past `MAX_SELECTION_CHIPS` it holds a single
+   overflow chip instead, so this never needs to wrap onto many lines. */
+.selectionChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-space-xs);
+}
+
+.contextBadge {
+  padding: 0 var(--ds-space-xs);
+  color: var(--ds-color-text-secondary);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-xs);
+  background: var(--ds-color-surface-secondary);
+  border-radius: var(--ds-radius-sm);
+}
+
+.promptBar {
+  gap: 0;
+}

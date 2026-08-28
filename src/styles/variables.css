@@ -33,9 +33,33 @@
 
   /* Color — brand / status */
   --ds-color-brand-primary: var(--semantic-color-accent-default);
+  --ds-color-status-info: var(--semantic-color-info-default);
   --ds-color-status-success: var(--semantic-color-success-default);
   --ds-color-status-warning: var(--semantic-color-warning-default);
   --ds-color-status-danger: var(--semantic-color-error-default);
+
+  /* Color — status, subtle fill + its matching foreground.
+
+     The foundation ships each status family as a *pair*: a far-end tint
+     (L 0.955 in light/high-contrast, L 0.27 in dark) and an
+     "on-subtle" foreground at the opposite end of the same hue, so the
+     pair is contrast-safe in all three themes without this file choosing
+     any value. Previously unmapped — which is why a tinted-but-readable
+     fill wasn't expressible in component CSS at all (see
+     docs/TOKEN_AUDIT.md B6).
+
+     There is deliberately no --ds-color-brand-subtle: the foundation
+     ships accent-subtle but no accent-on-subtle, and picking a
+     foreground for it here would be inventing a per-theme value, which
+     this mapping-only file doesn't do. */
+  --ds-color-status-info-subtle: var(--semantic-color-info-subtle);
+  --ds-color-status-info-on-subtle: var(--semantic-color-info-on-subtle);
+  --ds-color-status-success-subtle: var(--semantic-color-success-subtle);
+  --ds-color-status-success-on-subtle: var(--semantic-color-success-on-subtle);
+  --ds-color-status-warning-subtle: var(--semantic-color-warning-subtle);
+  --ds-color-status-warning-on-subtle: var(--semantic-color-warning-on-subtle);
+  --ds-color-status-danger-subtle: var(--semantic-color-error-subtle);
+  --ds-color-status-danger-on-subtle: var(--semantic-color-error-on-subtle);
 
   /* Spacing — exact rem matches on the foundation's numeric scale */
   --ds-space-none: var(--spacing-0);

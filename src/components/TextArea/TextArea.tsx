@@ -29,6 +29,16 @@ export interface TextAreaOwnProps {
   buildAIPrompt?: (value: string) => string;
   /** Accessible label for the AI trigger button. Defaults to `'Rewrite with AI'`. */
   aiTriggerLabel?: string;
+  /**
+   * Fires when the AI suggestion popover opens (`true`) or closes
+   * (`false`). Observation only — see `Input`'s identical prop for why an
+   * accepted suggestion isn't observable through `onChange` alone.
+   */
+  onAIOpenChange?: (open: boolean) => void;
+  /** Fires with the accepted text, immediately before it's applied to `value`. */
+  onAIAccept?: (result: string) => void;
+  /** Fires when a suggestion is discarded rather than accepted. */
+  onAIReject?: () => void;
 }
 
 export type TextAreaProps = Omit<
@@ -64,6 +74,9 @@ export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(function 
     aiRewrite = false,
     buildAIPrompt = defaultBuildAIPrompt,
     aiTriggerLabel = 'Rewrite with AI',
+    onAIOpenChange,
+    onAIAccept,
+    onAIReject,
     ...rest
   },
   ref,
@@ -95,6 +108,7 @@ export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(function 
    * `onChange` in this codebase reads) stands in for it.
    */
   function applyAIText(text: string) {
+    onAIAccept?.(text);
     setValue(text);
     onChange?.({ target: { value: text } } as ChangeEvent<HTMLTextAreaElement>);
   }
@@ -137,6 +151,7 @@ export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(function 
           result={aiAction.result}
           error={aiAction.error}
           onOpenChange={(open) => {
+            onAIOpenChange?.(open);
             if (open) {
               aiAction.trigger({ prompt: buildAIPrompt(value ?? '') });
             } else {
@@ -144,7 +159,10 @@ export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(function 
             }
           }}
           onAccept={applyAIText}
-          onReject={() => aiAction.reset()}
+          onReject={() => {
+            onAIReject?.();
+            aiAction.reset();
+          }}
           onRetry={() => aiAction.trigger({ prompt: buildAIPrompt(value ?? '') })}
         />
       </div>

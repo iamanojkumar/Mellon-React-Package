@@ -128,6 +128,10 @@ own `.tsx`, `.module.css`, `.test.tsx`, `.stories.tsx`, and `index.ts`.
 - CanvasChecklist
 - CanvasPromptBar
 - CanvasChangePreview
+- CanvasChatPanel
+- CanvasFillPicker
+- Document
+- DocumentPage
 
 ## Feedback
 

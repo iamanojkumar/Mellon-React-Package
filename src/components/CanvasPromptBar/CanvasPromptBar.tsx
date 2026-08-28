@@ -29,6 +29,13 @@ export interface CanvasPromptBarProps {
   label?: string;
   submitLabel?: ReactNode;
   className?: string;
+  /**
+   * `'minimal'` drops the input's border/background and hides the Send
+   * button — Enter still submits. For a chrome-light host like
+   * `CanvasChatPanel` rather than a toolbar row. Defaults to `'default'`,
+   * which renders byte-identical to before this prop existed.
+   */
+  variant?: 'default' | 'minimal';
 }
 
 /** The `@token` immediately before the caret, if the user is mid-mention. */
@@ -68,7 +75,9 @@ export function CanvasPromptBar({
   label = 'Ask or instruct the canvas',
   submitLabel = 'Send',
   className,
+  variant = 'default',
 }: CanvasPromptBarProps) {
+  const minimal = variant === 'minimal';
   const [value, setValue] = useState('');
   const [mentionQuery, setMentionQuery] = useState<string | undefined>(undefined);
   const [mentions, setMentions] = useState<CanvasMention[]>([]);
@@ -143,18 +152,21 @@ export function CanvasPromptBar({
       <div className={styles.row}>
         <Input
           ref={inputRef}
-          className={styles.input}
+          className={mergeClasses(styles.input, minimal && styles.inputMinimal)}
           value={value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           aria-label={label}
+          aria-busy={busy || undefined}
           disabled={disabled}
           invalid={Boolean(error)}
         />
-        <Button size="sm" onClick={submit} loading={busy} disabled={disabled || !value.trim()}>
-          {submitLabel}
-        </Button>
+        {!minimal && (
+          <Button size="sm" onClick={submit} loading={busy} disabled={disabled || !value.trim()}>
+            {submitLabel}
+          </Button>
+        )}
       </div>
 
       {error && (

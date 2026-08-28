@@ -61,3 +61,22 @@ export const Accessibility: Story = {
     </Breadcrumb>
   ),
 };
+
+/**
+ * A trail step that navigates through a router's own `navigate()` has no
+ * `href`, so it renders as a real `<button>`. It must be indistinguishable
+ * from the `<a>` items beside it — this story is the check, since jsdom
+ * applies no stylesheet and a unit test can't see native button chrome
+ * leaking through.
+ */
+export const AsButton: Story = {
+  render: () => (
+    <Breadcrumb>
+      <Breadcrumb.Item as="button" type="button" onClick={() => {}}>
+        Home
+      </Breadcrumb.Item>
+      <Breadcrumb.Item href="/products">Products</Breadcrumb.Item>
+      <Breadcrumb.Item current>Blue Widget</Breadcrumb.Item>
+    </Breadcrumb>
+  ),
+};

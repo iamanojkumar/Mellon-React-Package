@@ -15,6 +15,32 @@
   min-width: 0;
 }
 
+/*
+ * Overrides `Input`'s own box (border/background/radius/focus ring) for the
+ * `minimal` variant. Doubled up against `Input`'s own selectors — including
+ * its `[data-size]` padding rule, which a single `.input.inputMinimal` alone
+ * would only tie, not beat — per CLAUDE.md's cross-component CSS hazard #2:
+ * a same-specificity override is import-order-dependent.
+ */
+.input.inputMinimal {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+.input.inputMinimal[data-size] {
+  padding: 0;
+}
+
+.input.inputMinimal:focus-visible {
+  border: none;
+  box-shadow: none;
+}
+
+.input.inputMinimal:disabled {
+  background: transparent;
+}
+
 .error {
   margin: 0;
   color: var(--ds-color-status-danger);

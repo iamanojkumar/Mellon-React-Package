@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { ComponentPropsWithoutRef } from 'react';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { expectNoA11yViolations } from '../../../tests/axe';
 import { Breadcrumb } from './Breadcrumb';
 
@@ -87,5 +88,44 @@ describe('Breadcrumb', () => {
   it('has no accessibility violations', async () => {
     const { container } = render(<BasicBreadcrumb />);
     await expectNoA11yViolations(container);
+  });
+  // A router-driven trail step has no href to hang on an <a>, so as="button"
+  // is a first-class call site rather than an edge case. The styling half of
+  // this (native button chrome had to be neutralised in Breadcrumb.module.css
+  // — hover and focus were keyed off `a.item` and so never matched a button)
+  // isn't assertable here: jsdom applies no stylesheet. Breadcrumb.stories'
+  // AsButton story is the real-browser check.
+  describe('as="button"', () => {
+    it('renders a real button that carries the item styling and fires onClick', async () => {
+      const user = userEvent.setup();
+      const onClick = vi.fn();
+      render(
+        <Breadcrumb>
+          <Breadcrumb.Item as="button" onClick={onClick}>
+            Home
+          </Breadcrumb.Item>
+          <Breadcrumb.Item current>Widget</Breadcrumb.Item>
+        </Breadcrumb>,
+      );
+
+      const item = screen.getByRole('button', { name: 'Home' });
+      expect(item.tagName).toBe('BUTTON');
+      expect(item.className).toBe(screen.getByText('Widget').className.replace(/s*$/, ''));
+
+      await user.click(item);
+      expect(onClick).toHaveBeenCalledTimes(1);
+    });
+
+    it('has no accessibility violations', async () => {
+      const { container } = render(
+        <Breadcrumb>
+          <Breadcrumb.Item as="button" onClick={() => {}}>
+            Home
+          </Breadcrumb.Item>
+          <Breadcrumb.Item current>Widget</Breadcrumb.Item>
+        </Breadcrumb>,
+      );
+      await expectNoA11yViolations(container);
+    });
   });
 });

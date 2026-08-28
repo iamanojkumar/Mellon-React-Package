@@ -178,13 +178,17 @@ export const Shapes: Story = {
 /**
  * The full block catalogue. Beyond notes, shapes, text, images, dividers,
  * embeds and frames, a canvas holds the things people actually paste onto one:
- * a snippet, a table, a saved link, a checklist, a chart.
+ * a snippet, a table, a saved link, a checklist, a chart, and a small
+ * resume-style document.
  *
  * Most are delegation — `Code`, `Table`, `Link`, `ChartSurface` are already in
  * the library, and wrapping them in folders would add files without adding
  * behaviour. `checklist` is the exception and gets its own component, because
  * it is the one face with state to change; ticking a box goes through the same
- * `update` command a model would use.
+ * `update` command a model would use. `document` delegates to `Document`
+ * itself (`chrome={false}`, so no view/zoom controls fight the canvas's own),
+ * rendered read-only here — double-click it to open its editor, which enters
+ * `Canvas`'s own focus mode, locked by default.
  */
 export const BlockCatalogue: Story = {
   args: {
@@ -259,6 +263,18 @@ export const BlockCatalogue: Story = {
           y: 250,
           width: 380,
           height: 240,
+        },
+        {
+          id: 'document',
+          kind: 'document',
+          header: '<h2>Ada Lovelace</h2>',
+          pages: [
+            '<p>Mathematician and writer, known for work on Babbage’s Analytical Engine.</p>',
+          ],
+          x: 20,
+          y: 520,
+          width: 200,
+          height: 283,
         },
       ],
     },
@@ -605,6 +621,7 @@ const mockClient: AIClient = {
 
     if (request.includes('what') || request.includes('summar')) {
       return JSON.stringify({
+        thinking: 'This is a question, not an instruction — answer it and change nothing.',
         commands: [],
         message: 'Two notes about the SSO bounce, a decision diamond, and a funnel chart.',
         highlightBlockIds: ['n1', 'n2'],
@@ -719,6 +736,11 @@ const mockClient: AIClient = {
  * - **“move the ghost block”** — a hallucinated id, reported not applied.
  * - **“add a card for the thing we discussed”** — ambiguous; it asks.
  *
+ * "what is here?" also carries `thinking` — the model's own one-line account
+ * of why it answered rather than acted — shown collapsed under a "Show
+ * reasoning" toggle above the answer. It rides in the same JSON response as
+ * `message`, so it costs nothing extra to wire up on a custom `resolveCommands`.
+ *
  * Notes also carry a per-block "Rewrite with AI" trigger, and the toolbar's
  * **Group by theme** runs the affinity-mapping path through the same review
  * panel — see `AICluster`.
@@ -739,6 +761,46 @@ export const AIPrompt: Story = {
             aiRewrite
             aiCluster
             aiDiagram
+            aria-label="Workspace"
+          />
+        </Stack>
+      </AIProvider>
+    </ToastProvider>
+  ),
+};
+
+/**
+ * Same pipeline as `AIPrompt`, decoupled from the top row: `aiPromptFloating`
+ * moves the prompt into a `CanvasChatPanel` — a draggable, minimizable panel
+ * over the canvas itself, styled as a compact card with a bare drag-handle
+ * bar, a borderless input, and its scrollbar hidden on the response area.
+ * Drag it by its header; double-click the header (or its hover-revealed
+ * icon button, or a host-supplied `minimizeShortcut`) to minimize — there is
+ * no close control, only expanded/minimized, so the assistant is always
+ * reachable.
+ *
+ * Select the "Sign-in flow" frame — every note visually inside a frame
+ * moves with it (drag or keyboard nudge alike, geometric membership, not a
+ * stored relationship), and selecting the frame hands the chat its own data
+ * *plus* its contents, not just the frame's title. Selecting many blocks at
+ * once collapses the chip row into one "N items selected" summary past
+ * `MAX_SELECTION_CHIPS`.
+ */
+export const AIPromptFloating: Story = {
+  render: () => (
+    <ToastProvider>
+      <AIProvider client={mockClient}>
+        <Stack gap="sm" style={{ height: '100%' }}>
+          <Text size="sm">
+            Drag the panel by its header; double-click to minimize. Drag the &ldquo;Sign-in
+            flow&rdquo; frame and its notes move with it. Select the frame and ask about it for
+            group-aware context.
+          </Text>
+          <Canvas
+            defaultScene={board}
+            aiPrompt
+            aiPromptFloating
+            defaultSelectedIds={['f1']}
             aria-label="Workspace"
           />
         </Stack>

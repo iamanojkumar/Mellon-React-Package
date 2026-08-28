@@ -6,6 +6,7 @@ import type {
   CanvasShapeKind,
   CanvasTone,
 } from './canvasReducer';
+import type { DocumentAspectRatioPreset } from './documentAspectRatio';
 
 /**
  * What one prompt resolves to. Allows *no commands at all* on purpose — that's
@@ -18,10 +19,19 @@ export interface CanvasResolution {
   message?: string;
   /** Blocks the answer refers to — highlighted, not modified. */
   highlightBlockIds?: string[];
+  /**
+   * The model's own brief account of why it chose these commands (or none) —
+   * shown collapsed by default via `ThinkingBlock`. Rendered verbatim like
+   * `message`, never parsed for intent: a wrong or missing `thinking` can
+   * only make the UI less informative, never change what actually happens
+   * to the scene.
+   */
+  thinking?: string;
 }
 
 const TONES: readonly string[] = ['neutral', 'brand', 'success', 'warning', 'danger'];
 const SHAPES: readonly string[] = ['rectangle', 'ellipse', 'diamond', 'triangle', 'parallelogram'];
+const ASPECT_RATIO_PRESETS: readonly string[] = ['a4', '16:9', '4:3'];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -65,6 +75,8 @@ const DEFAULT_BLOCK_SIZE: Record<string, { width: number; height: number }> = {
   link: { width: 260, height: 120 },
   checklist: { width: 240, height: 200 },
   chart: { width: 360, height: 240 },
+  // A4-proportioned, so a generated document block reads as a page by default.
+  document: { width: 280, height: 396 },
 };
 
 /**
@@ -100,6 +112,7 @@ export function parseCanvasBlock(value: unknown): CanvasBlockData | undefined {
         kind: 'sticky',
         text: asString(value['text']) ?? '',
         ...(asTone(value['tone']) ? { tone: asTone(value['tone']) } : {}),
+        ...(asString(value['color']) ? { color: asString(value['color']) } : {}),
       };
 
     case 'shape': {
@@ -110,6 +123,7 @@ export function parseCanvasBlock(value: unknown): CanvasBlockData | undefined {
         shape: shape && SHAPES.includes(shape) ? (shape as CanvasShapeKind) : 'rectangle',
         ...(asString(value['text']) ? { text: asString(value['text']) } : {}),
         ...(asTone(value['tone']) ? { tone: asTone(value['tone']) } : {}),
+        ...(asString(value['color']) ? { color: asString(value['color']) } : {}),
       };
     }
 
@@ -249,6 +263,28 @@ export function parseCanvasBlock(value: unknown): CanvasBlockData | undefined {
       };
     }
 
+    case 'document': {
+      const pages = asStringArray(value['pages']) ?? [''];
+      const layout = asString(value['layout']);
+      const rawRatio = value['aspectRatio'];
+      const aspectRatio = ASPECT_RATIO_PRESETS.includes(asString(rawRatio) ?? '')
+        ? (rawRatio as DocumentAspectRatioPreset)
+        : isRecord(rawRatio) &&
+            asNumber(rawRatio['width']) !== undefined &&
+            asNumber(rawRatio['height']) !== undefined
+          ? { width: asNumber(rawRatio['width'])!, height: asNumber(rawRatio['height'])! }
+          : undefined;
+      return {
+        ...common,
+        kind: 'document',
+        pages,
+        ...(aspectRatio ? { aspectRatio } : {}),
+        ...(layout === 'two-column' || layout === 'sidebar' ? { layout } : {}),
+        ...(asString(value['header']) ? { header: asString(value['header']) } : {}),
+        ...(asString(value['footer']) ? { footer: asString(value['footer']) } : {}),
+      };
+    }
+
     default:
       return undefined;
   }
@@ -258,7 +294,18 @@ function parsePatch(value: unknown): CanvasPatch | undefined {
   if (!isRecord(value)) return undefined;
   const patch: Record<string, unknown> = {};
 
-  for (const key of ['text', 'html', 'title', 'label', 'src', 'alt', 'url'] as const) {
+  for (const key of [
+    'text',
+    'html',
+    'title',
+    'label',
+    'src',
+    'alt',
+    'url',
+    'color',
+    'header',
+    'footer',
+  ] as const) {
     const text = asString(value[key]);
     if (text) patch[key] = text;
   }
@@ -379,10 +426,12 @@ export function parseCanvasResolution(text: string): CanvasResolution {
 
   const message = asString(parsed['message']);
   const highlightBlockIds = asStringArray(parsed['highlightBlockIds']);
+  const thinking = asString(parsed['thinking']);
 
   return {
     commands,
     ...(message ? { message } : {}),
     ...(highlightBlockIds ? { highlightBlockIds } : {}),
+    ...(thinking ? { thinking } : {}),
   };
 }

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { RichTextEditor } from './RichTextEditor';
+import { AIProvider } from '../../providers/AIProvider';
+import type { AIClient } from '../../contexts/AIContext';
 
 const meta: Meta<typeof RichTextEditor> = {
   title: 'Inputs/RichTextEditor',
@@ -68,5 +70,35 @@ export const Controlled: Story = {
   },
   args: {
     'aria-label': 'Notes',
+  },
+};
+
+const mockAIClient: AIClient = {
+  complete: async ({ prompt }) => {
+    const html = prompt.slice(prompt.lastIndexOf('\n') + 1);
+    return html.replace(/>([^<]+)</g, (_match, text: string) => `>${text.trim()}, rewritten.<`);
+  },
+};
+
+/**
+ * `aiRewrite` is a no-op without an ancestor `AIProvider` — this story
+ * wraps a deterministic mock client so the "Rewrite with AI" trigger
+ * actually appears. It sits at the end of the toolbar row rather than
+ * floating over the text: the editor already owns a control strip, and an
+ * overlaid trigger would have to permanently indent the writing surface.
+ * The suggestion is applied as HTML, so formatting survives the rewrite.
+ */
+export const WithAIRewrite: Story = {
+  decorators: [
+    (Story) => (
+      <AIProvider client={mockAIClient}>
+        <Story />
+      </AIProvider>
+    ),
+  ],
+  args: {
+    'aria-label': 'Accomplishments',
+    defaultValue: '<p>Led the <b>migration</b> and shipped it early.</p>',
+    aiRewrite: true,
   },
 };

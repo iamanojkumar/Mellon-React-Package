@@ -200,6 +200,27 @@ but `--size-avatar-*` in particular looks like it should be backing `Avatar`,
 and `--size-icon-*` should be backing the inline SVG sizes. Worth a decision
 rather than drift.
 
+## B6. Status `-subtle` / `-on-subtle` pairs — **RESOLVED** ✅
+
+The foundation ships each status family as a _pair_: a far-end tint
+(`*-subtle`, L 0.955 in light/high-contrast, L 0.27 in dark) and a
+hue-matched foreground at the opposite end (`*-on-subtle`). Neither half was
+mapped, so "a tinted fill with readable text on it" wasn't expressible in
+component CSS at all — the gap that pushed a consumer to hand-roll a
+15-colour avatar palette outside the token system entirely.
+
+Now mapped as `--ds-color-status-{info,success,warning,danger}-subtle` and
+`-on-subtle`, plus `--ds-color-status-info` (the `info` family had no
+`-default` alias either). Measured in a real browser across all three
+themes, the pairs land at 12.97:1 – 16.39:1 — comfortably past WCAG AA.
+
+**Still open, and a genuine Part A ask:** there is no `accent-on-subtle`.
+`accent-subtle` alone is unusable as a fill, because no existing role is
+guaranteed to read on it in _both_ light and dark. This is why `Avatar`'s
+tint vocabulary is the four status hues plus neutral, with no `brand`
+option — picking a foreground for accent-subtle in `variables.css` would
+mean inventing a per-theme value, which this mapping-only file doesn't do.
+
 ## B5. Unused `--ds-*` tokens — **INFO**
 
 Defined but referenced by nothing: `--ds-motion-easing-accelerate`,

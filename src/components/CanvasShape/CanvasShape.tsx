@@ -9,6 +9,12 @@ export interface CanvasShapeOwnProps {
   /** Label drawn inside the shape. */
   text?: string;
   tone?: CanvasTone;
+  /**
+   * An arbitrary hex fill from the shape's own color picker — user content,
+   * applied as an inline style, not a design token. Layers over `tone`'s
+   * border-colour accent rather than replacing it.
+   */
+  color?: string;
 }
 
 export type CanvasShapeProps = Omit<ComponentPropsWithoutRef<'div'>, 'children'> &
@@ -28,13 +34,14 @@ export type CanvasShapeProps = Omit<ComponentPropsWithoutRef<'div'>, 'children'>
  * screen reader can infer — say it in the text.
  */
 export const CanvasShape = forwardRef<HTMLDivElement, CanvasShapeProps>(function CanvasShape(
-  { shape = 'rectangle', text, tone = 'neutral', className, ...rest },
+  { shape = 'rectangle', text, tone = 'neutral', color, className, style, ...rest },
   ref,
 ) {
   return (
     <div
       ref={ref}
       className={mergeClasses(styles.shape, className)}
+      style={{ ...(color ? { backgroundColor: color } : {}), ...style }}
       data-shape={shape}
       data-tone={tone}
       {...rest}

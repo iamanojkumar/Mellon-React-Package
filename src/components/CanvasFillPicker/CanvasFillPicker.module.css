@@ -1,0 +1,31 @@
+.trigger {
+  padding: 0;
+}
+
+.swatch {
+  display: block;
+  box-sizing: border-box;
+  width: var(--ds-space-md);
+  height: var(--ds-space-md);
+  border: var(--ds-border-width-thin) solid var(--ds-color-border-primary);
+  border-radius: var(--ds-radius-full);
+  /* No custom fill yet: a plain surface square rather than a filled swatch —
+     this is a state, not a colour choice, so it must not look like one. */
+  background: var(--ds-color-surface-primary);
+}
+
+.swatch[data-empty] {
+  background: repeating-conic-gradient(
+    var(--ds-color-surface-secondary) 0% 25%,
+    var(--ds-color-surface-primary) 0% 50%
+  );
+  background-size: 60% 60%;
+  background-position: center;
+}
+
+/* Layout only — `Popover.Content` already owns the box chrome (border/
+   background/shadow/padding); duplicating any of that here would repeat it,
+   per CLAUDE.md's "no nested overlay boxes" rule. */
+.content {
+  display: flex;
+}

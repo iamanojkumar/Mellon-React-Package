@@ -1,0 +1,270 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-sm);
+  width: 100%;
+  height: 100%;
+}
+
+.toolbar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-sm);
+}
+
+.viewToggle,
+.tocToggle,
+.zoomControls {
+  display: flex;
+  gap: var(--ds-space-xs);
+}
+
+/* Row holding the optional table-of-contents panel plus the page viewport —
+   `.toolbar` above stays a single row of controls; this is the content area
+   beneath it. Named `.workspace`, not `.body`, so a test/consumer selector
+   for `[class*="body"]` (`DocumentPage.Body`'s own class) can't ambiguously
+   match this row too — the two are unrelated boxes that happen to share a
+   generic English name. */
+.workspace {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: var(--ds-space-sm);
+}
+
+.toc {
+  flex: none;
+  width: 12rem;
+  overflow-y: auto;
+  padding: var(--ds-space-sm);
+  background: var(--ds-color-surface-secondary);
+  border-radius: var(--ds-radius-md);
+}
+
+.tocEntry {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: var(--ds-radius-sm);
+  padding-block: var(--ds-space-xs);
+  padding-inline-end: var(--ds-space-sm);
+  color: var(--ds-color-text-primary);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-sm);
+  cursor: pointer;
+}
+
+.tocEntry:hover {
+  background: var(--ds-color-surface-primary);
+}
+
+.tocEntry[data-active] {
+  color: var(--ds-color-brand-primary);
+  font-weight: var(--ds-font-weight-medium);
+}
+
+.viewport {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  background: var(--ds-color-surface-secondary);
+  border-radius: var(--ds-radius-md);
+}
+
+.world {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ds-space-xl);
+  padding: var(--ds-space-xl);
+  transform-origin: 50% 0;
+}
+
+.world[data-view='grid'] {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.page {
+  flex: none;
+  width: 24rem;
+}
+
+.world[data-view='grid'] .page {
+  width: 16rem;
+}
+
+/* Doubled class to reliably beat `Card`'s own single-class `.card` radius
+   rule regardless of stylesheet load order (see CLAUDE.md's cross-component
+   CSS reuse note) — a document page reads as a flat sheet, not a rounded
+   card. */
+.page.page {
+  border-radius: 0;
+}
+
+/* `name` (a consumer-supplied document title, not in-page content) renders
+   as a small tab-style label above the page's own top-left corner — a
+   column so the label sits above the page rather than beside it. Deliberately
+   *not* `width: 100%` here: `.world` centers each page by letting it shrink-
+   to-fit its own content width (the page's fixed `24rem`/`16rem`); a
+   full-width wrapper here would instead pin itself to the viewport's left
+   edge while every other, unwrapped page stays centered — the two reading as
+   misaligned with each other rather than as one consistent stack. */
+.namedPage {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ds-space-xs);
+}
+
+/* Bare/embedded mode is the one place this wrapper *does* need to fill its
+   box — there's no sibling page to stay visually consistent with, and
+   `.bareViewport`'s single child needs to fill the host-given box the same
+   way a plain (unnamed) page already does via `.bare .page`. */
+.bareViewport .namedPage {
+  width: 100%;
+  height: 100%;
+}
+
+.nameTag {
+  flex: none;
+  padding: calc(var(--ds-space-xs) / 2) var(--ds-space-sm);
+  background: var(--ds-color-surface-primary);
+  border: var(--ds-border-width-thin) solid var(--ds-color-border-primary);
+  border-radius: var(--ds-radius-sm);
+  color: var(--ds-color-text-secondary);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-xs);
+  cursor: default;
+}
+
+.nameTagInput {
+  flex: none;
+  width: 12rem;
+  max-width: 100%;
+  padding: calc(var(--ds-space-xs) / 2) var(--ds-space-sm);
+  background: var(--ds-color-surface-primary);
+  border: var(--ds-border-width-thin) solid var(--ds-color-border-focus);
+  border-radius: var(--ds-radius-sm);
+  color: var(--ds-color-text-primary);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--ds-font-size-xs);
+}
+
+.nameTagInput:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-color-border-focus);
+}
+
+/* Embedded in a host (e.g. a Canvas block) that already sizes and positions
+   this component — no viewport, no scroll, just the active page filling
+   whatever box the host gave it. A column so the format toolbar (only while
+   `editable`) sits above the page rather than between its header and body. */
+.bare {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-sm);
+  width: 100%;
+  height: 100%;
+}
+
+.bareViewport {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+}
+
+.bare .page {
+  width: 100%;
+  height: 100%;
+}
+
+/* Higher specificity than `.bare .page` above (guaranteed to win regardless
+   of declaration order) — with a name tag above it, the page fills what's
+   left after the tag's own height, not the full `.bareViewport` box, or it
+   would overflow past the tag. */
+.bareViewport .namedPage .page {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+}
+
+/* One toolbar shared by a page's header/body/footer — each renders
+   `showToolbar={false}` on its own `RichTextEditor` — positioned above the
+   whole page rather than wedged between its header and body. The block-style
+   picker sits outside the roving `role="toolbar"` group, the same "own tab
+   stop beside the toolbar" precedent `RichTextEditor`'s AI trigger already
+   set, since it's a value selector, not a formatting command. */
+.formatToolbar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--ds-space-sm);
+}
+
+.blockStyleWrap {
+  flex: none;
+  width: 9rem;
+}
+
+.formatToolbarActions {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-xs);
+}
+
+.linkPopover {
+  padding: var(--ds-space-sm);
+}
+
+.linkForm {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-xs);
+}
+
+/* `caption`/`note` block styles — applied as a class after
+   `execCommand('formatBlock', ...)`, since neither has a real HTML tag of
+   its own to format into. */
+.caption {
+  color: var(--ds-color-text-secondary);
+  font-size: var(--ds-font-size-xs);
+}
+
+.note {
+  padding: var(--ds-space-sm);
+  border-inline-start: var(--ds-border-width-thick) solid var(--ds-color-brand-primary);
+  background: var(--ds-color-surface-secondary);
+  border-radius: var(--ds-radius-sm);
+}
+
+.editor blockquote,
+.staticBody blockquote {
+  margin: 0;
+  padding-inline-start: var(--ds-space-md);
+  border-inline-start: var(--ds-border-width-medium) solid var(--ds-color-border-primary);
+  font-style: italic;
+}
+
+/* `min-height`, not `height` — a fixed `height: 100%` would clip the editor
+   at exactly the page's box no matter how much content it holds, which
+   silently absorbs overflow right here instead of letting it propagate up
+   to `.body`'s own `scrollHeight` — the one thing `Document`'s
+   auto-pagination check actually reads. `min-height` still fills the page
+   for a natural click target when content is short, and simply grows past
+   it — clipped by `.body`'s own `overflow: hidden` — when it's not. */
+.editor {
+  min-height: 100%;
+}
+
+.staticBody {
+  height: 100%;
+  overflow: hidden;
+}

@@ -16,6 +16,24 @@
   background: var(--ds-color-surface-secondary);
 }
 
+/*
+  With `aiRewrite` on, `.toolbar` moves to a wrapper holding the formatting
+  toolbar plus the AI trigger, and the `role="toolbar"` element keeps only
+  the layout half of those rules. The bar's chrome (border/background/
+  radius) is defined once, above, and reused by whichever element is the
+  bar — rather than duplicated into a second "toolbar with AI" ruleset that
+  would then have to be kept in step with it.
+*/
+.toolbarActions {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-xs);
+}
+
+.toolbarWithAI {
+  justify-content: space-between;
+}
+
 .root[data-disabled] .toolbar {
   opacity: 0.6;
 }
@@ -37,7 +55,7 @@
 }
 
 .editable {
-  min-height: 8em;
+  min-height: var(--rte-min-height, 8em);
   height: auto;
   overflow-y: auto;
   white-space: pre-wrap;
@@ -59,4 +77,29 @@
   cursor: not-allowed;
   opacity: 0.6;
   background: var(--ds-color-surface-secondary);
+}
+
+/* `[data-variant='plain']` — a caller (e.g. `Document`) that already sits
+   inside its own box drops this component's own border/background from both
+   the toolbar and the editable surface, so the surface reads as the host's
+   own content rather than a second nested control. The descendant selector's
+   specificity (attribute + 2 classes) already beats `inputStyles.input`'s
+   single class regardless of import order — no doubled-class hack needed. */
+.root[data-variant='plain'] .toolbar,
+.root[data-variant='plain'] .toolbarActions {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding-inline: 0;
+}
+
+.root[data-variant='plain'] .editable {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.root[data-variant='plain'] .editable:focus-visible {
+  outline: none;
+  box-shadow: none;
 }

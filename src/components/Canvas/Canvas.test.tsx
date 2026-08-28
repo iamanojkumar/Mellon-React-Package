@@ -161,6 +161,349 @@ describe('Canvas accessibility', () => {
   });
 });
 
+describe('Canvas object snap', () => {
+  // `makeScene()`: block `a` at (0,0,120,120) — right edge at 120 — and
+  // block `b` at (300,0,120,120).
+
+  it('snaps a dragged block flush with a nearby block, and draws a guide line', () => {
+    render(<Canvas defaultScene={makeScene()} grid={0} />);
+
+    const surface = screen.getByRole('group', { name: 'Canvas' });
+    // Drag `b` so its left edge lands a few pixels past `a`'s right edge
+    // (120) — close enough that object-snap should pull it flush.
+    fireEvent(
+      blockEl('Auth'),
+      new MouseEvent('pointerdown', { bubbles: true, clientX: 0, clientY: 0 }),
+    );
+    fireEvent(surface, new MouseEvent('pointermove', { bubbles: true, clientX: -177, clientY: 0 }));
+
+    expect(blockEl('Auth')).toHaveStyle({ transform: 'translate(120px, 0px)' });
+  });
+
+  it('leaves the position alone once nothing is within the snap threshold', () => {
+    render(<Canvas defaultScene={makeScene()} grid={0} />);
+
+    const surface = screen.getByRole('group', { name: 'Canvas' });
+    // 40px past the snap threshold from `a`'s right edge.
+    fireEvent(
+      blockEl('Auth'),
+      new MouseEvent('pointerdown', { bubbles: true, clientX: 0, clientY: 0 }),
+    );
+    fireEvent(surface, new MouseEvent('pointermove', { bubbles: true, clientX: -140, clientY: 0 }));
+
+    expect(blockEl('Auth')).toHaveStyle({ transform: 'translate(160px, 0px)' });
+  });
+
+  it('draws a guide line while snapped, and clears it once the drag ends', () => {
+    const { container } = render(<Canvas defaultScene={makeScene()} grid={0} />);
+
+    const surface = screen.getByRole('group', { name: 'Canvas' });
+    fireEvent(
+      blockEl('Auth'),
+      new MouseEvent('pointerdown', { bubbles: true, clientX: 0, clientY: 0 }),
+    );
+    fireEvent(surface, new MouseEvent('pointermove', { bubbles: true, clientX: -177, clientY: 0 }));
+
+    expect(container.querySelector('[class*="guideLine"]')).toBeInTheDocument();
+
+    fireEvent(surface, new MouseEvent('pointerup', { bubbles: true }));
+    expect(container.querySelector('[class*="guideLine"]')).not.toBeInTheDocument();
+  });
+});
+
+describe('Canvas block fill', () => {
+  it('turns a chosen fill into an update command for a selected sticky note', async () => {
+    const user = userEvent.setup();
+    const onSceneChange = vi.fn();
+    render(
+      <Canvas
+        defaultScene={makeScene()}
+        defaultSelectedIds={['a']}
+        onSceneChange={onSceneChange}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Change fill color' }));
+    await user.click(screen.getAllByRole('group', { name: 'Preset colors' })[0]!.children[0]!);
+
+    const next: CanvasScene = onSceneChange.mock.calls.at(-1)?.[0];
+    const login = next.blocks.find((block) => block.id === 'a');
+    expect(login).toMatchObject({ color: expect.stringMatching(/^#[0-9a-f]{6}$/i) });
+  });
+
+  it('offers no fill trigger for a frame, which has no color field', () => {
+    render(<Canvas defaultScene={makeScene()} defaultSelectedIds={['f']} />);
+
+    expect(screen.queryByRole('button', { name: 'Change fill color' })).not.toBeInTheDocument();
+  });
+});
+
+describe('Canvas document block', () => {
+  function docScene(): CanvasScene {
+    return {
+      blocks: [
+        {
+          id: 'doc',
+          kind: 'document',
+          pages: ['<p>Resume text</p>'],
+          header: '<h1>Ada</h1>',
+          x: 0,
+          y: 0,
+          width: 280,
+          height: 396,
+        },
+      ],
+      connectors: [],
+    };
+  }
+
+  it('renders read-only by default — no RichTextEditor, no fill trigger', () => {
+    render(<Canvas defaultScene={docScene()} />);
+
+    expect(screen.getByText('Resume text')).toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  });
+
+  it('double-clicking opens the editor and enters focus, locked by default', () => {
+    render(<Canvas defaultScene={docScene()} />);
+
+    fireEvent.doubleClick(screen.getByText('Resume text'));
+
+    expect(screen.getByRole('textbox', { name: 'Page 1 text' })).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(/Focused on/);
+
+    const surface = screen.getByRole('group', { name: 'Canvas' });
+    fireEvent.keyDown(surface, { key: '0' });
+    // Locked: the reset-zoom key is a no-op, so no new zoom announcement replaces the focus one.
+    expect(screen.getByRole('status')).not.toHaveTextContent('Zoom 100 percent.');
+  });
+
+  it('Escape exits both the editor and focus together', () => {
+    render(<Canvas defaultScene={docScene()} />);
+
+    fireEvent.doubleClick(screen.getByText('Resume text'));
+    expect(screen.getByRole('textbox', { name: 'Page 1 text' })).toBeInTheDocument();
+
+    const surface = screen.getByRole('group', { name: 'Canvas' });
+    fireEvent.keyDown(surface, { key: 'Escape' });
+
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Focus exited.');
+  });
+
+  it("turns a page edit into an update command for the block's pages", () => {
+    const onSceneChange = vi.fn();
+    render(<Canvas defaultScene={docScene()} onSceneChange={onSceneChange} />);
+
+    fireEvent.doubleClick(screen.getByText('Resume text'));
+    fireEvent.input(screen.getByRole('textbox', { name: 'Page 1 text' }), {
+      target: { innerHTML: 'Edited résumé' },
+    });
+
+    const next: CanvasScene = onSceneChange.mock.calls.at(-1)?.[0];
+    const doc = next.blocks.find((block) => block.id === 'doc');
+    expect(doc).toMatchObject({ pages: ['Edited résumé'] });
+  });
+});
+
+describe('Canvas frame grouping', () => {
+  // `makeScene()`'s frame `f` spans (-20,-20) to (480,180); both `a`
+  // (centre 60,60) and `b` (centre 360,60) sit inside it.
+
+  it('carries every block visually inside a frame along when the frame is dragged', () => {
+    const onSceneChange = vi.fn();
+    render(<Canvas defaultScene={makeScene()} onSceneChange={onSceneChange} grid={0} />);
+
+    const surface = screen.getByRole('group', { name: 'Canvas' });
+    fireEvent(
+      blockEl('Flow'),
+      new MouseEvent('pointerdown', { bubbles: true, clientX: 0, clientY: 0 }),
+    );
+    fireEvent(surface, new MouseEvent('pointermove', { bubbles: true, clientX: 50, clientY: 30 }));
+    fireEvent(surface, new MouseEvent('pointerup', { bubbles: true }));
+
+    expect(blockEl('Login')).toHaveStyle({ transform: 'translate(50px, 30px)' });
+    expect(blockEl('Auth')).toHaveStyle({ transform: 'translate(350px, 30px)' });
+    // The drag moved the frame's contents without adding them to the selection.
+    expect(blockEl('Login')).not.toHaveAttribute('data-selected');
+    expect(blockEl('Auth')).not.toHaveAttribute('data-selected');
+  });
+
+  it('leaves a block outside the frame untouched by the same drag', () => {
+    const scene = makeScene();
+    scene.blocks.push({
+      id: 'outside',
+      kind: 'sticky',
+      text: 'Outside',
+      x: 1000,
+      y: 1000,
+      width: 100,
+      height: 100,
+    });
+    render(<Canvas defaultScene={scene} grid={0} />);
+
+    const surface = screen.getByRole('group', { name: 'Canvas' });
+    fireEvent(
+      blockEl('Flow'),
+      new MouseEvent('pointerdown', { bubbles: true, clientX: 0, clientY: 0 }),
+    );
+    fireEvent(surface, new MouseEvent('pointermove', { bubbles: true, clientX: 50, clientY: 30 }));
+    fireEvent(surface, new MouseEvent('pointerup', { bubbles: true }));
+
+    expect(blockEl('Outside')).toHaveStyle({ transform: 'translate(1000px, 1000px)' });
+  });
+
+  it('carries frame contents along a keyboard nudge too', async () => {
+    const user = userEvent.setup();
+    const onSceneChange = vi.fn();
+    render(
+      <Canvas
+        defaultScene={makeScene()}
+        defaultSelectedIds={['f']}
+        onSceneChange={onSceneChange}
+      />,
+    );
+
+    focusCanvas();
+    await user.keyboard('{ArrowRight}');
+
+    const next: CanvasScene = onSceneChange.mock.calls.at(-1)?.[0];
+    expect(next.blocks.find((block) => block.id === 'a')).toMatchObject({ x: 8 });
+    expect(next.blocks.find((block) => block.id === 'b')).toMatchObject({ x: 308 });
+  });
+
+  it('expands the AI context to the frame plus its contents when only the frame is selected', async () => {
+    const user = userEvent.setup();
+    let seenPrompt = '';
+
+    render(
+      <Canvas
+        defaultScene={makeScene()}
+        selectedIds={['f']}
+        aiPrompt
+        aiPromptFloating
+        resolveCommands={async ({ prompt }) => {
+          seenPrompt = prompt;
+          return { commands: [] };
+        }}
+      />,
+    );
+
+    await user.type(
+      screen.getByLabelText('Ask or instruct the canvas'),
+      "what's in this group?{Enter}",
+    );
+
+    expect(seenPrompt).toContain('Selected elements (full content):');
+    expect(seenPrompt).toContain('"id":"f"');
+    expect(seenPrompt).toContain('"id":"a"');
+    expect(seenPrompt).toContain('"id":"b"');
+  });
+});
+
+describe('Canvas focus mode', () => {
+  it('F focuses the selected block and narrows the selection to it', async () => {
+    const user = userEvent.setup();
+    const onSelectionChange = vi.fn();
+    render(
+      <Canvas
+        defaultScene={makeScene()}
+        defaultSelectedIds={['a', 'b']}
+        onSelectionChange={onSelectionChange}
+      />,
+    );
+
+    focusCanvas();
+    await user.keyboard('f');
+
+    expect(onSelectionChange).toHaveBeenCalledWith(['a']);
+  });
+
+  it('F again exits focus; a second selected block can then be focused', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<Canvas defaultScene={makeScene()} defaultSelectedIds={['a']} />);
+
+    focusCanvas();
+    await user.keyboard('f');
+    expect(container.querySelector('[class*="focusOverlay"]')).toBeInTheDocument();
+
+    await user.keyboard('f');
+    expect(container.querySelector('[class*="focusOverlay"]')).not.toBeInTheDocument();
+  });
+
+  it('Escape exits focus without clearing the selection', async () => {
+    const user = userEvent.setup();
+    const onSelectionChange = vi.fn();
+    render(
+      <Canvas
+        defaultScene={makeScene()}
+        defaultSelectedIds={['a']}
+        onSelectionChange={onSelectionChange}
+      />,
+    );
+
+    focusCanvas();
+    await user.keyboard('f');
+    onSelectionChange.mockClear();
+    await user.keyboard('{Escape}');
+
+    expect(onSelectionChange).not.toHaveBeenCalled();
+  });
+
+  it('restricts interaction to the focused block — pressing another block does nothing', async () => {
+    const user = userEvent.setup();
+    const onSelectionChange = vi.fn();
+    render(
+      <Canvas
+        defaultScene={makeScene()}
+        defaultSelectedIds={['a']}
+        onSelectionChange={onSelectionChange}
+      />,
+    );
+
+    focusCanvas();
+    await user.keyboard('f');
+    onSelectionChange.mockClear();
+
+    fireEvent(
+      blockEl('Auth'),
+      new MouseEvent('pointerdown', { bubbles: true, clientX: 0, clientY: 0 }),
+    );
+    fireEvent(blockEl('Auth'), new MouseEvent('pointerup', { bubbles: true }));
+
+    expect(onSelectionChange).not.toHaveBeenCalled();
+  });
+
+  it('L locks focus, freezing zoom/pan keys; unlocked they still work', async () => {
+    const user = userEvent.setup();
+    render(<Canvas defaultScene={makeScene()} defaultSelectedIds={['a']} />);
+    focusCanvas();
+    await user.keyboard('f');
+
+    // Unlocked: zoom still responds.
+    await user.keyboard('+');
+
+    await user.keyboard('l');
+    await user.keyboard('0'); // reset would announce 100% if it ran
+
+    const status = screen.getByRole('status');
+    expect(status).not.toHaveTextContent('Zoom 100 percent.');
+
+    await user.keyboard('l'); // unlock
+    await user.keyboard('0');
+    expect(status).toHaveTextContent('Zoom 100 percent.');
+  });
+
+  it('has no accessibility violations while focused', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<Canvas defaultScene={makeScene()} defaultSelectedIds={['a']} />);
+    focusCanvas();
+    await user.keyboard('f');
+
+    await expectNoA11yViolations(container);
+  });
+});
+
 describe('Canvas keyboard', () => {
   it('nudges the selected block by the grid step', async () => {
     const user = userEvent.setup();
@@ -339,9 +682,10 @@ function json(value: unknown): string {
   return JSON.stringify(value);
 }
 
+// Enter rather than a Send click: the floating panel's `CanvasPromptBar`
+// renders in its `minimal` variant, which has no Send button at all.
 async function ask(user: ReturnType<typeof userEvent.setup>, text: string) {
-  await user.type(screen.getByLabelText('Ask or instruct the canvas'), text);
-  await user.click(screen.getByRole('button', { name: 'Send' }));
+  await user.type(screen.getByLabelText('Ask or instruct the canvas'), `${text}{Enter}`);
 }
 
 describe('Canvas AI availability', () => {
@@ -385,6 +729,174 @@ describe('Canvas AI availability', () => {
     );
 
     expect(screen.getByLabelText('Ask or instruct the canvas')).toBeInTheDocument();
+  });
+});
+
+describe('Canvas floating prompt', () => {
+  it('floats the panel instead of the static bar, with no close control', () => {
+    render(
+      <AIProvider client={mockClient('{}')}>
+        <Canvas defaultScene={makeScene()} aiPrompt aiPromptFloating />
+      </AIProvider>,
+    );
+
+    expect(screen.getByLabelText('Ask or instruct the canvas')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /close/i })).not.toBeInTheDocument();
+  });
+
+  it('leaves the canvas selection untouched when pressing on the floating panel', () => {
+    render(
+      <AIProvider client={mockClient('{}')}>
+        <Canvas defaultScene={makeScene()} defaultSelectedIds={['a']} aiPrompt aiPromptFloating />
+      </AIProvider>,
+    );
+
+    const panel = screen.getByLabelText('Ask or instruct the canvas').closest('[class*="panel"]');
+    fireEvent(
+      panel as Element,
+      new MouseEvent('pointerdown', { bubbles: true, clientX: 0, clientY: 0 }),
+    );
+
+    // A press anywhere on the panel used to also reach the canvas surface
+    // underneath, which starts a marquee (and clears the selection, since
+    // this press carries no shift key) — it shouldn't reach the surface at all.
+    expect(blockEl('Login')).toHaveAttribute('data-selected');
+  });
+
+  it('minimizes without unmounting the panel, and can be expanded again', async () => {
+    const user = userEvent.setup();
+    render(
+      <AIProvider client={mockClient('{}')}>
+        <Canvas defaultScene={makeScene()} aiPrompt aiPromptFloating />
+      </AIProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Minimize canvas assistant' }));
+    expect(screen.queryByLabelText('Ask or instruct the canvas')).not.toBeInTheDocument();
+    expect(screen.getByText('Canvas Assistant')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Expand canvas assistant' }));
+    expect(screen.getByLabelText('Ask or instruct the canvas')).toBeInTheDocument();
+  });
+
+  it("folds the current selection's full block content into every prompt", async () => {
+    const user = userEvent.setup();
+    let seenPrompt = '';
+
+    render(
+      <Canvas
+        defaultScene={makeScene()}
+        selectedIds={['a']}
+        aiPrompt
+        aiPromptFloating
+        resolveCommands={async ({ prompt }) => {
+          seenPrompt = prompt;
+          return { commands: [] };
+        }}
+      />,
+    );
+
+    await ask(user, 'what is wrong with this');
+
+    expect(seenPrompt).toContain('Selected elements (full content):');
+    expect(seenPrompt).toContain('"id":"a"');
+    expect(seenPrompt).toContain('"text":"Login"');
+  });
+
+  it('still stages a multi-command reply for review, same as the static bar', async () => {
+    const user = userEvent.setup();
+    const batch = json({
+      commands: [
+        { op: 'move', id: 'a', x: 10, y: 10 },
+        { op: 'delete', id: 'b' },
+      ],
+    });
+
+    render(
+      <AIProvider client={mockClient(batch)}>
+        <Canvas defaultScene={makeScene()} aiPrompt aiPromptFloating />
+      </AIProvider>,
+    );
+
+    await ask(user, 'tidy up');
+
+    expect(await screen.findByRole('region', { name: 'Proposed changes' })).toBeInTheDocument();
+  });
+
+  it('has no accessibility violations', async () => {
+    const { container } = render(
+      <AIProvider client={mockClient('{}')}>
+        <Canvas defaultScene={makeScene()} aiPrompt aiPromptFloating />
+      </AIProvider>,
+    );
+
+    await expectNoA11yViolations(container);
+  });
+});
+
+describe('Canvas thinking', () => {
+  it("shows the model's reasoning, collapsed by default, above the static bar's answer", async () => {
+    const user = userEvent.setup();
+    render(
+      <AIProvider
+        client={mockClient(
+          json({ commands: [], message: 'Two notes.', thinking: 'Both mention SSO.' }),
+        )}
+      >
+        <Canvas defaultScene={makeScene()} aiPrompt />
+      </AIProvider>,
+    );
+
+    await ask(user, 'what is here?');
+
+    expect(await screen.findByText('Show reasoning')).toBeInTheDocument();
+    expect(screen.getByText('Both mention SSO.')).toBeInTheDocument();
+    expect(screen.getByText('Both mention SSO.').closest('[hidden]')).toBeTruthy();
+  });
+
+  it('shows reasoning on the floating panel instead, not duplicated on the static bar', async () => {
+    const user = userEvent.setup();
+    render(
+      <AIProvider
+        client={mockClient(
+          json({ commands: [], message: 'Two notes.', thinking: 'Both mention SSO.' }),
+        )}
+      >
+        <Canvas defaultScene={makeScene()} aiPrompt aiPromptFloating />
+      </AIProvider>,
+    );
+
+    await ask(user, 'what is here?');
+
+    // No static-bar accordion at all with `aiPromptFloating` — the floating
+    // panel's own compact "Thinking" line is the only account rendered.
+    expect(screen.queryByText('Show reasoning')).not.toBeInTheDocument();
+    expect(await screen.findAllByText('Thinking')).toHaveLength(1);
+    expect(screen.getByText('Both mention SSO.')).toBeInTheDocument();
+  });
+
+  it('has no leftover reasoning once a fresh prompt with none resolves', async () => {
+    const user = userEvent.setup();
+    let reply = json({ commands: [], message: 'Two notes.', thinking: 'Both mention SSO.' });
+
+    render(
+      <AIProvider
+        client={{
+          complete: async () => reply,
+        }}
+      >
+        <Canvas defaultScene={makeScene()} aiPrompt />
+      </AIProvider>,
+    );
+
+    await ask(user, 'what is here?');
+    expect(await screen.findByText('Both mention SSO.')).toBeInTheDocument();
+
+    reply = json({ commands: [], message: 'Still two notes.' });
+    await ask(user, 'anything new?');
+
+    expect((await screen.findAllByText('Still two notes.')).length).toBeGreaterThan(0);
+    expect(screen.queryByText('Show reasoning')).not.toBeInTheDocument();
   });
 });
 

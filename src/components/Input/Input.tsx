@@ -29,6 +29,19 @@ export interface InputOwnProps {
   buildAIPrompt?: (value: string) => string;
   /** Accessible label for the AI trigger button. Defaults to `'Autocomplete with AI'`. */
   aiTriggerLabel?: string;
+  /**
+   * Fires when the AI suggestion popover opens (`true`) or closes
+   * (`false`). Observation only — the affordance is fully functional
+   * without it; it exists because an accepted suggestion otherwise reaches
+   * the consumer as an ordinary `onChange`, indistinguishable from a
+   * keystroke, which leaves a call site with no way to instrument the
+   * flow. Same on `TextArea` and `RichTextEditor`.
+   */
+  onAIOpenChange?: (open: boolean) => void;
+  /** Fires with the accepted text, immediately before it's applied to `value`. */
+  onAIAccept?: (result: string) => void;
+  /** Fires when a suggestion is discarded rather than accepted. */
+  onAIReject?: () => void;
 }
 
 function defaultBuildAIPrompt(value: string): string {
@@ -61,6 +74,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     aiAutocomplete = false,
     buildAIPrompt = defaultBuildAIPrompt,
     aiTriggerLabel = 'Autocomplete with AI',
+    onAIOpenChange,
+    onAIAccept,
+    onAIReject,
     ...rest
   },
   ref,
@@ -88,6 +104,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
    * isn't enough when controlled.
    */
   function applyAIText(text: string) {
+    onAIAccept?.(text);
     setValue(text);
     onChange?.({ target: { value: text } } as ChangeEvent<HTMLInputElement>);
   }
@@ -125,6 +142,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           result={aiAction.result}
           error={aiAction.error}
           onOpenChange={(open) => {
+            onAIOpenChange?.(open);
             if (open) {
               aiAction.trigger({ prompt: buildAIPrompt(value ?? '') });
             } else {
@@ -132,7 +150,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
             }
           }}
           onAccept={applyAIText}
-          onReject={() => aiAction.reset()}
+          onReject={() => {
+            onAIReject?.();
+            aiAction.reset();
+          }}
           onRetry={() => aiAction.trigger({ prompt: buildAIPrompt(value ?? '') })}
         />
       </div>

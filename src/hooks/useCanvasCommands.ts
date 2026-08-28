@@ -119,6 +119,14 @@ export interface UseCanvasCommandsOptions {
 export interface UseCanvasCommandsResult {
   status: AIActionStatus;
   outcome: CanvasCommandOutcome;
+  /**
+   * The model's own account of its reasoning for the current `outcome`, from
+   * `CanvasResolution.thinking`. Only ever set by `submit` — `cluster` and
+   * `diagram` resolve to a different shape with no room for it, and clear it
+   * so a stale explanation from an earlier prompt can't be shown for a
+   * different outcome.
+   */
+  thinking: string | undefined;
   /** `false` when there's no way to resolve a prompt — the canvas renders no affordance. */
   available: boolean;
   /** `false` when there's no way to resolve a clustering request. */
@@ -172,6 +180,7 @@ export function useCanvasCommands({
   const client = useAI();
   const [status, setStatus] = useState<AIActionStatus>('idle');
   const [outcome, setOutcome] = useState<CanvasCommandOutcome>({ kind: 'idle' });
+  const [thinking, setThinking] = useState<string | undefined>(undefined);
   const controllerRef = useRef<AbortController | undefined>(undefined);
 
   // Read through refs inside the async flow so a scene that changed while the
@@ -191,6 +200,7 @@ export function useCanvasCommands({
     controllerRef.current?.abort();
     setStatus('idle');
     setOutcome({ kind: 'idle' });
+    setThinking(undefined);
   }, []);
 
   const classify = useCallback((resolution: CanvasResolution): CanvasCommandOutcome => {
@@ -248,6 +258,7 @@ export function useCanvasCommands({
       controllerRef.current = controller;
       setStatus('loading');
       setOutcome({ kind: 'idle' });
+      setThinking(undefined);
 
       const current = sceneRef.current;
       const snapshot = canvasSnapshot(current, snapshotOptions);
@@ -267,6 +278,7 @@ export function useCanvasCommands({
       resolve()
         .then((resolution) => {
           if (controller.signal.aborted) return;
+          setThinking(resolution.thinking);
           setOutcome(classify(resolution));
           setStatus('done');
         })
@@ -314,6 +326,7 @@ export function useCanvasCommands({
           message: 'There are at least two notes needed to group.',
           highlightBlockIds: [],
         });
+        setThinking(undefined);
         return;
       }
 
@@ -322,6 +335,7 @@ export function useCanvasCommands({
       controllerRef.current = controller;
       setStatus('loading');
       setOutcome({ kind: 'idle' });
+      setThinking(undefined);
 
       const snapshot = canvasSnapshot(current, snapshotOptions);
       const candidateIds = candidates.map((block) => block.id);
@@ -404,6 +418,7 @@ export function useCanvasCommands({
       controllerRef.current = controller;
       setStatus('loading');
       setOutcome({ kind: 'idle' });
+      setThinking(undefined);
 
       const current = sceneRef.current;
       const snapshot = canvasSnapshot(current, snapshotOptions);
@@ -509,6 +524,7 @@ export function useCanvasCommands({
   return {
     status,
     outcome,
+    thinking,
     available,
     clusterAvailable,
     diagramAvailable,

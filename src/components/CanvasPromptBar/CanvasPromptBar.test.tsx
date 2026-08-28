@@ -95,4 +95,25 @@ describe('CanvasPromptBar', () => {
 
     await expectNoA11yViolations(container);
   });
+
+  describe('minimal variant', () => {
+    it('renders no Send button — Enter still submits', async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn();
+      render(<CanvasPromptBar blocks={blocks} onSubmit={onSubmit} variant="minimal" />);
+
+      expect(screen.queryByRole('button', { name: 'Send' })).not.toBeInTheDocument();
+
+      await user.type(screen.getByLabelText('Ask or instruct the canvas'), 'add a note{Enter}');
+      expect(onSubmit).toHaveBeenCalledWith('add a note');
+    });
+
+    it('has no accessibility violations', async () => {
+      const { container } = render(
+        <CanvasPromptBar blocks={blocks} onSubmit={vi.fn()} variant="minimal" />,
+      );
+
+      await expectNoA11yViolations(container);
+    });
+  });
 });

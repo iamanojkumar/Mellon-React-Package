@@ -1,7 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { expectNoA11yViolations } from '../../../tests/axe';
 import { CanvasBlock } from './CanvasBlock';
+import { DEFAULT_CANVAS_FILL_PRESETS } from '../CanvasFillPicker/CanvasFillPicker';
 import type { CanvasBlockData } from '../../utilities/canvasReducer';
 
 function at(block: Partial<CanvasBlockData> & Pick<CanvasBlockData, 'kind'>): CanvasBlockData {
@@ -111,5 +113,63 @@ describe('CanvasBlock handles', () => {
     );
 
     await expectNoA11yViolations(container);
+  });
+});
+
+describe('CanvasBlock fill picker', () => {
+  it('offers it only for sticky/shape, only while selected, and only when a handler is given', () => {
+    const sticky = at({ kind: 'sticky', text: 'Note' });
+    const shape = at({ kind: 'shape', shape: 'rectangle' });
+    const frame = at({ kind: 'frame', title: 'Group' });
+
+    expect(
+      render(
+        <CanvasBlock block={sticky} selected onColorChange={() => {}} />,
+      ).container.querySelector('button[aria-label="Change fill color"]'),
+    ).toBeInTheDocument();
+
+    expect(
+      render(
+        <CanvasBlock block={shape} selected onColorChange={() => {}} />,
+      ).container.querySelector('button[aria-label="Change fill color"]'),
+    ).toBeInTheDocument();
+
+    // Not selected.
+    expect(
+      render(<CanvasBlock block={sticky} onColorChange={() => {}} />).container.querySelector(
+        'button[aria-label="Change fill color"]',
+      ),
+    ).toBeNull();
+
+    // No handler.
+    expect(
+      render(<CanvasBlock block={sticky} selected />).container.querySelector(
+        'button[aria-label="Change fill color"]',
+      ),
+    ).toBeNull();
+
+    // Wrong kind — a frame has no `color` field.
+    expect(
+      render(
+        <CanvasBlock block={frame} selected onColorChange={() => {}} />,
+      ).container.querySelector('button[aria-label="Change fill color"]'),
+    ).toBeNull();
+  });
+
+  it('reports a chosen color through onColorChange', async () => {
+    const user = userEvent.setup();
+    const onColorChange = vi.fn();
+    render(
+      <CanvasBlock
+        block={at({ kind: 'sticky', text: 'Note' })}
+        selected
+        onColorChange={onColorChange}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Change fill color' }));
+    await user.click(screen.getByRole('button', { name: DEFAULT_CANVAS_FILL_PRESETS[0] }));
+
+    expect(onColorChange).toHaveBeenCalledWith(expect.stringMatching(/^#[0-9a-f]{6}$/i));
   });
 });

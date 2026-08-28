@@ -124,4 +124,63 @@ describe('TextArea', () => {
       expect((screen.getByRole('textbox') as HTMLTextAreaElement).value).toBe('a polished draft');
     });
   });
+  describe('AI analytics callbacks', () => {
+    const mockClient = (): AIClient => ({ complete: vi.fn().mockResolvedValue('polished') });
+
+    it('reports the popover opening and the accepted result', async () => {
+      const user = userEvent.setup();
+      const onAIOpenChange = vi.fn();
+      const onAIAccept = vi.fn();
+
+      render(
+        <AIProvider client={mockClient()}>
+          <TextArea
+            aria-label="Bio"
+            aiRewrite
+            defaultValue="a draft"
+            onAIOpenChange={onAIOpenChange}
+            onAIAccept={onAIAccept}
+          />
+        </AIProvider>,
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Rewrite with AI' }));
+      expect(onAIOpenChange).toHaveBeenCalledWith(true);
+
+      await screen.findByText('polished');
+      await user.click(screen.getByRole('button', { name: 'Accept' }));
+
+      // Fires before the value is applied, so a call site can tell an
+      // accepted suggestion apart from the identical-looking onChange a
+      // keystroke produces.
+      expect(onAIAccept).toHaveBeenCalledWith('polished');
+      expect(screen.getByRole('textbox')).toHaveValue('polished');
+    });
+
+    it('reports a discarded suggestion and leaves the value alone', async () => {
+      const user = userEvent.setup();
+      const onAIReject = vi.fn();
+      const onAIAccept = vi.fn();
+
+      render(
+        <AIProvider client={mockClient()}>
+          <TextArea
+            aria-label="Bio"
+            aiRewrite
+            defaultValue="a draft"
+            onAIReject={onAIReject}
+            onAIAccept={onAIAccept}
+          />
+        </AIProvider>,
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Rewrite with AI' }));
+      await screen.findByText('polished');
+      await user.click(screen.getByRole('button', { name: 'Discard' }));
+
+      expect(onAIReject).toHaveBeenCalledTimes(1);
+      expect(onAIAccept).not.toHaveBeenCalled();
+      expect(screen.getByRole('textbox')).toHaveValue('a draft');
+    });
+  });
 });

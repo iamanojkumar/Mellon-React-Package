@@ -253,4 +253,31 @@ describe('helpers', () => {
   it('falls back for empty content rather than returning an empty name', () => {
     expect(canvasBlockLabel(sticky('a', ''))).toBe('Empty note');
   });
+
+  it('names a document block from its header, falling back to a page count', () => {
+    expect(
+      canvasBlockLabel({
+        id: 'doc',
+        kind: 'document',
+        pages: ['a', 'b'],
+        header: '<h1>Resume</h1>',
+        x: 0,
+        y: 0,
+        width: 1,
+        height: 1,
+      }),
+    ).toBe('Resume (2 pages)');
+
+    expect(
+      canvasBlockLabel({
+        id: 'doc2',
+        kind: 'document',
+        pages: ['a'],
+        x: 0,
+        y: 0,
+        width: 1,
+        height: 1,
+      }),
+    ).toBe('Document, 1 page');
+  });
 });

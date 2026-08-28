@@ -63,20 +63,170 @@ export function rectFromPoints(a: CanvasPoint, b: CanvasPoint): CanvasRect {
   };
 }
 
-/** The bounding box of several blocks — used for framing and zoom-to-fit. */
-export function boundsOf(blocks: CanvasBlockData[]): CanvasRect | undefined {
-  if (blocks.length === 0) return undefined;
+/** The bounding box of several rects — the plain-geometry version `boundsOf` (blocks) and a group drag's proposed positions (not yet blocks) both build on. */
+export function rectBounds(rects: CanvasRect[]): CanvasRect | undefined {
+  if (rects.length === 0) return undefined;
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
   let maxY = -Infinity;
-  for (const block of blocks) {
-    minX = Math.min(minX, block.x);
-    minY = Math.min(minY, block.y);
-    maxX = Math.max(maxX, block.x + block.width);
-    maxY = Math.max(maxY, block.y + block.height);
+  for (const rect of rects) {
+    minX = Math.min(minX, rect.x);
+    minY = Math.min(minY, rect.y);
+    maxX = Math.max(maxX, rect.x + rect.width);
+    maxY = Math.max(maxY, rect.y + rect.height);
   }
   return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+}
+
+/** The bounding box of several blocks — used for framing and zoom-to-fit. */
+export function boundsOf(blocks: CanvasBlockData[]): CanvasRect | undefined {
+  return rectBounds(blocks.map(blockRect));
+}
+
+/** Default magnetic-snap threshold, in canvas units. Interaction geometry, not a design value — how close an edge has to be before it visually reads as "aligned". */
+export const DEFAULT_SNAP_THRESHOLD = 6;
+
+export interface CanvasAlignmentGuide {
+  /** `'vertical'` draws a constant-x line (a left/centre/right edge match); `'horizontal'` draws a constant-y line (a top/centre/bottom match). */
+  orientation: 'vertical' | 'horizontal';
+  /** The line's position along its perpendicular axis — x for vertical, y for horizontal. */
+  position: number;
+  /** The line's own extent, spanning from the dragged rect to the matched one. */
+  start: number;
+  end: number;
+}
+
+export interface CanvasSnapResult {
+  /** The dragged rect's origin, adjusted so a matched edge lines up exactly. Unchanged on an axis with no match. */
+  x: number;
+  y: number;
+  /** Whether `x`/`y` moved from an object match — lets a caller skip grid-snapping just that axis rather than fighting the two against each other. */
+  snappedX: boolean;
+  snappedY: boolean;
+  guides: CanvasAlignmentGuide[];
+}
+
+/** A rect's left/centre/right (or top/centre/bottom) edges — the positions a magnetic snap can align to. */
+function edgesOf(rect: CanvasRect, axis: 'x' | 'y'): number[] {
+  return axis === 'x'
+    ? [rect.x, rect.x + rect.width / 2, rect.x + rect.width]
+    : [rect.y, rect.y + rect.height / 2, rect.y + rect.height];
+}
+
+/**
+ * Magnetic edge/centre snapping against other blocks, Figma/Miro-style:
+ * finds the smallest adjustment (per axis, independently) that lines one of
+ * `rect`'s edges or its centre up with one of `others`', within `threshold`,
+ * then reports every candidate that ends up aligned at that resolved
+ * position as a guide line to draw.
+ *
+ * Two passes rather than one, because "the best match" and "everything that
+ * lines up once you've moved to it" aren't the same question — three blocks
+ * already sharing a left edge should all draw a guide, not just whichever one
+ * happened to produce the smallest delta.
+ */
+export function snapToObjects(
+  rect: CanvasRect,
+  others: CanvasRect[],
+  threshold = DEFAULT_SNAP_THRESHOLD,
+): CanvasSnapResult {
+  /** The smallest-magnitude delta (candidate edge − rect edge) within `threshold`, or `undefined` for no match. Distinct from a match of exactly `0` — a rect already flush with a candidate still owes it a guide line. */
+  function bestDelta(axis: 'x' | 'y'): number | undefined {
+    let best: number | undefined;
+    for (const edge of edgesOf(rect, axis)) {
+      for (const other of others) {
+        for (const otherEdge of edgesOf(other, axis)) {
+          const delta = otherEdge - edge;
+          if (
+            Math.abs(delta) <= threshold &&
+            (best === undefined || Math.abs(delta) < Math.abs(best))
+          ) {
+            best = delta;
+          }
+        }
+      }
+    }
+    return best;
+  }
+
+  const deltaX = bestDelta('x');
+  const deltaY = bestDelta('y');
+  const snapped: CanvasRect = { ...rect, x: rect.x + (deltaX ?? 0), y: rect.y + (deltaY ?? 0) };
+
+  /** Every candidate edge that ends up flush with one of `snapped`'s edges, as a guide line spanning both rects. */
+  function guidesFor(axis: 'x' | 'y'): CanvasAlignmentGuide[] {
+    const EPSILON = 0.5;
+    const found: CanvasAlignmentGuide[] = [];
+    for (const edge of edgesOf(snapped, axis)) {
+      for (const other of others) {
+        for (const otherEdge of edgesOf(other, axis)) {
+          if (Math.abs(otherEdge - edge) > EPSILON) continue;
+          found.push(
+            axis === 'x'
+              ? {
+                  orientation: 'vertical',
+                  position: edge,
+                  start: Math.min(snapped.y, other.y),
+                  end: Math.max(snapped.y + snapped.height, other.y + other.height),
+                }
+              : {
+                  orientation: 'horizontal',
+                  position: edge,
+                  start: Math.min(snapped.x, other.x),
+                  end: Math.max(snapped.x + snapped.width, other.x + other.width),
+                },
+          );
+        }
+      }
+    }
+    return found;
+  }
+
+  const guides = [
+    ...(deltaX !== undefined ? guidesFor('x') : []),
+    ...(deltaY !== undefined ? guidesFor('y') : []),
+  ];
+
+  return {
+    x: snapped.x,
+    y: snapped.y,
+    snappedX: deltaX !== undefined,
+    snappedY: deltaY !== undefined,
+    guides,
+  };
+}
+
+/**
+ * Blocks visually inside `frame` — geometric membership, not a stored
+ * relationship, the same "membership is geometric" rule clustering already
+ * relies on. A block counts as a member when its centre point falls inside
+ * the frame's rect; frames themselves are never members, so a frame nested
+ * in another frame doesn't drag both regions' contents at once.
+ */
+export function frameMembers(frame: CanvasRect, blocks: CanvasBlockData[]): CanvasBlockData[] {
+  return blocks.filter(
+    (block) => block.kind !== 'frame' && pointInRect(rectCentre(blockRect(block)), frame),
+  );
+}
+
+/**
+ * Every id in `ids`, plus the geometric members of any frame among them — so
+ * moving a frame (by drag or keyboard nudge) carries whatever is visually
+ * inside it along. Computed fresh from current positions every call, not
+ * tracked as state: a note dragged out of a frame on its own simply stops
+ * counting next time, with no membership bookkeeping to fall out of sync.
+ */
+export function withFrameMembers(ids: string[], blocks: CanvasBlockData[]): string[] {
+  const expanded = new Set(ids);
+  for (const id of ids) {
+    const block = blocks.find((candidate) => candidate.id === id);
+    if (block?.kind !== 'frame') continue;
+    for (const member of frameMembers(blockRect(block), blocks)) {
+      expanded.add(member.id);
+    }
+  }
+  return [...expanded];
 }
 
 export function anchorPoint(rect: CanvasRect, side: CanvasAnchorSide): CanvasPoint {

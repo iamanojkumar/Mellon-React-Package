@@ -21,19 +21,47 @@
   padding: 0 var(--ds-space-xs);
 }
 
+/*
+  `Breadcrumb.Item` is polymorphic, and `as="button"` is a real call site —
+  a trail step that goes through a router's `navigate()` has no `href` to
+  put on an `<a>`. So this rule has to neutralise native button chrome
+  (border, background, padding, centred text, the UA's own 13.33px font)
+  rather than assuming an `<a>`, which inherits all of that for free.
+
+  `font-size`/`font-weight`/`text-align: inherit` deliberately, not a
+  `font: inherit` shorthand: the item also carries `Text.module.css`'s
+  `.text`, and the shorthand would reset that rule's `font-family` to
+  whatever the page inherits, import-order-dependently. The two longhands
+  below touch nothing `.text` sets without a `data-size`/`data-weight`
+  attribute, which `Breadcrumb.Item` never passes.
+*/
 .item {
+  appearance: none;
+  background: none;
+  border: none;
+  margin: 0;
+  padding: 0;
   color: var(--ds-color-text-secondary);
+  font-size: inherit;
+  font-weight: inherit;
+  text-align: inherit;
   text-decoration: none;
+  cursor: pointer;
 }
 
-a.item:hover {
+/*
+  Hover/focus were `a.item` — which is why an `as="button"` item lost them
+  along with its styling. Keyed off "not the current page" instead, since
+  that (not the tag) is what decides whether an item is interactive.
+*/
+.item:not([data-current]):hover {
   color: var(--ds-color-text-primary);
   text-decoration: underline;
   text-underline-offset: 0.15em;
 }
 
-a.item:focus-visible {
-  outline: 2px solid var(--ds-color-border-focus);
+.item:focus-visible {
+  outline: var(--ds-border-width-medium) solid var(--ds-color-border-focus);
   outline-offset: 2px;
   border-radius: var(--ds-radius-sm);
 }
@@ -41,4 +69,5 @@ a.item:focus-visible {
 .item[data-current] {
   color: var(--ds-color-text-primary);
   font-weight: var(--ds-font-weight-medium);
+  cursor: auto;
 }

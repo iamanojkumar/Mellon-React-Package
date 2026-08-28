@@ -12,6 +12,36 @@
   vertical-align: middle;
 }
 
+/*
+  Tint is decoration, never meaning — see `AvatarOwnProps['color']`.
+
+  Each pair is a foundation `*-subtle` background with its own hue-matched
+  `*-on-subtle` foreground, so contrast holds in light, dark and
+  high-contrast without this file picking a value; `neutral` above is the
+  untinted default and stays exactly as it was. Initials sit on the fill,
+  so the pairing is load-bearing rather than cosmetic — a tint chosen
+  without its foreground would be unreadable in at least one theme.
+*/
+.avatar[data-color='info'] {
+  background: var(--ds-color-status-info-subtle);
+  color: var(--ds-color-status-info-on-subtle);
+}
+
+.avatar[data-color='success'] {
+  background: var(--ds-color-status-success-subtle);
+  color: var(--ds-color-status-success-on-subtle);
+}
+
+.avatar[data-color='warning'] {
+  background: var(--ds-color-status-warning-subtle);
+  color: var(--ds-color-status-warning-on-subtle);
+}
+
+.avatar[data-color='danger'] {
+  background: var(--ds-color-status-danger-subtle);
+  color: var(--ds-color-status-danger-on-subtle);
+}
+
 .avatar[data-shape='circle'] {
   border-radius: var(--ds-radius-full);
 }

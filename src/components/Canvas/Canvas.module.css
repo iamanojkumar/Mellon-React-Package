@@ -69,20 +69,59 @@
   pointer-events: none;
 }
 
+/* Dims everything except the focused block via layering, not per-block
+   opacity — there's no opacity token to reference, and this needs none: the
+   overlay sits at z-index 1, ordinary blocks paint at their default stacking
+   (frames explicitly 0, content implicitly 0), and only the focused block is
+   bumped to z-index 2 to clear it. Sized to the world, not the viewport, so
+   it pans and zooms with the scene it's covering, since it's a sibling of
+   the blocks inside the same transformed `.world`. */
+.focusOverlay {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  background: var(--ds-color-surface-overlay);
+  pointer-events: none;
+}
+
 /* Re-enabled only on the connectors' own hit areas, so the empty space between
    edges stays available for marquee selection. */
 .connectors :global(path) {
   pointer-events: auto;
 }
 
+/* No fill — a solid surface tint here would hide exactly the blocks the
+   marquee is being drawn over to look at. The outline alone is enough of an
+   affordance, and it's neutral gray rather than the focus-blue dashed line
+   so it doesn't read as a validation/focus state. */
 .marquee {
   position: absolute;
   inset-block-start: 0;
   inset-inline-start: 0;
-  background: var(--ds-color-surface-secondary);
-  border: var(--ds-border-width-thin) dashed var(--ds-color-border-focus);
+  background: transparent;
+  border: var(--ds-border-width-medium) solid var(--ds-color-border-primary);
   border-radius: var(--ds-radius-sm);
   pointer-events: none;
+}
+
+/* Mid-drag only, and pure geometry with no text of its own — hidden the same
+   way the connector SVG is. */
+.guides {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.guideLine {
+  stroke: var(--ds-color-status-danger);
+  stroke-width: var(--ds-border-width-thin);
 }
 
 /* Row of scene-level AI actions above the surface. Flex-none for the same

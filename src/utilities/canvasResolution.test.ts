@@ -19,6 +19,51 @@ describe('parseCanvasBlock', () => {
     });
   });
 
+  it('parses a document block, defaulting pages to one blank page', () => {
+    expect(
+      parseCanvasBlock({
+        id: 'doc',
+        kind: 'document',
+        pages: ['<p>one</p>', '<p>two</p>'],
+        aspectRatio: '16:9',
+        layout: 'sidebar',
+        header: '<h1>Resume</h1>',
+      }),
+    ).toMatchObject({
+      kind: 'document',
+      pages: ['<p>one</p>', '<p>two</p>'],
+      aspectRatio: '16:9',
+      layout: 'sidebar',
+      header: '<h1>Resume</h1>',
+    });
+
+    expect(parseCanvasBlock({ id: 'doc2', kind: 'document' })).toMatchObject({
+      kind: 'document',
+      pages: [''],
+    });
+  });
+
+  it('accepts a custom width/height aspect ratio for a document block', () => {
+    expect(
+      parseCanvasBlock({
+        id: 'doc',
+        kind: 'document',
+        aspectRatio: { width: 3, height: 5 },
+      }),
+    ).toMatchObject({ aspectRatio: { width: 3, height: 5 } });
+  });
+
+  it('drops an out-of-vocabulary document aspect ratio and layout instead of passing them through', () => {
+    const block = parseCanvasBlock({
+      id: 'doc',
+      kind: 'document',
+      aspectRatio: 'letter',
+      layout: 'freeform',
+    });
+    expect(block).not.toHaveProperty('aspectRatio');
+    expect(block).not.toHaveProperty('layout');
+  });
+
   it('supplies a usable default size rather than a zero-size block the reducer rejects', () => {
     expect(parseCanvasBlock({ id: 'a', kind: 'sticky', text: 'Hi' })).toMatchObject({
       width: 160,
@@ -154,6 +199,20 @@ describe('parseCanvasResolution', () => {
 
     expect(result.commands).toEqual([]);
     expect(result.highlightBlockIds).toEqual(['a', 'b']);
+  });
+
+  it("carries the model's own reasoning through as thinking", () => {
+    const result = parseCanvasResolution(
+      JSON.stringify({ commands: [], message: 'Two notes.', thinking: 'Both mention SSO.' }),
+    );
+
+    expect(result.thinking).toBe('Both mention SSO.');
+  });
+
+  it('omits thinking when absent, rather than an empty string', () => {
+    const result = parseCanvasResolution(JSON.stringify({ commands: [], message: 'Done.' }));
+
+    expect(result.thinking).toBeUndefined();
   });
 
   it('returns nothing actionable for empty or non-object input', () => {

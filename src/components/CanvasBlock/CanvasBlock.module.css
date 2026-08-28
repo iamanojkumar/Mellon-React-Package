@@ -200,3 +200,12 @@
 .chart {
   padding: var(--ds-space-sm);
 }
+
+/* Opposite corner from a sticky note's own "Rewrite with AI" trigger
+   (top-right, inside `StickyNote`), so the two never collide. */
+.fillPicker {
+  position: absolute;
+  inset-block-start: var(--ds-space-xs);
+  inset-inline-start: var(--ds-space-xs);
+  cursor: auto;
+}

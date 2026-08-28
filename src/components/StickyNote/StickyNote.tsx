@@ -18,6 +18,12 @@ export interface StickyNoteOwnProps {
    * meaning, never the hue.
    */
   tone?: CanvasTone;
+  /**
+   * An arbitrary hex fill from the note's own color picker — user content,
+   * applied as an inline style, not a design token. Layers over `tone`'s
+   * accent edge rather than replacing it.
+   */
+  color?: string;
   /** Swaps the text for a borderless textarea and focuses it. */
   editing?: boolean;
   onTextChange?: (text: string) => void;
@@ -54,6 +60,7 @@ export const StickyNote = forwardRef<HTMLDivElement, StickyNoteProps>(function S
   {
     text,
     tone = 'neutral',
+    color,
     editing = false,
     onTextChange,
     onEditingEnd,
@@ -62,6 +69,7 @@ export const StickyNote = forwardRef<HTMLDivElement, StickyNoteProps>(function S
     buildAIPrompt = defaultBuildAIPrompt,
     aiRewriteLabel = 'Rewrite with AI',
     className,
+    style,
     ...rest
   },
   ref,
@@ -90,6 +98,7 @@ export const StickyNote = forwardRef<HTMLDivElement, StickyNoteProps>(function S
     <div
       ref={mergeRefs(ref, rootRef)}
       className={mergeClasses(styles.note, className)}
+      style={{ ...(color ? { backgroundColor: color } : {}), ...style }}
       data-tone={tone}
       data-editing={editing ? '' : undefined}
       {...rest}

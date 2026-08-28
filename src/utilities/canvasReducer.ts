@@ -9,6 +9,8 @@
  * layout engine, so this file is where the behaviour has to be testable.
  */
 
+import type { DocumentAspectRatio } from './documentAspectRatio';
+
 export type CanvasTone = 'neutral' | 'brand' | 'success' | 'warning' | 'danger';
 
 export type CanvasShapeKind = 'rectangle' | 'ellipse' | 'diamond' | 'triangle' | 'parallelogram';
@@ -39,6 +41,13 @@ export interface CanvasStickyBlock extends CanvasBlockCommon {
    * never carries meaning alone; the note's text does.
    */
   tone?: CanvasTone;
+  /**
+   * An arbitrary hex fill picked from the note's own color picker — user
+   * content, not a design token, the same way `Image.src` is. Layers over
+   * `tone`'s accent edge rather than replacing it; there is no contrast
+   * guarantee against a colour the user chose freely.
+   */
+  color?: string;
 }
 
 export interface CanvasTextBlock extends CanvasBlockCommon {
@@ -59,6 +68,8 @@ export interface CanvasShapeBlock extends CanvasBlockCommon {
   shape: CanvasShapeKind;
   text?: string;
   tone?: CanvasTone;
+  /** Same free-fill escape hatch as `CanvasStickyBlock.color` — see there. */
+  color?: string;
 }
 
 export interface CanvasDividerBlock extends CanvasBlockCommon {
@@ -123,6 +134,18 @@ export interface CanvasChartBlock extends CanvasBlockCommon {
   chartType?: 'bar' | 'line';
 }
 
+export interface CanvasDocumentBlock extends CanvasBlockCommon {
+  kind: 'document';
+  /** One HTML string per page — the same shape `Document`'s own `pages` prop takes. */
+  pages: string[];
+  /** Named presets plus a custom `{width, height}` — see `documentAspectRatio.ts`. Defaults to `'a4'`. */
+  aspectRatio?: DocumentAspectRatio;
+  layout?: 'single' | 'two-column' | 'sidebar';
+  /** HTML, rendered on every page — a resume's masthead, not per-page furniture. */
+  header?: string;
+  footer?: string;
+}
+
 export type CanvasBlockData =
   | CanvasStickyBlock
   | CanvasTextBlock
@@ -135,7 +158,8 @@ export type CanvasBlockData =
   | CanvasTableBlock
   | CanvasLinkBlock
   | CanvasChecklistBlock
-  | CanvasChartBlock;
+  | CanvasChartBlock
+  | CanvasDocumentBlock;
 
 export type CanvasBlockKind = CanvasBlockData['kind'];
 
@@ -391,5 +415,15 @@ export function canvasBlockLabel(block: CanvasBlockData): string {
     }
     case 'chart':
       return block.label;
+    case 'document': {
+      const pageCount = block.pages.length;
+      const heading = block.header
+        ?.replace(/<[^>]*>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      return heading
+        ? `${heading} (${pageCount} page${pageCount === 1 ? '' : 's'})`
+        : `Document, ${pageCount} page${pageCount === 1 ? '' : 's'}`;
+    }
   }
 }
