@@ -1,5 +1,128 @@
 # @mellon-design/react
 
+## 0.9.0
+
+### Minor Changes
+
+- bd3643e: `CanvasChatPanel` keeps the full chat history, is resizable, and takes arbitrary consumer context.
+
+  - **Full scrollable history, not just the last turn.** Every `lastMessage`
+    that changes to a new value is appended to the chat history alongside the
+    prompt that led to it, instead of replacing the single previously-shown
+    exchange. A consumer that already has a reply in hand on mount (not just
+    one reached through a live `submit`) shows it immediately, same as before.
+  - **Fixed: the "Thinking" summary's animated dots kept running after the
+    reply had already arrived.** They were tied to `thinking` text being
+    present, not to actual busy status. The busy indicator is now a separate
+    `TypingIndicator`, shown only while a request is actually in flight
+    (`status` `'loading'`/`'streaming'`) and gone the instant it settles.
+  - **Resizable.** Drag the corner handle, or Alt+Arrow (Shift for a bigger
+    step) while any focusable part of the panel has focus — the same
+    pointer-handle-plus-keyboard-equivalent shape `Canvas`'s own block resize
+    handles use. Clamped to `boundsRef` the same way dragging already was.
+  - **New `context` prop** (and `buildCanvasChatPrompt`'s new third parameter):
+    arbitrary extra context folded into every submitted prompt alongside the
+    current selection — anything the consuming app wants the model to see that
+    isn't canvas block data (app state, the signed-in user, a page's own
+    metadata). A plain string rides verbatim; anything else is
+    JSON-serialized. `Canvas` gains a matching `chatContext` pass-through prop.
+  - The panel's drop shadow is lighter (`--ds-elevation-sm`, was `-md`).
+
+- bd3643e: Close four gaps from a consumer app's own gap log.
+
+  - **`CanvasShape` gains `editing`/`onTextChange`/`onEditingEnd`** — double-click
+    a `shape` block to edit its label in place, the same as `StickyNote`.
+    `Canvas`'s `aiRewrite` now wires a "Rewrite with AI" trigger through for
+    `shape` too, rendered at the `CanvasBlock` level (a selection-gated overlay,
+    opposite corner from `CanvasFillPicker`'s trigger) rather than inside
+    `CanvasShape` itself, since a trigger drawn inside a clipped shape
+    (`diamond`/`triangle`/`parallelogram`) would clip away with it. Every other
+    block kind still has no click-to-edit entry point on the canvas at all, so
+    `CanvasBlockOwnProps.aiRewrite`'s doc comment now says so explicitly instead
+    of the prop silently no-op-ing for them.
+  - **`AISuggestionPopover` gains `editablePrompt`/`onSubmit`** — opts out of the
+    default "fetch on open" behaviour in favour of an editable textarea
+    pre-filled from `editablePrompt`, so the person using the app (not just the
+    integrating developer) can steer the AI instruction before it's sent.
+    `StickyNote` adopts this behind a new `aiRewriteEditable` flag, off by
+    default — an existing `aiRewrite` consumer's behaviour is unchanged.
+  - **`Sidebar.Item` gains an `actions` slot**, rendered as a sibling of the
+    item's own link/button within the same `<li>` rather than nested inside it
+    — nesting a real `<button>` inside this item's own `<a>`/`<button>` is
+    invalid HTML and breaks click handling (the outer element's click would
+    also fire). Same guard `KanbanCard`'s own `actions` slot uses.
+  - **Fixed: the internal AI-generation fallback prompt's only inline `"create"`
+    example hardcoded `kind:"sticky"`**, anchoring every model-generated block
+    to that kind regardless of content — a decision point or a start/end state
+    came back as a sticky note instead of a differently-shaped flowchart
+    element. `buildCanvasPrompt` now illustrates `"create"` with two different
+    kinds.
+
+  A fifth ask from the same gap log (icon coverage for research/design-tool
+  categories) lives in `@mellon-design/icons`, a separate package — not
+  actionable in this repo.
+
+- bd3643e: Add a `Node`/`NodeGraph` family, and strip `StickyNote`'s shadow, border, and radius.
+
+  - **New standalone `Node`/`NodeConnector`/`NodeGroup`/`NodeGraph` family** —
+    not a `Canvas` block kind, so it and its data can be used or referenced from
+    any module. A node's `data` is `unknown`: it can hold a string, a form
+    value, or an entire scene parsed from another module (a `Canvas` `scene`, a
+    `Document`'s `pages`) — `NodeGraph` never inspects it, only positions the
+    box and hands it to `renderNode`.
+  - **Connecting is derived, not copied.** Connecting node A's output to node
+    B's input doesn't merge data at connect time. `computeNodeOutput` (new,
+    `utilities/nodeGraph.ts`) derives B's effective output — `{ [A.id]: A.data,
+[B.id]: B.data }`, through a whole chain — on every read, from any module,
+    so it always reflects the current graph. `canConnect`/`wouldCreateCycle`
+    reject a self-connection, a duplicate, or anything that would close a loop,
+    checked before a connection is made.
+  - **Connecting is click-driven, not drag-driven**: click a node's output port
+    to arm it, then a target's input port to complete the connection (or
+    Escape to cancel) — reachable from the keyboard the same way every other
+    pointer-only gesture in this library gets a non-pointer path. Repositioning
+    stays pointer-drag-only, with arrow keys as its keyboard equivalent once a
+    node is selected, the same split `Canvas` draws between spatial dragging and
+    keyboard navigation.
+  - **Grouping is data, not geometry** — a `NodeGroupData.nodeIds` list, unlike
+    `CanvasFrame`'s geometric containment. Shift-click multi-selects; `G` groups
+    2+ selected nodes into a new named `NodeGroup` (double-click to rename,
+    `onUngroup` to dissolve without touching members); Delete removes selected
+    nodes along with any connection touching them.
+  - **`StickyNote` loses its box-shadow, border, and border-radius** — the tone
+    accent edge (`border-inline-start`) is unchanged.
+
+### Patch Changes
+
+- bd3643e: `Canvas`'s surface loses its outer border and border-radius — it now sits flush, edge to edge, rather than as a rounded, bordered panel.
+- bd3643e: Close three more gaps from a consumer app's gap log.
+
+  - **Fixed: `Sidebar.Item as="button"` centered its label text.** `<button>`
+    carries a browser-default `text-align: center` that the item's own CSS
+    never reset; every other `as` target (`a`, `div`) has no such default.
+    `.item` now sets `text-align: left` explicitly.
+  - **Fixed: `MessageBubble`'s `user` variant reused `Card`'s
+    `--ds-radius-lg`**, which reads as a fully-rounded pill/button on a short
+    one-line message (all four corners round into each other when the box is
+    short relative to that radius). `.bubble.bubble` now sets its own,
+    smaller `border-radius: var(--ds-radius-md)` instead of inheriting
+    `Card`'s.
+  - **Fixed: the internal AI-generation fallback prompt's `"Block kinds:"`
+    line never mentioned the `document` kind** (shipped in `0.8.0`), so a
+    request that should write into a `document` block's `pages` silently
+    degraded to a chat-only answer — the model was never told the kind, or
+    its `update` patch shape, existed. `buildCanvasPrompt` now lists
+    `document (pages, header?, footer?)` alongside the other kinds and states
+    the exact `update` patch shape for it.
+
+  A fourth item from the same gap log (a focus/distraction-free viewport for
+  a canvas-embedded `document` block) turned out to already be shipped and
+  documented — double-clicking a `document` block already opens its editor
+  and enters `Canvas`'s own locked focus mode (`F`/`L`/`Escape`); no library
+  change was needed there, just discoverability on the consumer's side. A
+  fifth ask (icon coverage for research/design-tool categories) lives in
+  `@mellon-design/icons`, a separate package — not actionable in this repo.
+
 ## 0.8.0
 
 ### Minor Changes
