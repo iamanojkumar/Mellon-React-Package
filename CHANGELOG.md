@@ -1,5 +1,203 @@
 # @mellon-design/react
 
+## 0.8.0
+
+### Minor Changes
+
+- 7f02db9: Add a floating AI chat panel to `Canvas`.
+
+  - **New `CanvasChatPanel` component**, and `Canvas` gains `aiPromptFloating`.
+    With `aiPrompt` and `aiPromptFloating` both set, the prompt bar decouples
+    from the static row above the surface and floats as a compact draggable
+    card over the canvas instead — same `resolveCommands`/`useCanvasCommands`
+    pipeline, so it shares the static bar's single in-flight request, outcome
+    classification, undo toast, and `CanvasChangePreview` review panel rather
+    than owning a parallel one. Styled to a reference mockup: rounded card, a
+    bare drag-handle bar, a borderless input (`CanvasPromptBar` gains a
+    `variant="minimal"` for it), and the response area's scrollbar hidden.
+  - **Movable, minimizable, never closable.** Drag it by its header — bounds
+    are read once at drag-start rather than on every pointer move, which is
+    what made the previous version feel laggy. Minimize by double-clicking the
+    header, its hover/focus-revealed icon button, or an opt-in
+    `minimizeShortcut` chord (e.g. `'mod+j'` — `'mod'` matches Ctrl or Cmd) the
+    host app supplies and picks itself; minimized shows a title bar instead of
+    the bare handle. There is no close control — the assistant stays mounted,
+    only ever expanded or minimized, and always has control over the canvas
+    through the same command pipeline every other AI entry point uses.
+  - **Shows the exchange, not just the reply.** The last submitted prompt
+    renders as a `MessageBubble` above the reply, which itself renders as plain
+    text.
+  - **Selection-aware, including a selected frame's contents.** The canvas's
+    current selection — full block data, not just ids — rides along on every
+    prompt. Selecting a frame now expands this to the frame's own data _plus_
+    every block visually inside it (`canvasGeometry.ts` gains
+    `frameMembers`/`withFrameMembers`, computed live from current positions,
+    not a stored relationship), and dragging or keyboard-nudging a selected
+    frame carries those same blocks along with it — without adding them to the
+    selection itself, so deleting a selected frame still only deletes the
+    frame. The panel names the selection chip-by-chip up to
+    `MAX_SELECTION_CHIPS`, then collapses to one "N items selected" chip.
+  - Positioned in screen space, not canvas space: panning or zooming the scene
+    underneath never drags the panel along with it.
+  - **Fixed: the panel could be dragged outside the canvas surface.** The drag
+    clamp assumed the panel sat flush against its container's corner; it
+    actually sits inset by its own margin, so the old bound was off by that
+    margin and let the panel escape past the surface's top/left edge. Now
+    measured from the panel's real on-screen rect instead of an assumed anchor.
+  - **Fixed: pressing anywhere on the panel also reached the canvas underneath
+    it** — starting a marquee-select or clearing the canvas selection (since
+    nothing stopped the pointerdown from bubbling past the panel). The panel
+    now stops that at its own root.
+  - **Fixed: the marquee-select rectangle used a filled background**, hiding
+    exactly the blocks it was being drawn over to select. It's outline-only
+    now, and the outline itself is a solid neutral gray rather than a
+    focus-blue dashed line, which read as a validation/focus state rather than
+    a selection tool.
+  - **`CanvasResolution` and `useCanvasCommands` gain `thinking`.** The model's
+    own brief account of why it chose its commands (or none) rides alongside
+    `message` in the same JSON response. Rendered as a collapsed, expandable
+    "Show reasoning" `ThinkingBlock` on the static prompt bar, and as a
+    compact, **non-expandable** two-line summary ("Thinking" plus one
+    CSS-truncated line) on `CanvasChatPanel` — there is no control that reveals
+    more of it there. Rendered verbatim like `message`, never parsed for
+    intent; only the main prompt path (`submit`) populates it — `cluster` and
+    `diagram` resolve to a different response shape and clear any stale
+    `thinking` from an earlier prompt rather than showing it against an
+    unrelated outcome.
+
+- 7f02db9: Add object snapping, a single-element focus mode, and per-block fill colors to `Canvas`.
+
+  - **Snap to objects.** Dragging a block (or a multi-selection, or a frame
+    with its members) now magnetically aligns to nearby blocks' edges and
+    centers, within a small threshold, and draws a thin alignment guide line
+    while it's snapped — `canvasGeometry.ts` gains `snapToObjects` (pure,
+    independently testable) plus `rectBounds`, a plain-rect generalization of
+    the existing `boundsOf`. Object-snap takes priority over grid-snap per
+    axis; grid-snap (the existing `grid` prop) still applies on any axis with
+    no nearby match.
+  - **Focus mode.** Press `F` with a block selected to isolate it: the
+    viewport zooms and centers on it, and everything else dims (via layering
+    against `--ds-color-surface-overlay`, not per-block opacity — no matching
+    opacity token exists to alias). While focused, only that one block
+    responds to pointer interaction; press `F` again or `Escape` to exit
+    (`Escape` leaves the selection alone). Press `L` to lock focus, freezing
+    pan/zoom/scroll entirely (wheel, keyboard, and pointer-pan all no-op)
+    while the focused block itself stays fully interactive — drag, resize,
+    edit, keyboard-nudge all still work locked. Unlocked, panning and zooming
+    away from the focused block is still allowed.
+  - **New `CanvasFillPicker` component**, and `StickyNote`/`CanvasShape` (plus
+    their `CanvasBlockData` kinds) gain `color` — an arbitrary hex fill,
+    applied as an inline style, not a design token (the same status as
+    `Image.src`: user content, not a hardcoded value). A small trigger shown
+    only while a `sticky` or `shape` block is selected opens a popover with
+    preset swatches and a full `ColorPicker` for freeform hex — reusing the
+    existing `Popover` + `ColorPicker` components rather than a new overlay
+    primitive. Layers over `tone`'s existing accent-edge/border-colour styling
+    rather than replacing it; there is no contrast guarantee against a colour
+    chosen freely.
+  - `StickyNote`'s padding increased (`--ds-space-sm` → `--ds-space-md`) for
+    more breathing room around the note's text.
+  - No new `circle` block kind — `shape:"ellipse"` with width equal to height
+    already renders as one; the AI prompt's shape-kind description now says so
+    explicitly, so an AI-driven "draw a circle" request produces a
+    correctly-shaped ellipse rather than guessing at a non-existent kind.
+
+- 7f02db9: Close five gaps reported from a consumer app.
+
+  - **`RichTextEditor` gains `aiRewrite`** (plus `buildAIPrompt` /
+    `aiTriggerLabel`), matching `TextArea`'s prop shape — it was the last text
+    surface in the library with no AI affordance. The trigger sits at the end of
+    the toolbar row rather than floating over the writing surface, and the
+    suggestion is applied as HTML so formatting survives the rewrite. Inert
+    without an `AIProvider`, and the markup is byte-identical to before whenever
+    it doesn't apply.
+  - **`Avatar` gains `color` and `colorFrom`** for tinting the initials
+    fallback, so accounts stop looking identical. `colorFrom` hashes any key (an
+    account id, an email) into a stable tint. Every tint is a foundation
+    `*-subtle` fill with its own hue-matched `*-on-subtle` foreground, measured
+    at 12.97:1–16.39:1 in light, dark and high-contrast. The tint is decoration
+    only — the initials and accessible name carry identity.
+  - **`Input`, `TextArea` and `RichTextEditor` gain `onAIOpenChange`,
+    `onAIAccept` and `onAIReject`.** An accepted AI suggestion previously
+    reached the consumer as an ordinary `onChange`, indistinguishable from a
+    keystroke, leaving a call site no way to instrument the flow.
+  - **Fixed: `Breadcrumb.Item as="button"` rendered with native button chrome.**
+    A trail step that navigates through a router has no `href`, so `as="button"`
+    is a real call site; the module never reset the UA's border/background/
+    padding/font-size, and hover/focus were keyed off `a.item` so a button got
+    neither. Both fixed.
+  - **New tokens**: `--ds-color-status-info` and
+    `--ds-color-status-{info,success,warning,danger}-{subtle,on-subtle}` in
+    `variables.css`, mapping foundation roles that were already published but
+    unaliased.
+
+  Also investigated, and **not** a defect: a suspected `Accordion.Content`
+  staleness bug does not reproduce. `Accordion.Content` renders `{children}`
+  unconditionally, with no memo, cloning or cached element; two regression tests
+  now record that for both open and closed items.
+
+- 7f02db9: `Document`'s header/footer can now be edited in place, and its body editor no longer reads as a boxed control nested inside the page.
+
+  - **`RichTextEditor` gets `variant`/`showToolbar`/`minHeight`.** `variant="plain"` drops the toolbar's and editable surface's own border/background — for embedding inside a host that's already the box (here, `DocumentPage`), where a second nested box was redundant chrome, not a second control. `showToolbar={false}` renders a bare contentEditable surface with no formatting bar, for a header/footer that's a line of text, not a paragraph needing bold/lists/links. `minHeight` overrides the default `8em` sizing (meant for a full page of text) for a single-line use.
+  - **New `Document` props**: `headerValue`/`defaultHeaderValue`/`onHeaderChange` and `footerValue`/`defaultFooterValue`/`onFooterChange` — the same controlled/uncontrolled string shape `pages` already has. Supplying any of them switches the header/footer from the static `header`/`footer` `ReactNode` slot to a real editable surface while `editable` is `true`, so the whole page (header, body, footer) is one continuous editable document rather than the body alone.
+  - **`DocumentPage`'s header/footer no longer draw a divider** against the body — the three regions read as one page rather than three visually separated boxes.
+  - **`Canvas`'s `document` block wires this up**: double-clicking a document block now makes its header and footer editable together with the body (previously only the body entered edit mode), through the same `run`/reducer path `onPagesChange` already used — a hand-typed header and a model-set one go through one path.
+
+- 7f02db9: `Document` now shows one formatting toolbar above the whole page, with a paragraph-style picker, instead of a toolbar wedged into the body alone.
+
+  - **One shared toolbar, not one per region.** Every `RichTextEditor` `Document` mounts for a page (header, body, footer) now renders `showToolbar={false}`; `Document` itself renders a single toolbar above the page while `editable`, acting on whichever of the three surfaces was last focused. It uses the same "save the selection `Range` on blur, restore it immediately before the command" technique `RichTextEditor`'s own link popover already relies on, generalized from one surface to three.
+  - **New paragraph-style picker**: `Heading 1`–`6`, `Body`, `Caption`, `Quote`, `Note`, applied via `execCommand('formatBlock', ...)`. `Caption`/`Note` have no native block tag, so both format as `<p>` and are told apart afterward by a CSS class.
+  - `RichTextEditor` gains `showToolbar` (already shipped alongside `variant`/`minHeight` in the previous release) as the seam this reuses — `Document` is its first consumer to actually turn it off.
+
+- 7f02db9: `Document` gets a consumer-supplied, double-click-editable `name` label, a table-of-contents panel, and a flat (unrounded) page.
+
+  - **New `name`/`onNameChange` props.** The document's own identity (a file name), supplied by the consumer rather than typed into the page — renders as a small tab-style label above the page's top-left corner, separate from `header`/`headerValue` (in-page content that prints/exports with the page). Double-clicking the tag swaps it for a text input (committed on Enter/blur, discarded on Escape) when `onNameChange` is supplied; without it the tag stays a static label.
+  - **New table-of-contents panel** (`tocOpen`/`defaultTocOpen`/`onTocOpenChange`, standalone `chrome` only): lists every `h1`–`h6` found across `pages`, clicking an entry jumps to its page. A toggle icon at the start of the toolbar shows/hides it; both render only when at least one heading exists.
+  - **`DocumentPage`'s outer sheet is now flat, not rounded** — `.page.page { border-radius: 0 }` overrides `Card`'s own radius (doubled-class, so it wins regardless of stylesheet load order). A document page reads as a sheet of paper, not a rounded UI card.
+
+- 7f02db9: Add `Document`/`DocumentPage` — a simple multi-page note/resume editor — plus a new `document` `Canvas` block kind.
+
+  - **New `documentAspectRatio.ts` utility.** `DocumentAspectRatio` is a named
+    preset union (`'a4' | '16:9' | '4:3'`) plus a custom `{width, height}`
+    escape hatch — the same "preset union + custom override" shape used
+    elsewhere, so new presets are additive later without a breaking change.
+  - **New `DocumentPage` component.** One page's fixed-aspect-ratio surface,
+    reusing `Card`'s box rather than duplicating its styling. A compound
+    component with optional `Header`/`Body`/`Footer` parts; `Body` takes a
+    `layout` (`'single'` default, `'two-column'`, `'sidebar'`), wrapping
+    content in `Grid` only for the presets that need one.
+  - **New `Document` component.** Manages an array of pages (`pages`, one HTML
+    string each) controlled/uncontrolled the same way `Canvas`'s `scene` is —
+    the seam a future AI/chat component would edit pages through, the same
+    `onPagesChange` a person's own typing already goes through, not a parallel
+    path. `editable` mounts a `RichTextEditor` per page (read-only static HTML
+    otherwise). Works two ways:
+    - Standalone (`chrome` true, the default): a list/grid view toggle, zoom
+      controls (buttons and Ctrl/Cmd+wheel), and arrow-key page navigation —
+      only when focus isn't inside a page's own text surface, so the caret
+      keeps working normally while typing.
+    - Embedded, `chrome={false}`: just the active page, for a host that
+      already owns pan/zoom — currently only `Canvas`.
+  - **Auto-pagination only ever appends a page** once the last page's content
+    outgrows its fixed box — it never re-flows already-typed content backward
+    across a page boundary. Deferred via `setTimeout`, not
+    `requestAnimationFrame`: rAF never fires at all in a backgrounded/unpainted
+    tab, confirmed live, which would silently break auto-pagination for a
+    canvas app switched away from mid-paste.
+  - **New `document` `CanvasBlockData` kind** (`pages`, `aspectRatio`,
+    `layout`, `header`, `footer`), rendering `Document` with `chrome={false}`
+    inside a canvas block. Double-clicking one opens its editor and enters
+    `Canvas`'s own focus mode (from the previous release) **locked by
+    default** — the one place in this library where focus doesn't default to
+    free-to-look-around, since editing a document's text while the viewport
+    can still be panned away from under you is the actual bad experience being
+    avoided. Escape exits both the editor and focus together, in one keystroke.
+  - **Fixed, found while wiring the above: `Canvas`'s keyboard handler
+    unconditionally suppressed every key while any block was being edited**,
+    which meant Escape could never reach the focus-exit branch for a
+    `document` block's editor (a sticky note's own textarea already stops
+    Escape from bubbling that far itself, so this never surfaced before).
+
 ## 0.7.0
 
 ### Minor Changes
