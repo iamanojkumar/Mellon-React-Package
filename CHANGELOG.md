@@ -1,5 +1,18 @@
 # @mellon-design/react
 
+## 0.10.0
+
+### Minor Changes
+
+- 92061c7: `CanvasBlockOwnProps` gains `chrome?: boolean`, threaded to `Document.chrome` for the `document` block kind (default stays `false`, unchanged behavior). Lets a host render one specific document-kind `CanvasBlock` with `Document`'s standalone, self-contained viewer (list/grid view, zoom) instead of the bare embedded face — useful for a "focused page" view independent of `Canvas`'s own pan/zoom.
+- 92061c7: Restyled `Node` as a colored pill/chip (new `color`/`fill` props, `--ds-radius-full` by default, a body only when it holds `children`) and fixed a latent bug where its rename input leaked arrow/Delete keys to an ancestor's keyboard handling. `NodeConnector`/`CanvasConnector` default to a thinner stroke to match.
+
+  Added a `node` `CanvasBlockData` kind (reusing `Node` in `fill` mode) so pill nodes can be placed directly on `Canvas`, connected via click-to-connect ports through `Canvas`'s own connector system. Added `CanvasToolbar` (`Canvas`'s new `shapeToolbar` prop) — a small floating bar for inserting a sticky note, shape, node, or frame by hand, with no `AIProvider` or resolver required.
+
+### Patch Changes
+
+- 92061c7: `Sidebar.Item as="button"` no longer shows native `<button>` chrome (background, beveled border, platform font) underneath its own styling — `.item` now resets `background`/`border`/`appearance`/`font` too, matching the earlier `text-align` fix for the same `as="button"` gap. All four are no-ops for the default `as="a"`/`as="div"` targets.
+
 ## 0.9.0
 
 ### Minor Changes
