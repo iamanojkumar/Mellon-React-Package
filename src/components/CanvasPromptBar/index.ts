@@ -1,2 +1,6 @@
-export { CanvasPromptBar, buildCanvasPromptWithMentions } from './CanvasPromptBar';
-export type { CanvasPromptBarProps, CanvasMention } from './CanvasPromptBar';
+export {
+  CanvasPromptBar,
+  buildCanvasPromptWithMentions,
+  DEFAULT_REFERENCE_LABEL,
+} from './CanvasPromptBar';
+export type { CanvasPromptBarProps, CanvasMention, CanvasReference } from './CanvasPromptBar';

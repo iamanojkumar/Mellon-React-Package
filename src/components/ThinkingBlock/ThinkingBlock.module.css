@@ -25,3 +25,18 @@
   padding: 0 var(--ds-space-sm) var(--ds-space-sm);
   font-size: var(--ds-font-size-sm);
 }
+
+/*
+  The trigger's label sits beside a spinner glyph while the trace is still
+  streaming, so the label itself is the flex row — `Accordion`'s own
+  `.triggerLabel` wrapper only stretches to fill the button.
+*/
+.labelRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-xs);
+}
+
+.spinner {
+  flex-shrink: 0;
+}

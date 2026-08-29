@@ -1,10 +1,11 @@
 import { forwardRef, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { ComponentPropsWithoutRef, KeyboardEvent, PointerEvent, ReactNode } from 'react';
-import { CanvasBlock } from '../CanvasBlock/CanvasBlock';
+import { CanvasBlock, isNodeLikeBlockKind } from '../CanvasBlock/CanvasBlock';
 import type { CanvasResizeHandle } from '../CanvasBlock/CanvasBlock';
 import { CanvasConnector } from '../CanvasConnector/CanvasConnector';
 import { CanvasOutline } from '../CanvasOutline/CanvasOutline';
 import { CanvasPromptBar } from '../CanvasPromptBar/CanvasPromptBar';
+import type { CanvasReference } from '../CanvasPromptBar/CanvasPromptBar';
 import { CanvasChangePreview } from '../CanvasChangePreview/CanvasChangePreview';
 import { CanvasChatPanel } from '../CanvasChatPanel/CanvasChatPanel';
 import { CanvasToolbar } from '../CanvasToolbar/CanvasToolbar';
@@ -125,6 +126,17 @@ export interface CanvasOwnProps {
    * `context` prop.
    */
   chatContext?: unknown;
+  /**
+   * Host-owned things offered for `@` reference in both prompt surfaces
+   * beside the canvas's own blocks — a page, a document, whatever the app's
+   * own unit of work is. They go out under `referenceLabel`'s heading rather
+   * than as `Referenced blocks:`, so a model is never told a block exists
+   * that `applyCanvasCommands` would then reject every command about. See
+   * `CanvasPromptBar`'s `references`.
+   */
+  references?: CanvasReference[];
+  /** Heading `references` are listed under in the prompt. Defaults to `'References'`. */
+  referenceLabel?: string;
   /**
    * Consumer-owned transport producing a `CanvasResolution`. Omit it and the
    * canvas falls back to `AIClient.complete` plus text parsing.
@@ -309,6 +321,8 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
     aiPrompt = false,
     aiPromptFloating = false,
     chatContext,
+    references,
+    referenceLabel,
     resolveCommands,
     snapshotOptions,
     promptPlaceholder,
@@ -354,7 +368,7 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
   const [focusedId, setFocusedId] = useState<string | undefined>(undefined);
   /** Only meaningful while `focusedId` is set — freezes pan/zoom/scroll. */
   const [focusLocked, setFocusLocked] = useState(false);
-  /** The `node` block whose output port is armed, waiting for a target's input port. `undefined` when no connection is in progress. */
+  /** The node-like block whose output port is armed, waiting for a target's input port. `undefined` when no connection is in progress. */
   const [pendingNodeSource, setPendingNodeSource] = useState<string | undefined>(undefined);
 
   const run = useCallback(
@@ -370,7 +384,7 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
 
   // ------------------------------------------------------------- node ports
 
-  /** Arms (or, clicked again, disarms) a `node` block's output as a connection's source. */
+  /** Arms (or, clicked again, disarms) a node-like block's output as a connection's source. */
   const handleNodeOutputPortClick = useCallback(
     (id: string) => {
       setPendingNodeSource((current) => {
@@ -378,7 +392,7 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
         const source = next ? findCanvasBlock(scene, next) : undefined;
         setAnnouncement(
           next && source
-            ? `Connecting from ${canvasBlockLabel(source)}. Select another node's input to connect, or press Escape to cancel.`
+            ? `Connecting from ${canvasBlockLabel(source)}. Select another block's input to connect, or press Escape to cancel.`
             : '',
         );
         return next;
@@ -387,7 +401,7 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
     [scene],
   );
 
-  /** Completes a pending connection at this `node` block's input, through the same reducer every other mutation goes through. */
+  /** Completes a pending connection at this node-like block's input, through the same reducer every other mutation goes through. */
   const handleNodeInputPortClick = useCallback(
     (id: string) => {
       if (!pendingNodeSource || pendingNodeSource === id) {
@@ -928,6 +942,13 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
     if (event.altKey) {
       const block = findCanvasBlock(scene, primary);
       if (!block) return;
+      // A node-like block has no pointer resize handles either — its size is
+      // its content's. Said out loud rather than silently ignored, or the key
+      // just appears not to have registered.
+      if (isNodeLikeBlockKind(block.kind)) {
+        setAnnouncement(`${canvasBlockLabel(block)} can't be resized.`);
+        return;
+      }
       const next = run([
         {
           op: 'resize',
@@ -1071,6 +1092,8 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
       {showStaticPrompt && (
         <CanvasPromptBar
           blocks={scene.blocks}
+          {...(references ? { references } : {})}
+          {...(referenceLabel ? { referenceLabel } : {})}
           onSubmit={commands.submit}
           status={commands.status}
           {...(outcome.kind === 'error' ? { error: outcome.error } : {})}
@@ -1280,6 +1303,14 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
                 ? {
                     onNameChange: (name: string) =>
                       run([{ op: 'update', id: block.id, patch: { name } }]),
+                  }
+                : {})}
+              {...(isNodeLikeBlockKind(block.kind) && !readOnly
+                ? {
+                    // Ports on all three node-like kinds, not just `node`: a
+                    // connector already routes between any two blocks, so a
+                    // sticky note wired to a shape is the same command and the
+                    // same geometry a node-to-node connection is.
                     onOutputPortClick: handleNodeOutputPortClick,
                     onInputPortClick: handleNodeInputPortClick,
                     nodeConnecting: pendingNodeSource === block.id,
@@ -1360,6 +1391,8 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
               : {})}
             {...(commands.thinking ? { thinking: commands.thinking } : {})}
             {...(chatContext !== undefined ? { context: chatContext } : {})}
+            {...(references ? { references } : {})}
+            {...(referenceLabel ? { referenceLabel } : {})}
             disabled={readOnly}
             {...(promptPlaceholder ? { placeholder: promptPlaceholder } : {})}
             boundsRef={surfaceRef}

@@ -408,6 +408,57 @@ export const NodeDiagram: Story = {
   },
 };
 
+/**
+ * Sticky notes and shapes carry the same ports a `node` does, so a diagram
+ * isn't limited to one block kind — arm any output dot, then click any input
+ * dot. All three are also fixed-size: selecting one draws a rounded highlight,
+ * not a resize frame with corner points, because none of them resizes. The
+ * sized kinds (`text`, `image`, `code`, `table`, …) still get their handles.
+ */
+export const MixedNodeDiagram: Story = {
+  args: {
+    'aria-label': 'Mixed node diagram',
+    defaultScene: {
+      blocks: [
+        {
+          id: 'brief',
+          kind: 'sticky',
+          text: 'Vague brief',
+          color: '#c9e4d0',
+          x: 40,
+          y: 40,
+          width: 150,
+          height: 90,
+        },
+        {
+          id: 'gate',
+          kind: 'shape',
+          shape: 'diamond',
+          text: 'Enough detail?',
+          x: 260,
+          y: 30,
+          width: 170,
+          height: 110,
+        },
+        {
+          id: 'summary',
+          kind: 'node',
+          name: 'Aggregated summary',
+          color: '#f6c9d6',
+          x: 500,
+          y: 60,
+          width: 170,
+          height: 44,
+        },
+      ],
+      connectors: [
+        { id: 'c1', from: 'brief', to: 'gate', arrow: 'end' },
+        { id: 'c2', from: 'gate', to: 'summary', arrow: 'end' },
+      ],
+    },
+  },
+};
+
 /** No `AIProvider` or resolver needed — a click-driven way to add sticky notes, shapes, nodes and frames. */
 export const ShapeToolbar: Story = {
   args: {

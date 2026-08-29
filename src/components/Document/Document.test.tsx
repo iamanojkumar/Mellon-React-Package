@@ -4,11 +4,54 @@ import userEvent from '@testing-library/user-event';
 import { expectNoA11yViolations } from '../../../tests/axe';
 import { Document } from './Document';
 
-/** jsdom never lays anything out, so `scrollHeight`/`clientHeight` are always 0 — stub them on the ref'd node to drive the overflow check deterministically. */
-function stubOverflow(el: HTMLElement, scrollHeight: number, clientHeight: number) {
-  Object.defineProperty(el, 'scrollHeight', { configurable: true, value: scrollHeight });
-  Object.defineProperty(el, 'clientHeight', { configurable: true, value: clientHeight });
+const CONTENT_ROOT = '[contenteditable="true"], [data-document-body]';
+
+function rect(bottom: number): DOMRect {
+  return {
+    top: 0,
+    bottom,
+    left: 0,
+    right: 0,
+    width: 0,
+    height: bottom,
+    x: 0,
+    y: 0,
+    toJSON: () => ({}),
+  } as DOMRect;
 }
+
+/**
+ * A fake layout engine. jsdom lays nothing out — every rect is zero and no
+ * page ever overflows — so pagination is untestable here without one.
+ *
+ * The model: every page body clips at `pageBottom`, and every top-level block
+ * inside one is `blockHeight` tall, stacked from the top. Patched on
+ * `Element.prototype` rather than per node because pagination rewrites a
+ * page's HTML, which replaces the very nodes a per-node stub was attached to.
+ * Element identity is never used — a body is "an element containing a content
+ * root" (`RichTextEditor` puts its own wrapper in between, so "first child"
+ * is not it), a block is "an element whose parent is one" — so the stub
+ * survives every re-render.
+ *
+ * Real geometry is still a browser-only concern: this pins down *which* block
+ * moves and *where its HTML lands*, not whether a paragraph really fits on A4.
+ */
+function stubLayout({ pageBottom, blockHeight }: { pageBottom: number; blockHeight: number }) {
+  const original = Element.prototype.getBoundingClientRect;
+  Element.prototype.getBoundingClientRect = function stubbed(this: Element): DOMRect {
+    if (this.querySelector(CONTENT_ROOT)) return rect(pageBottom);
+    const parent = this.parentElement;
+    if (parent?.matches(CONTENT_ROOT)) {
+      return rect((Array.from(parent.children).indexOf(this) + 1) * blockHeight);
+    }
+    return rect(0);
+  };
+  return () => {
+    Element.prototype.getBoundingClientRect = original;
+  };
+}
+
+const BLOCKS = (...letters: string[]) => letters.map((letter) => `<p>${letter}</p>`).join('');
 
 describe('Document rendering', () => {
   it('renders one page by default', () => {
@@ -175,38 +218,140 @@ describe('Document page navigation', () => {
 });
 
 describe('Document auto-pagination', () => {
-  it('appends a new page once the last page overflows', async () => {
+  let restoreLayout: () => void = () => {};
+
+  afterEach(() => restoreLayout());
+
+  // Two blocks fit (bottoms 100, 200); a third (300) does not.
+  function twoPerPage() {
+    restoreLayout = stubLayout({ pageBottom: 250, blockHeight: 100 });
+  }
+
+  it('moves the overflowing content onto the next page instead of clipping it', () => {
+    twoPerPage();
     const onPagesChange = vi.fn();
-    const { container } = render(
-      <Document defaultPages={['start']} editable onPagesChange={onPagesChange} />,
+    render(
+      <Document defaultPages={[BLOCKS('a', 'b', 'c')]} editable onPagesChange={onPagesChange} />,
     );
 
-    const body = container.querySelector('[class*="body"]') as HTMLElement;
-    stubOverflow(body, 500, 200);
+    // The block that didn't fit is on page 2 — not left clipped and invisible
+    // inside page 1 beside a blank new page, which is what used to happen.
+    expect(onPagesChange).toHaveBeenLastCalledWith([BLOCKS('a', 'b'), BLOCKS('c')]);
+  });
+
+  // The reported bug: the overflow check only ever ran from the per-page
+  // keystroke handler, so anything written programmatically — a `pages` prop,
+  // a host's own update, an AI writing a long body in one shot — was simply
+  // clipped.
+  it('paginates content that arrived from the `pages` prop, with nobody typing', () => {
+    twoPerPage();
+    const onPagesChange = vi.fn();
+    const { rerender } = render(<Document pages={['']} editable onPagesChange={onPagesChange} />);
+    expect(onPagesChange).not.toHaveBeenCalled();
+
+    rerender(
+      <Document pages={[BLOCKS('a', 'b', 'c', 'd')]} editable onPagesChange={onPagesChange} />,
+    );
+
+    expect(onPagesChange).toHaveBeenLastCalledWith([BLOCKS('a', 'b'), BLOCKS('c', 'd')]);
+  });
+
+  it('paginates a read-only document too — clipped content is invisible either way', () => {
+    twoPerPage();
+    const onPagesChange = vi.fn();
+    render(<Document defaultPages={[BLOCKS('a', 'b', 'c')]} onPagesChange={onPagesChange} />);
+
+    expect(onPagesChange).toHaveBeenLastCalledWith([BLOCKS('a', 'b'), BLOCKS('c')]);
+  });
+
+  it('flows into the page that already follows rather than appending another', () => {
+    twoPerPage();
+    const onPagesChange = vi.fn();
+    render(
+      <Document
+        defaultPages={[BLOCKS('a', 'b', 'c'), BLOCKS('z')]}
+        editable
+        onPagesChange={onPagesChange}
+      />,
+    );
+
+    const last = onPagesChange.mock.calls.at(-1)?.[0];
+    expect(last).toEqual([BLOCKS('a', 'b'), BLOCKS('c', 'z')]);
+  });
+
+  it('keeps flowing until every page fits', () => {
+    twoPerPage();
+    const onPagesChange = vi.fn();
+    render(
+      <Document
+        defaultPages={[BLOCKS('a', 'b', 'c', 'd', 'e')]}
+        editable
+        onPagesChange={onPagesChange}
+      />,
+    );
+
+    expect(onPagesChange).toHaveBeenLastCalledWith([
+      BLOCKS('a', 'b'),
+      BLOCKS('c', 'd'),
+      BLOCKS('e'),
+    ]);
+  });
+
+  // Moving it would push the same block onto page after page forever, since
+  // it fits nowhere. It stays and clips; this asserts the loop doesn't happen.
+  it('leaves a single block taller than the page where it is', () => {
+    restoreLayout = stubLayout({ pageBottom: 100, blockHeight: 500 });
+    const onPagesChange = vi.fn();
+    render(<Document defaultPages={[BLOCKS('huge')]} editable onPagesChange={onPagesChange} />);
+
+    expect(onPagesChange).not.toHaveBeenCalled();
+    expect(screen.getAllByRole('region')).toHaveLength(1);
+  });
+
+  it('still flows the blocks after an unsplittable first one', () => {
+    restoreLayout = stubLayout({ pageBottom: 100, blockHeight: 500 });
+    const onPagesChange = vi.fn();
+    render(
+      <Document defaultPages={[BLOCKS('huge', 'after')]} editable onPagesChange={onPagesChange} />,
+    );
+
+    expect(onPagesChange).toHaveBeenLastCalledWith([BLOCKS('huge'), BLOCKS('after')]);
+  });
+
+  it('leaves a document that fits completely alone', () => {
+    twoPerPage();
+    const onPagesChange = vi.fn();
+    render(<Document defaultPages={[BLOCKS('a', 'b')]} editable onPagesChange={onPagesChange} />);
+
+    expect(onPagesChange).not.toHaveBeenCalled();
+  });
+
+  it('carries focus to the next page when the break happens under the caret', async () => {
+    twoPerPage();
+    render(<Document defaultPages={[BLOCKS('a')]} editable />);
 
     const editor = screen.getByRole('textbox');
-    fireEvent.input(editor, { target: { innerHTML: 'a lot of text' } });
+    fireEvent.input(editor, { target: { innerHTML: BLOCKS('a', 'b', 'c') } });
 
-    // The overflow check is deferred to a macrotask, after layout for the
-    // new content has actually happened.
+    // Focus is moved a macrotask later, once the moved HTML is in the DOM to
+    // put a caret into.
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
-    expect(onPagesChange).toHaveBeenLastCalledWith(['a lot of text', '']);
     expect(screen.getAllByRole('textbox')).toHaveLength(2);
+    expect(screen.getAllByRole('textbox')[1]).toHaveFocus();
   });
 
-  it('never grows a page other than the last one', () => {
-    const onPagesChange = vi.fn();
-    render(<Document defaultPages={['a', 'b']} editable onPagesChange={onPagesChange} />);
+  // A `pages` update from elsewhere must never yank the caret out of whatever
+  // the person is doing.
+  it('does not move focus when the split came from a `pages` update', () => {
+    twoPerPage();
+    const { rerender } = render(<Document pages={['']} editable />);
 
-    const [firstEditor] = screen.getAllByRole('textbox');
-    fireEvent.input(firstEditor as HTMLElement, { target: { innerHTML: 'edited' } });
+    rerender(<Document pages={[BLOCKS('a', 'b', 'c')]} editable />);
 
-    // Content changed, but no page was appended purely from editing the
-    // first (non-last) page.
-    expect(onPagesChange).toHaveBeenCalledWith(['edited', 'b']);
+    expect(document.body).toHaveFocus();
   });
 });
 
@@ -286,6 +431,34 @@ describe('Document name', () => {
   it('renders the name tag once, above the first page', () => {
     render(<Document defaultPages={['a', 'b']} name="Q3-roadmap.doc" />);
     expect(screen.getAllByText('Q3-roadmap.doc')).toHaveLength(1);
+  });
+
+  // In list view the tag belongs to the column below it, so wrapping page 1
+  // is right. In grid the pages are a wrapping row of cells, and wrapping
+  // page 1 alone makes its cell taller than its siblings by the tag's own
+  // height — the whole row then sits off-baseline.
+  it('keeps the grid tag out of page 1’s own cell, so every page stays on one baseline', () => {
+    const { container } = render(
+      <Document defaultPages={['a', 'b']} name="Q3-roadmap.doc" view="grid" />,
+    );
+
+    expect(screen.getAllByText('Q3-roadmap.doc')).toHaveLength(1);
+    const world = container.querySelector('[data-view="grid"]') as HTMLElement;
+    const pages = screen.getAllByRole('region');
+    // Every page is a direct child of the grid container — none nested one
+    // level deeper inside a name wrapper.
+    pages.forEach((page) => expect(page.parentElement).toBe(world));
+  });
+
+  it('still wraps page 1 with the tag in list view', () => {
+    const { container } = render(
+      <Document defaultPages={['a', 'b']} name="Q3-roadmap.doc" view="list" />,
+    );
+
+    const world = container.querySelector('[data-view="list"]') as HTMLElement;
+    const [first, second] = screen.getAllByRole('region');
+    expect(first?.parentElement).not.toBe(world);
+    expect(second?.parentElement).toBe(world);
   });
 });
 

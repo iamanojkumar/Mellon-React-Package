@@ -94,7 +94,7 @@ describe('CanvasBlock faces', () => {
 
 describe('CanvasBlock handles', () => {
   it('shows resize handles only when selected and resizable', () => {
-    const block = at({ kind: 'sticky', text: 'Note' });
+    const block = at({ kind: 'text', html: '<p>Note</p>' });
 
     const plain = render(<CanvasBlock block={block} resizable />);
     expect(plain.container.querySelector('[data-canvas-resize-handles]')).toBeNull();
@@ -106,7 +106,7 @@ describe('CanvasBlock handles', () => {
 
   it('hides the handles from assistive tech — Alt+arrows is the keyboard path', () => {
     const { container } = render(
-      <CanvasBlock block={at({ kind: 'sticky', text: 'Note' })} resizable selected />,
+      <CanvasBlock block={at({ kind: 'text', html: '<p>Note</p>' })} resizable selected />,
     );
 
     expect(container.querySelector('[data-canvas-resize-handles]')).toHaveAttribute(
@@ -115,9 +115,122 @@ describe('CanvasBlock handles', () => {
     );
   });
 
+  // The three node-like kinds are sized by their content, so a resize frame
+  // would be a control that does nothing — they get the rounded highlight
+  // (`data-node-like` + `data-selected` in the stylesheet) instead.
+  it.each(['node', 'sticky', 'shape'] as const)(
+    'never draws resize handles on a %s block, even when asked',
+    (kind) => {
+      const block = at(
+        kind === 'node'
+          ? { kind: 'node', name: 'Step' }
+          : kind === 'sticky'
+            ? { kind: 'sticky', text: 'Note' }
+            : { kind: 'shape', shape: 'rectangle', text: 'Box' },
+      );
+      const { container } = render(<CanvasBlock block={block} resizable selected />);
+
+      expect(container.querySelector('[data-canvas-resize-handles]')).toBeNull();
+      expect(container.firstElementChild).toHaveAttribute('data-node-like');
+    },
+  );
+
+  it('marks the sized kinds as not node-like, so they keep their frame', () => {
+    const { container } = render(
+      <CanvasBlock block={at({ kind: 'text', html: '<p>Note</p>' })} selected resizable />,
+    );
+
+    expect(container.firstElementChild).not.toHaveAttribute('data-node-like');
+  });
+
   it('has no accessibility violations', async () => {
     const { container } = render(
-      <CanvasBlock block={at({ kind: 'sticky', text: 'Note' })} selected resizable />,
+      <CanvasBlock block={at({ kind: 'text', html: '<p>Note</p>' })} selected resizable />,
+    );
+
+    await expectNoA11yViolations(container);
+  });
+});
+
+describe('CanvasBlock ports', () => {
+  it('draws a sticky note the same input/output ports a node has', () => {
+    render(
+      <CanvasBlock
+        block={at({ kind: 'sticky', text: 'Login' })}
+        onInputPortClick={vi.fn()}
+        onOutputPortClick={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: "Connect to Login's input" })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: "Connect Login's output to another block" }),
+    ).toBeInTheDocument();
+  });
+
+  it('draws them on a shape too, outside the clipped face', () => {
+    render(
+      <CanvasBlock
+        block={at({ kind: 'shape', shape: 'diamond', text: 'Approved?' })}
+        onInputPortClick={vi.fn()}
+        onOutputPortClick={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole('button', { name: "Connect to Approved?'s input" }),
+    ).toBeInTheDocument();
+  });
+
+  it('reports port clicks with the block id', async () => {
+    const user = userEvent.setup();
+    const onOutputPortClick = vi.fn();
+    const onInputPortClick = vi.fn();
+    render(
+      <CanvasBlock
+        block={at({ kind: 'sticky', text: 'Login' })}
+        onInputPortClick={onInputPortClick}
+        onOutputPortClick={onOutputPortClick}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: "Connect Login's output to another block" }),
+    );
+    await user.click(screen.getByRole('button', { name: "Connect to Login's input" }));
+
+    expect(onOutputPortClick).toHaveBeenCalledWith('x');
+    expect(onInputPortClick).toHaveBeenCalledWith('x');
+  });
+
+  // No handler means no connection is possible, and a dot that does nothing is
+  // worse than no dot — a read-only board stays free of them.
+  it('draws no ports without the handlers', () => {
+    const { container } = render(<CanvasBlock block={at({ kind: 'sticky', text: 'Login' })} />);
+
+    expect(container.querySelectorAll('[data-port]')).toHaveLength(0);
+  });
+
+  it('draws none on a kind that is not node-like', () => {
+    const { container } = render(
+      <CanvasBlock
+        block={at({ kind: 'text', html: '<p>Note</p>' })}
+        onInputPortClick={vi.fn()}
+        onOutputPortClick={vi.fn()}
+      />,
+    );
+
+    expect(container.querySelectorAll('[data-port]')).toHaveLength(0);
+  });
+
+  it('has no accessibility violations with ports on', async () => {
+    const { container } = render(
+      <CanvasBlock
+        block={at({ kind: 'sticky', text: 'Login' })}
+        selected
+        onInputPortClick={vi.fn()}
+        onOutputPortClick={vi.fn()}
+      />,
     );
 
     await expectNoA11yViolations(container);

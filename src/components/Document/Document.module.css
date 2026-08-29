@@ -124,6 +124,18 @@
   gap: var(--ds-space-xs);
 }
 
+/* Grid view's name tag: a full-width row forcing a wrap before the pages, so
+   every page cell starts at the same baseline. The per-page `.namedPage`
+   wrapper can't do this job here — it makes page 1's cell taller than its
+   siblings by the tag's own height, which is exactly the misalignment this
+   replaces. Centred to match `.world[data-view='grid']`'s own centred row of
+   pages, rather than left-aligned as in the list view's single column. */
+.gridNameRow {
+  display: flex;
+  flex: 0 0 100%;
+  justify-content: center;
+}
+
 /* Bare/embedded mode is the one place this wrapper *does* need to fill its
    box — there's no sibling page to stay visually consistent with, and
    `.bareViewport`'s single child needs to fill the host-given box the same

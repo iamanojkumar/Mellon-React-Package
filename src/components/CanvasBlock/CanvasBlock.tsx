@@ -21,6 +21,9 @@ import { mergeClasses } from '../../utilities/mergeClasses';
 import { canvasBlockLabel } from '../../utilities/canvasReducer';
 import type { CanvasBlockData } from '../../utilities/canvasReducer';
 import styles from './CanvasBlock.module.css';
+// The port dots are lifted straight from `Node`'s own stylesheet rather than
+// restyled here, so a sticky note's port and a node's port cannot drift apart.
+import nodeStyles from '../Node/Node.module.css';
 
 function defaultBuildShapeAIPrompt(text: string): string {
   return `Rewrite this flowchart shape's label to be clearer and more concise, keeping its meaning. Reply with the rewritten label only, no punctuation beyond what the label itself needs.\n\n${text || '(no label yet — write a short one that fits a flowchart shape)'}`;
@@ -30,6 +33,25 @@ function defaultBuildShapeAIPrompt(text: string): string {
 export const RESIZE_HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as const;
 export type CanvasResizeHandle = (typeof RESIZE_HANDLES)[number];
 
+/** The kinds that read as diagram nodes rather than as sized boxes. */
+export const NODE_LIKE_BLOCK_KINDS = ['node', 'sticky', 'shape'] as const;
+
+/**
+ * Whether a kind is a diagram node — `node`, `sticky` and `shape`.
+ *
+ * Three consequences hang together on this one predicate, which is why it's a
+ * predicate and not three separate checks: such a block is **not resizable**
+ * (no pointer handles, no Alt+arrow resize — its size is its content's, the
+ * way a pill's is), it is **connectable** (it draws `Node`'s input/output
+ * ports and can be wired to any other block), and selecting it draws a
+ * **rounded highlight** rather than the rectangular resize frame the sized
+ * kinds carry. A frame with corner points that don't resize anything would be
+ * a lie about what the block does.
+ */
+export function isNodeLikeBlockKind(kind: CanvasBlockData['kind']): boolean {
+  return kind === 'node' || kind === 'sticky' || kind === 'shape';
+}
+
 export interface CanvasBlockOwnProps {
   block: CanvasBlockData;
   selected?: boolean;
@@ -37,7 +59,11 @@ export interface CanvasBlockOwnProps {
   highlighted?: boolean;
   /** This block's text is being edited, so pointer gestures belong to the editor. */
   editing?: boolean;
-  /** Renders resize handles. The canvas owns the drag itself. */
+  /**
+   * Renders resize handles. The canvas owns the drag itself. Ignored for the
+   * node-like kinds (`node`, `sticky`, `shape`), which are never resizable —
+   * see `isNodeLikeBlockKind`.
+   */
   resizable?: boolean;
   onResizeStart?: (event: PointerEvent, handle: CanvasResizeHandle) => void;
   onTextChange?: (text: string) => void;
@@ -56,11 +82,17 @@ export interface CanvasBlockOwnProps {
   onFooterChange?: (footer: string) => void;
   /** A `node` block was renamed — double-click its label, the same UX as standalone `Node`. */
   onNameChange?: (name: string) => void;
-  /** A `node` block's output port was clicked — arms or disarms a pending connection. */
+  /**
+   * A node-like block's output port was clicked — arms or disarms a pending
+   * connection. Supplying it is also what makes the port render at all: a
+   * `sticky`/`shape` with no handler draws no dots, so a read-only board and
+   * a non-graph board stay free of affordances that do nothing. (`node` draws
+   * its ports either way — inert there still communicates the graph's shape.)
+   */
   onOutputPortClick?: (id: string) => void;
-  /** A `node` block's input port was clicked — completes a pending connection when one is armed. */
+  /** A node-like block's input port was clicked — completes a pending connection when one is armed. */
   onInputPortClick?: (id: string) => void;
-  /** This `node` block is the armed source of a pending connection. */
+  /** This block is the armed source of a pending connection. */
   nodeConnecting?: boolean;
   /**
    * A "Rewrite with AI" trigger. Inert without an `AIProvider`. Only wired
@@ -351,11 +383,19 @@ export const CanvasBlock = forwardRef<HTMLDivElement, CanvasBlockProps>(function
   },
   ref,
 ) {
+  const nodeLike = isNodeLikeBlockKind(block.kind);
+
   const showFillPicker =
     selected &&
     !editing &&
     (block.kind === 'sticky' || block.kind === 'shape' || block.kind === 'node') &&
     onColorChange;
+
+  // `node` draws its own ports inside `Node`; `sticky`/`shape` get theirs
+  // here. Same reason the shape AI trigger lives at this level: a port sits
+  // half outside the face's own box, and `diamond`/`triangle` clip anything
+  // drawn inside them.
+  const showPorts = block.kind === 'sticky' || block.kind === 'shape';
 
   // A `shape`'s AI trigger lives here, not inside `CanvasShape` — see the
   // `.aiTrigger` CSS comment for why. `StickyNote` still owns its own
@@ -376,6 +416,7 @@ export const CanvasBlock = forwardRef<HTMLDivElement, CanvasBlockProps>(function
         ...style,
       }}
       data-kind={block.kind}
+      data-node-like={nodeLike ? '' : undefined}
       data-selected={selected ? '' : undefined}
       data-highlighted={highlighted ? '' : undefined}
       data-editing={editing ? '' : undefined}
@@ -421,10 +462,15 @@ export const CanvasBlock = forwardRef<HTMLDivElement, CanvasBlockProps>(function
         />
       )}
 
-      {/* Pointer-only affordance: keyboard resizing is Shift+arrows on the
+      {/* Pointer-only affordance: keyboard resizing is Alt+arrows on the
           block itself, so the handles add nothing for a keyboard user and
-          would only add eight tab stops per block. */}
-      {resizable && selected && (
+          would only add eight tab stops per block.
+
+          Never drawn for a node-like kind, whatever `resizable` says — those
+          three aren't resizable by any path, and corner points that resize
+          nothing are worse than none. Their selection state is the rounded
+          highlight in the stylesheet instead. */}
+      {resizable && selected && !nodeLike && (
         <span aria-hidden="true" className={styles.handles} data-canvas-resize-handles="">
           {RESIZE_HANDLES.map((handle) => (
             <span
@@ -435,6 +481,38 @@ export const CanvasBlock = forwardRef<HTMLDivElement, CanvasBlockProps>(function
             />
           ))}
         </span>
+      )}
+
+      {/* The same input/output ports a `node` draws, so a sticky note or a
+          shape can be wired into a diagram exactly like one. Real `<button>`s,
+          not decoration: connecting is click-to-arm then click-to-complete,
+          which is what keeps it reachable without a pointer drag. Unlike the
+          resize handles these are always present rather than selection-gated
+          — a connection starts from a block you haven't selected yet. */}
+      {showPorts && onInputPortClick && (
+        <button
+          type="button"
+          className={nodeStyles.port}
+          data-port="input"
+          aria-label={`Connect to ${canvasBlockLabel(block)}'s input`}
+          onClick={(event) => {
+            event.stopPropagation();
+            onInputPortClick(block.id);
+          }}
+        />
+      )}
+      {showPorts && onOutputPortClick && (
+        <button
+          type="button"
+          className={nodeStyles.port}
+          data-port="output"
+          data-connecting={nodeConnecting ? '' : undefined}
+          aria-label={`Connect ${canvasBlockLabel(block)}'s output to another block`}
+          onClick={(event) => {
+            event.stopPropagation();
+            onOutputPortClick(block.id);
+          }}
+        />
       )}
 
       {/* Only offered for the kinds with a `color` field, and only while

@@ -28,8 +28,16 @@
   border-radius: 0;
 }
 
+/* Only the *inline* padding goes. `minimal` is about dropping chrome so the
+   text sits flush with the host's own edge — it was never meant to collapse
+   the field to exactly one line of text height, which is what zeroing the
+   block padding too did: the variant intended for a chat composer was the one
+   variant that couldn't be taller than a toolbar input, and no consumer
+   selector could beat a (0,3,0) `padding: 0` without `!important`. Block
+   padding now comes from `size` like everywhere else, so the knob is a prop
+   rather than a specificity fight. */
 .input.inputMinimal[data-size] {
-  padding: 0;
+  padding-inline: 0;
 }
 
 .input.inputMinimal:focus-visible {

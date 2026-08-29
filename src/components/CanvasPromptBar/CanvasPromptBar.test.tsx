@@ -96,6 +96,144 @@ describe('CanvasPromptBar', () => {
     await expectNoA11yViolations(container);
   });
 
+  describe('host-supplied references', () => {
+    const references = [
+      { id: 'page-3', name: 'Personas', description: 'page' },
+      { id: 'page-9', name: 'Journey map', description: 'page' },
+    ];
+
+    it('offers them in the same `@` menu as blocks', async () => {
+      const user = userEvent.setup();
+      render(<CanvasPromptBar blocks={blocks} references={references} onSubmit={vi.fn()} />);
+
+      await user.type(screen.getByLabelText('Ask or instruct the canvas'), '@o');
+
+      // "Login flow" and "Personas" both contain an "o"; both are offered.
+      expect(await screen.findByRole('option', { name: /Personas/ })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: /Login flow/ })).toBeInTheDocument();
+    });
+
+    // The reported bug behind this prop: a reference smuggled in as a fake
+    // block tells the model a block with that id is on the canvas, and every
+    // command it then aims there comes back rejected by `applyCanvasCommands`.
+    it('lists them under their own heading, never as a referenced block', async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn();
+      render(<CanvasPromptBar blocks={blocks} references={references} onSubmit={onSubmit} />);
+
+      const input = screen.getByLabelText('Ask or instruct the canvas');
+      await user.type(input, 'draft from @Personas');
+      await user.click(await screen.findByRole('option', { name: /Personas/ }));
+      await user.type(input, '{Enter}');
+
+      const prompt = onSubmit.mock.calls.at(-1)?.[0] as string;
+      expect(prompt).toContain('References: "Personas" = page-3');
+      expect(prompt).not.toContain('Referenced blocks');
+    });
+
+    it('lets the host name the heading in its own terms', async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn();
+      render(
+        <CanvasPromptBar
+          blocks={blocks}
+          references={references}
+          referenceLabel="Referenced pages"
+          onSubmit={onSubmit}
+        />,
+      );
+
+      const input = screen.getByLabelText('Ask or instruct the canvas');
+      await user.type(input, '@Personas');
+      await user.click(await screen.findByRole('option', { name: /Personas/ }));
+      await user.type(input, '{Enter}');
+
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.stringContaining('Referenced pages: "Personas" = page-3'),
+      );
+    });
+
+    it('keeps blocks and references on separate lines when both are mentioned', async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn();
+      render(<CanvasPromptBar blocks={blocks} references={references} onSubmit={onSubmit} />);
+
+      const input = screen.getByLabelText('Ask or instruct the canvas');
+      await user.type(input, '@Personas');
+      await user.click(await screen.findByRole('option', { name: /Personas/ }));
+      await user.type(input, 'into @auth');
+      await user.click(await screen.findByRole('option', { name: /Auth service/ }));
+      await user.type(input, '{Enter}');
+
+      const prompt = onSubmit.mock.calls.at(-1)?.[0] as string;
+      expect(prompt).toContain('Referenced blocks: "Auth service" = b2');
+      expect(prompt).toContain('References: "Personas" = page-3');
+    });
+
+    it('names the picker for what it now holds', async () => {
+      const user = userEvent.setup();
+      render(<CanvasPromptBar blocks={blocks} references={references} onSubmit={vi.fn()} />);
+
+      await user.type(screen.getByLabelText('Ask or instruct the canvas'), '@p');
+
+      expect(
+        await screen.findByRole('listbox', { name: 'Blocks and references' }),
+      ).toBeInTheDocument();
+    });
+
+    it('changes nothing without them', async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn();
+      render(<CanvasPromptBar blocks={blocks} onSubmit={onSubmit} />);
+
+      const input = screen.getByLabelText('Ask or instruct the canvas');
+      await user.type(input, '@auth');
+      await user.click(await screen.findByRole('option', { name: /Auth service/ }));
+      await user.type(input, '{Enter}');
+
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.stringContaining('Referenced blocks: "Auth service" = b2'),
+      );
+    });
+
+    it('has no accessibility violations', async () => {
+      const { container } = render(
+        <CanvasPromptBar blocks={blocks} references={references} onSubmit={vi.fn()} />,
+      );
+
+      await expectNoA11yViolations(container);
+    });
+  });
+
+  describe('size', () => {
+    it('defaults to md and forwards the chosen size to the field', () => {
+      const { rerender } = render(<CanvasPromptBar blocks={blocks} onSubmit={vi.fn()} />);
+      expect(screen.getByLabelText('Ask or instruct the canvas')).toHaveAttribute(
+        'data-size',
+        'md',
+      );
+
+      rerender(<CanvasPromptBar blocks={blocks} onSubmit={vi.fn()} size="lg" />);
+      expect(screen.getByLabelText('Ask or instruct the canvas')).toHaveAttribute(
+        'data-size',
+        'lg',
+      );
+    });
+
+    // `minimal` used to zero the padding outright at a specificity
+    // (`.input.inputMinimal[data-size]`) no consumer selector could beat
+    // without `!important`, which left the variant meant for a chat composer
+    // as the one variant stuck at a single line of text height.
+    it('still carries a size under the minimal variant', () => {
+      render(<CanvasPromptBar blocks={blocks} onSubmit={vi.fn()} variant="minimal" size="lg" />);
+
+      expect(screen.getByLabelText('Ask or instruct the canvas')).toHaveAttribute(
+        'data-size',
+        'lg',
+      );
+    });
+  });
+
   describe('minimal variant', () => {
     it('renders no Send button — Enter still submits', async () => {
       const user = userEvent.setup();

@@ -31,6 +31,24 @@
   outline-offset: var(--ds-border-width-thin);
 }
 
+/* A node-like block (`node`/`sticky`/`shape`) is never resized, so it carries
+   no corner points — and a tight rectangular frame sitting a hairline off a
+   rounded pill reads as the top edge of a resize box that isn't there. It gets
+   a standing-off rounded highlight instead: same focus colour, but clearly an
+   emphasis rather than a bounding frame. `border-radius` is what the outline
+   follows; the block itself has no background of its own to round.
+
+   The offset clears the port dots rather than grazing them: a port straddles
+   the face's own edge (`left: -4px`), so a ring drawn any closer runs straight
+   through the dot it's meant to sit outside of. */
+.block[data-node-like][data-selected],
+.block[data-node-like][data-highlighted],
+.block[data-node-like]:focus-visible {
+  border-radius: var(--ds-radius-lg);
+  outline-width: var(--ds-border-width-thick);
+  outline-offset: var(--ds-space-sm);
+}
+
 /* An AI answer's annotation, not a state change. Paired with visually-hidden
    text in the outline so it isn't carried by colour alone. */
 .block[data-highlighted] {

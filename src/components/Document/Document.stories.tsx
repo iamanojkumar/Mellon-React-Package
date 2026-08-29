@@ -144,6 +144,29 @@ export const AspectRatios: Story = {
   render: () => <AspectRatioDemo />,
 };
 
+const longBody = Array.from(
+  { length: 24 },
+  (_, index) =>
+    `<p>Paragraph ${index + 1}. Auto-pagination measures each top-level block against the page's own clipped box and moves whatever doesn't fit onto the following page, appending one when there isn't one already.</p>`,
+).join('');
+
+/**
+ * A body far longer than one page, handed over in a single `pages` entry with
+ * nobody typing — the shape an AI-written document arrives in. It paginates on
+ * mount: content that overflows moves onto the next page rather than being
+ * clipped invisibly at the bottom of the first.
+ *
+ * Pagination flows forward only and splits between top-level blocks, never
+ * inside one, so a single block taller than a whole page stays put and clips —
+ * it has nowhere else to go.
+ */
+export const LongContentPaginates: Story = {
+  args: {
+    defaultPages: [longBody],
+    'aria-label': 'Long document',
+  },
+};
+
 /** `chrome={false}` — no view/zoom controls, just the active page. This is how `Canvas` embeds it inside a `document` block. */
 export const NoChrome: Story = {
   args: {

@@ -121,7 +121,13 @@ describe('Canvas accessibility', () => {
     };
     render(<Canvas defaultScene={scene} />);
 
-    const entries = screen.getAllByRole('button').map((button) => button.textContent);
+    // Scoped to the outline: the blocks themselves also contribute buttons
+    // now (a sticky note's connection ports), which say nothing about
+    // reading order.
+    const outline = screen.getByRole('navigation', { name: 'Canvas contents' });
+    const entries = within(outline)
+      .getAllByRole('button')
+      .map((button) => button.textContent);
     expect(entries[0]).toContain('First');
     expect(entries[1]).toContain('Second');
   });
@@ -143,7 +149,8 @@ describe('Canvas accessibility', () => {
     const onSelectionChange = vi.fn();
     render(<Canvas defaultScene={makeScene()} onSelectionChange={onSelectionChange} />);
 
-    await user.click(screen.getByRole('button', { name: /Login/ }));
+    const outline = screen.getByRole('navigation', { name: 'Canvas contents' });
+    await user.click(within(outline).getByRole('button', { name: /Login/ }));
 
     expect(onSelectionChange).toHaveBeenCalledWith(['a']);
   });
@@ -304,6 +311,42 @@ describe('Canvas node blocks', () => {
     expect(next.connectors).toHaveLength(2);
     expect(next.connectors.every((connector) => connector.to === 'sink')).toBe(true);
     expect(next.connectors.map((connector) => connector.from).sort()).toEqual(['a', 'b']);
+  });
+
+  // A connector already routes between any two blocks, so the port dots are
+  // the only thing that was ever node-specific about connecting.
+  it('connects a sticky note to a shape through the same ports', () => {
+    const onSceneChange = vi.fn();
+    const scene: CanvasScene = {
+      blocks: [
+        { id: 'note', kind: 'sticky', text: 'Login', x: 0, y: 0, width: 120, height: 120 },
+        {
+          id: 'gate',
+          kind: 'shape',
+          shape: 'diamond',
+          text: 'Approved?',
+          x: 300,
+          y: 0,
+          width: 160,
+          height: 120,
+        },
+      ],
+      connectors: [],
+    };
+    render(<Canvas defaultScene={scene} onSceneChange={onSceneChange} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Connect Login's output/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Connect to Approved\?'s input/ }));
+
+    const next: CanvasScene = onSceneChange.mock.calls.at(-1)?.[0];
+    expect(next.connectors).toHaveLength(1);
+    expect(next.connectors[0]).toMatchObject({ from: 'note', to: 'gate' });
+  });
+
+  it('draws no ports on a read-only canvas — there is nothing to connect', () => {
+    const { container } = render(<Canvas defaultScene={makeScene()} readOnly />);
+
+    expect(container.querySelectorAll('[data-port]')).toHaveLength(0);
   });
 
   it('Escape cancels an armed connection without connecting', () => {
@@ -671,6 +714,27 @@ describe('Canvas keyboard', () => {
   it('resizes with Alt+arrows, so the keyboard reaches the handles’ outcomes', async () => {
     const user = userEvent.setup();
     const onSceneChange = vi.fn();
+    const scene: CanvasScene = {
+      blocks: [{ id: 'a', kind: 'text', html: '<p>Note</p>', x: 0, y: 0, width: 120, height: 120 }],
+      connectors: [],
+    };
+    render(
+      <Canvas defaultScene={scene} defaultSelectedIds={['a']} onSceneChange={onSceneChange} />,
+    );
+
+    focusCanvas();
+    await user.keyboard('{Alt>}{ArrowRight}{/Alt}');
+
+    const next: CanvasScene = onSceneChange.mock.calls.at(-1)?.[0];
+    expect(next.blocks.find((block) => block.id === 'a')?.width).toBe(128);
+  });
+
+  // The pointer has no resize handles on these three, so the keyboard must not
+  // quietly have a path the pointer doesn't — and a key that does nothing at
+  // all is indistinguishable from one that didn't register.
+  it('refuses to resize a node-like block, and says so', async () => {
+    const user = userEvent.setup();
+    const onSceneChange = vi.fn();
     render(
       <Canvas
         defaultScene={makeScene()}
@@ -682,8 +746,8 @@ describe('Canvas keyboard', () => {
     focusCanvas();
     await user.keyboard('{Alt>}{ArrowRight}{/Alt}');
 
-    const next: CanvasScene = onSceneChange.mock.calls.at(-1)?.[0];
-    expect(next.blocks.find((block) => block.id === 'a')?.width).toBe(128);
+    expect(onSceneChange).not.toHaveBeenCalled();
+    expect(screen.getByText("Login can't be resized.")).toBeInTheDocument();
   });
 
   it('moves every selected block together', async () => {

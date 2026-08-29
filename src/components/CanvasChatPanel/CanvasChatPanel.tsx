@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent, RefObject } from 'react';
 import { CanvasPromptBar } from '../CanvasPromptBar/CanvasPromptBar';
+import type { CanvasReference } from '../CanvasPromptBar/CanvasPromptBar';
+import type { InputSize } from '../Input/Input';
 import { MessageBubble } from '../MessageBubble/MessageBubble';
 import type { MessageBubbleVariant } from '../MessageBubble/MessageBubble';
 import { TypingIndicator } from '../TypingIndicator/TypingIndicator';
@@ -15,6 +17,15 @@ import styles from './CanvasChatPanel.module.css';
 export interface CanvasChatPanelProps {
   /** Every block, offered for `@` reference in the prompt field. */
   blocks: CanvasBlockData[];
+  /**
+   * Host-owned things offered for `@` reference beside the blocks — a page, a
+   * document, whatever the app's own unit of work is. Listed in the submitted
+   * prompt under `referenceLabel` rather than as blocks, so a model never
+   * aims a canvas command at an id no block has. See `CanvasPromptBar`.
+   */
+  references?: CanvasReference[];
+  /** Heading `references` are listed under in the prompt. Defaults to `'References'`. */
+  referenceLabel?: string;
   /** The canvas's current selection, full content — the panel's live context. */
   selectedBlocks: CanvasBlockData[];
   onSubmit: (prompt: string) => void;
@@ -43,6 +54,14 @@ export interface CanvasChatPanelProps {
   context?: unknown;
   disabled?: boolean;
   placeholder?: string;
+  /**
+   * Size of the composer field itself, forwarded to `CanvasPromptBar`'s own
+   * `size`. Named `promptSize` rather than `size` because the panel already
+   * has dimensions of its own — dragged, resized, and clamped to `boundsRef`
+   * — and one `size` prop meaning "the input's height" on a component you can
+   * resize by its corner would read as the wrong thing. Defaults to `'md'`.
+   */
+  promptSize?: InputSize;
   /** Header title shown only while minimized. Defaults to `'Canvas Assistant'`. */
   title?: string;
   /**
@@ -166,6 +185,8 @@ interface PanelSize {
  */
 export function CanvasChatPanel({
   blocks,
+  references,
+  referenceLabel,
   selectedBlocks,
   onSubmit,
   status = 'idle',
@@ -176,6 +197,7 @@ export function CanvasChatPanel({
   context,
   disabled = false,
   placeholder = 'Ask something',
+  promptSize,
   title = 'Canvas Assistant',
   minimizeShortcut,
   boundsRef,
@@ -480,6 +502,9 @@ export function CanvasChatPanel({
             <CanvasPromptBar
               variant="minimal"
               blocks={blocks}
+              {...(references ? { references } : {})}
+              {...(referenceLabel ? { referenceLabel } : {})}
+              {...(promptSize ? { size: promptSize } : {})}
               onSubmit={handleSubmit}
               status={status}
               {...(error ? { error } : {})}

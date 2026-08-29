@@ -21,6 +21,7 @@ import { useControllableState } from '../../hooks/useControllableState';
 import { useRovingFocus } from '../../hooks/useRovingFocus';
 import { mergeClasses } from '../../utilities/mergeClasses';
 import type { DocumentAspectRatio } from '../../utilities/documentAspectRatio';
+import { paginationSplitIndex } from '../../utilities/documentPagination';
 import inputStyles from '../Input/Input.module.css';
 import styles from './Document.module.css';
 
@@ -79,10 +80,20 @@ const emptyFormatState: DocumentFormatState = {
 
 export interface DocumentOwnProps {
   /**
-   * One HTML string per page. Controlled/uncontrolled the same way as
-   * `Canvas`'s `scene` — this is the seam a future AI/chat component would
-   * edit through (the same `onPagesChange` a person's own typing already
-   * goes through), not a parallel path.
+   * One **HTML** string per page — not markdown. `<p>Bold: <strong>yes</strong></p>`,
+   * never `**yes**`, which renders as literal asterisks. Worth stating
+   * because it's the natural mistake for a model writing into this prop: say
+   * so explicitly in the prompt, the same way the canvas command vocabulary
+   * has to be spelled out. It's the same string `RichTextEditor` round-trips,
+   * and the same trust model as `CanvasBlock`'s `text` kind — content the
+   * consumer already owns, not third-party markup (that belongs in a
+   * sandboxed `embed`).
+   *
+   * Controlled/uncontrolled the same way as `Canvas`'s `scene` — this is the
+   * seam an AI/chat component edits through (the same `onPagesChange` a
+   * person's own typing already goes through), not a parallel path. Note that
+   * auto-pagination writes back through it too, so a controlled `pages`
+   * without an `onPagesChange` can never paginate.
    */
   pages?: string[];
   defaultPages?: string[];
@@ -130,9 +141,10 @@ export interface DocumentOwnProps {
   onFooterChange?: (html: string) => void;
   /**
    * `false` renders each page's body as static HTML (`RichTextEditor` never
-   * mounts) — for a read-only view or a canvas block with its editor
-   * hidden. Auto-pagination (a full page appended once the last page's
-   * content outgrows it) only runs while `true`.
+   * mounts) — for a read-only view or a canvas block with its editor hidden.
+   * Auto-pagination runs either way: content that doesn't fit is content the
+   * reader can't see, and that is as true of a document nobody can type into
+   * as of one they can.
    */
   editable?: boolean;
   /** Accessible label for a page. Defaults to `'Page N'`. */
@@ -209,10 +221,18 @@ function TocIcon() {
 /**
  * A simple multi-page note/resume editor — not a document engine. Each page
  * is a fixed-aspect-ratio `DocumentPage`; `RichTextEditor` owns each page's
- * body while `editable`. When the active (last) page's content outgrows its
- * fixed box, a new blank page is appended automatically and focus follows
- * it — pagination only ever *adds* a page; it never re-flows already-typed
- * content backward across a page boundary.
+ * body while `editable`.
+ *
+ * When a page's content outgrows its fixed box, the top-level blocks that
+ * don't fit are moved onto the following page — appending one if there isn't
+ * one — and, if the break happened under the caret, focus follows them. This
+ * runs on any change to `pages`, not just typing: content written
+ * programmatically (a `pages` prop, an AI writing a long body in one shot)
+ * paginates the same way a person's typing does. Two deliberate limits:
+ * pagination only ever flows *forward*, never pulling content back onto a
+ * page that has room again, and it splits between blocks, never inside one —
+ * so a single block taller than a whole page stays put and clips, since it
+ * has nowhere to go.
  *
  * Works two ways, matching how it's meant to be embedded:
  * - Standalone (`chrome` true, the default): list/grid view, zoom, and
@@ -325,8 +345,8 @@ export function Document({
   // actually changes, not on every render (typing elsewhere on the page
   // shouldn't re-parse every page's markup). Jumping to an entry only ever
   // needs its page, not a scroll offset within it: a page's body is a fixed,
-  // clipped box (see `checkOverflow` below) that doesn't scroll internally —
-  // content past its bottom becomes a new page instead.
+  // clipped box (see `reflowOverflow` below) that doesn't scroll internally —
+  // content past its bottom flows onto the next page instead.
   const tocEntries = useMemo(() => {
     const entries: { level: number; text: string; pageIndex: number }[] = [];
     pages.forEach((html, pageIndex) => {
@@ -507,28 +527,140 @@ export function Document({
     setZoom(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, next)));
   }
 
-  /** Only the last page ever grows into a new one — earlier pages are settled. */
-  function checkOverflow(index: number) {
+  /**
+   * The page a keystroke last landed in, consumed by the very next reflow
+   * pass and cleared there. Only a split on the page being typed into should
+   * move focus — see `reflowOverflow`.
+   */
+  const typingPageRef = useRef<number | undefined>(undefined);
+
+  /**
+   * The element holding a page body's top-level blocks — the `RichTextEditor`
+   * surface while `editable`, the static HTML div otherwise. Selected by
+   * stable attributes rather than a CSS-module class, which is hashed at
+   * build time and empty in some test environments.
+   */
+  function contentRootOf(body: HTMLElement): HTMLElement | null {
+    return body.querySelector<HTMLElement>('[contenteditable="true"], [data-document-body]');
+  }
+
+  /** The y-coordinate below which a page body clips, in the same viewport space `getBoundingClientRect` reports. */
+  function clipLimitOf(body: HTMLElement): number {
+    const rect = body.getBoundingClientRect();
+    const computed = window.getComputedStyle?.(body);
+    // jsdom returns `''` for both, and a zero rect for everything — which
+    // makes the whole check a no-op there rather than something needing a
+    // guard. The split arithmetic itself is unit-tested separately, pure.
+    const paddingBottom = Number.parseFloat(computed?.paddingBottom ?? '') || 0;
+    const borderBottom = Number.parseFloat(computed?.borderBottomWidth ?? '') || 0;
+    return rect.bottom - paddingBottom - borderBottom;
+  }
+
+  /**
+   * Flows whatever doesn't fit a page onto the following one, appending that
+   * page when it doesn't exist yet.
+   *
+   * Two things this deliberately does that the original overflow check did
+   * not. It runs from an effect on `pages`, so content arriving from *any*
+   * source paginates — a `pages` prop, a host's `onPagesChange`, an AI writing
+   * a long body in one shot — not only a keystroke, which was the single
+   * caller before. And it moves the overflowing blocks rather than appending
+   * an empty page beside them, which left the overflow clipped and invisible
+   * inside the page above with no scrollbar to reveal it.
+   *
+   * One page per pass: the effect re-runs on the resulting `pages` and picks
+   * the content up wherever it landed. Content only ever moves forward, and
+   * `paginationSplitIndex` never moves a page's first block, so this
+   * terminates rather than shuffling a too-tall block along forever.
+   */
+  function reflowOverflow() {
     const current = pagesRef.current;
-    if (index !== current.length - 1) return;
-    const body = bodyRefs.current.get(index);
-    if (!body) return;
-    if (body.scrollHeight > body.clientHeight + 1) {
-      const next = [...current, ''];
+    for (let index = 0; index < current.length; index += 1) {
+      // Absent whenever the page isn't mounted — `chrome={false}` renders
+      // only the active page. Its turn comes when it is.
+      const body = bodyRefs.current.get(index);
+      const content = body ? contentRootOf(body) : null;
+      if (!body || !content) continue;
+
+      const blocks = Array.from(content.children) as HTMLElement[];
+      const split = paginationSplitIndex(
+        blocks.map((block) => block.getBoundingClientRect().bottom),
+        clipLimitOf(body),
+      );
+      if (split === -1) continue;
+
+      const next = [...current];
+      next[index] = blocks
+        .slice(0, split)
+        .map((block) => block.outerHTML)
+        .join('');
+      const moved = blocks
+        .slice(split)
+        .map((block) => block.outerHTML)
+        .join('');
+      if (index + 1 < next.length) next[index + 1] = moved + (next[index + 1] ?? '');
+      else next.push(moved);
+
       setPages(next);
-      setActiveIndex(next.length - 1);
+      // Only a split on the page being typed into carries the caret across
+      // with the content. A split caused by a `pages` prop update must not
+      // move anyone's focus.
+      if (typingPageRef.current === index) carryCaretForward(index + 1);
+      return;
     }
   }
 
+  /**
+   * Puts the caret back at the end of the content that just moved, on its new
+   * page — where the person was typing when the break happened. Deferred a
+   * macrotask so the moved HTML is in the DOM to place a `Range` in;
+   * `setTimeout` rather than `requestAnimationFrame` because rAF never fires
+   * at all in a backgrounded/unpainted tab (confirmed live — a real failure
+   * mode for an app switched away from mid-paste), while a macrotask still
+   * runs regardless of paint state.
+   */
+  function carryCaretForward(index: number) {
+    setActiveIndex(index);
+    setTimeout(() => {
+      const body = bodyRefs.current.get(index);
+      const content = body ? contentRootOf(body) : null;
+      const first = content?.firstElementChild;
+      if (!content || !first) return;
+      content.focus?.();
+      const selection = window.getSelection?.();
+      if (!selection || typeof document.createRange !== 'function') return;
+      const range = document.createRange();
+      range.selectNodeContents(first);
+      range.collapse(false);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }, 0);
+  }
+
+  // A ref, not the function itself, so the effect's dependency list can name
+  // what actually changes the answer (content and page geometry) rather than
+  // a closure identity that changes every render — which would re-measure
+  // every page on every keystroke. Same synced-every-render pattern as
+  // `pagesRef` above.
+  const reflowRef = useRef(reflowOverflow);
+  reflowRef.current = reflowOverflow;
+
+  // An inline `{width, height}` aspect ratio is a fresh object every render;
+  // its *value* is what changes what fits on a page.
+  const aspectRatioKey =
+    typeof aspectRatio === 'string' ? aspectRatio : `${aspectRatio.width}x${aspectRatio.height}`;
+
+  useEffect(() => {
+    reflowRef.current();
+    // Cleared whether or not this pass split anything: the flag only ever
+    // describes the change that triggered this very run, and a stale one
+    // would let a later `pages` prop update steal the caret.
+    typingPageRef.current = undefined;
+  }, [pages, aspectRatioKey, layout, view, chrome, editable, activeIndex]);
+
   function handlePageChange(index: number, html: string) {
+    typingPageRef.current = index;
     setPages(pagesRef.current.map((page, i) => (i === index ? html : page)));
-    // Deferred, not checked synchronously — the DOM hasn't reflowed for the
-    // new content yet at this exact point in the event handler. `setTimeout`
-    // rather than `requestAnimationFrame`: rAF never fires at all in a
-    // backgrounded/unpainted tab (confirmed live — a real, not just
-    // test-environment, failure mode for a canvas app switched away from
-    // mid-paste), while a macrotask still runs regardless of paint state.
-    setTimeout(() => checkOverflow(index), 0);
   }
 
   function goToPage(index: number) {
@@ -612,8 +744,13 @@ export function Document({
             />
           ) : (
             // Same trust model as `CanvasBlock`'s `text` kind: HTML the
-            // consumer already owns, not third-party markup.
-            <div className={styles.staticBody} dangerouslySetInnerHTML={{ __html: html }} />
+            // consumer already owns, not third-party markup. Marked so
+            // `contentRootOf` can find it without a hashed CSS-module class.
+            <div
+              className={styles.staticBody}
+              data-document-body=""
+              dangerouslySetInnerHTML={{ __html: html }}
+            />
           )}
         </DocumentPage.Body>
         {(footerEditable || footer) && (
@@ -673,19 +810,23 @@ export function Document({
     );
   }
 
+  const hasNameTag = !!name || nameEditing;
+
   /**
    * `name` is the document's own identity (a file name), not in-page content
    * — rendered as a small tab-style label above the page's top-left corner,
    * separate from `header`/`headerValue` (which prints/exports with the
    * page). Shown once, above whichever page is currently visible: the only
-   * page in `chrome={false}` embedding, or page 1 in the standalone list/grid
+   * page in `chrome={false}` embedding, or page 1 in the standalone list
    * viewer — a name tag on every page in a long document would just repeat.
    * Double-clicking it swaps it for a text input when `onNameChange` is
    * supplied.
+   *
+   * Grid view does **not** go through here — see `.gridNameRow`.
    */
   function renderPageWithName(html: string, index: number, isNamedPage: boolean) {
     const page = renderPage(html, index);
-    if ((!name && !nameEditing) || !isNamedPage) return page;
+    if (!hasNameTag || !isNamedPage) return page;
     return (
       <div key={`named-${index}`} className={styles.namedPage}>
         {renderNameTag()}
@@ -934,7 +1075,22 @@ export function Document({
             onKeyUp={handleEditableSurfaceSelect}
             onMouseUp={handleEditableSurfaceSelect}
           >
-            {pages.map((html, index) => renderPageWithName(html, index, index === 0))}
+            {/* Grid lays the pages out as a wrapping row of equal-height
+                cells, so attaching the name tag to page 1 — the list view's
+                arrangement, where the tag reads as a label on the column
+                below it — makes page 1's cell taller than every other and
+                knocks the whole row off its baseline. In grid the tag is one
+                full-width row of its own above the pages: still one tag for
+                the document, now belonging to all of them rather than to the
+                first. */}
+            {view === 'grid' && hasNameTag && (
+              <div className={styles.gridNameRow}>{renderNameTag()}</div>
+            )}
+            {pages.map((html, index) =>
+              view === 'grid'
+                ? renderPage(html, index)
+                : renderPageWithName(html, index, index === 0),
+            )}
           </div>
         </div>
       </div>
