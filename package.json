@@ -1,6 +1,6 @@
 {
   "name": "@mellon-design/react",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "description": "Production-grade React + TypeScript component library, styled through --ds-* CSS variables backed by the @mellon-design/tokens-web Design System Foundation package.",
   "private": false,
   "publishConfig": {

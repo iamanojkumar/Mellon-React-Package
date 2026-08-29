@@ -1,5 +1,39 @@
 # @mellon-design/react
 
+## 0.11.1
+
+### Patch Changes
+
+- c8f5ad2: **Fixed — `Document`'s editing experience: a page was a `24rem` card, its zoom control didn't change text size, and content clipped at the bottom of a sheet.**
+
+  **A page is a real sheet now.** Each page is sized at A4's own width (`49.625rem` — 210mm at 96dpi) with a 1in print margin and `--ds-font-size-md` body text, instead of `24rem` with `--ds-font-size-sm` — which is why typing into one read as writing inside a card.
+
+  **Zoom is a real length, not a `transform`.** One custom property, `--doc-sheet-scale`, multiplies sheet width, print margin, and text size together, so zooming changes the text size (the thing a transform could do) without changing how much text fits on a page (the thing it couldn't). The `transform: scale()` it replaces was wrong three ways at once:
+
+  - A transform takes no part in layout, so zooming in never grew the scroll area — the sides and bottom of the page went somewhere with no scrollbar to reach them. The `align-items: center` under it made the start-edge overflow unreachable even in principle; pages centre with `margin-inline: auto` now.
+  - Auto-pagination compared `getBoundingClientRect()` (scaled by the transform) against a padding read from `getComputedStyle` (not scaled), so above 100% the clip limit was wrong by the padding times the zoom factor and pages split in the wrong place.
+  - Grid view shrank the sheet and left full-size text in it, so a thumbnail read as a cropped page rather than a small one. It drives the same scale factor down to `0.32` instead.
+
+  **The page states its own prose typography.** `reset.css` zeroes every margin and isn't part of `dist` at all, so paragraph, heading, and list rhythm inside a page could not be inherited from anywhere — paragraphs ran together with no gap. `Document` defines the scale itself, entirely in `em` so it rides `--doc-sheet-scale`, and zeroes the first and last block's outer margins, which land _inside_ the page's print margin rather than collapsing through it and otherwise opened every sheet with a blank line.
+
+  **Less chrome above the page.** The formatting toolbar and the view/zoom controls share one row instead of stacking two full-width bars, and a page's header no longer sits a full print margin away from the first line under it — header and body are inside the same margin, so stacking both paddings put a margin's worth of dead space at the top of every sheet. The zoom control also shows its current percentage, which doubles as the reset-to-100% button.
+
+  **The whole page body is a click target.** `RichTextEditor` puts `className` on its root, not on its editable surface, whose own `min-height` is a fixed `8em` — so the caret area stopped a fixed distance down a sheet of any height and clicking the blank rest of it did nothing.
+
+  `DocumentPage` gains two CSS custom properties, `--doc-page-margin` and `--doc-page-font-size`, defaulted to `--ds-*` tokens — that is the seam `Document` scales through. A `DocumentPage` used on its own is unchanged apart from the header/body seam. An embedded (`chrome={false}`) page reads the same two from container-query units, so it stays in proportion inside whatever box its host gave it, floored so a small `Canvas` block stays legible. No prop was added, removed, or changed.
+
+- c8f5ad2: **Fixed — sticky notes and shapes could not be resized at all in `0.11.0`, with no way for a host to restore it.** `isNodeLikeBlockKind` bundled three questions into one predicate, and "is this resizable" was the wrong one to group with the other two: it is right for a `node`, whose size is its label's, and wrong for a sticky note, which is a container for arbitrary prose whose author has every reason to widen it. The grouping also disagreed with the data layer — `applyCanvasCommands` has always honoured `op: 'resize'` for every kind — so a programmatic resize worked while a person couldn't do it by hand.
+
+  `node` still refuses resizing by every path. `sticky` and `shape` resize again by pointer and by Alt+arrows, and keep their connection ports and rounded selection highlight. The new `isFixedSizeBlockKind` / `FIXED_SIZE_BLOCK_KINDS` are exported alongside the existing `isNodeLikeBlockKind` / `NODE_LIKE_BLOCK_KINDS`; nothing is removed.
+
+  **Their resize zones are invisible, and the cursor is the affordance.** Rather than the eight dots the sized kinds draw, a `sticky`/`shape` gets the same eight zones with nothing painted on them — strips along the edges, squares at the corners — so the block keeps a clean edge until you reach for one, and the pointer changes to `ew-resize`/`ns-resize`/`nwse-resize`/`nesw-resize` where a drag would start. An edge strip is also a bigger target than a 10px dot at its midpoint. Corners sit above the edges so a corner cursor wins where they meet.
+
+  Also removed `src/utilities/tolerantJson.ts`, which had no callers and reached `0.11.0` only as a stray `.d.ts` — it was never exported from the package root and never present in `dist/index.js`, so nothing can be importing it.
+
+  **Fixed — `image` blocks could not be dragged on the canvas, in any browser.** An `<img>` is natively draggable, so pressing an image block and moving started the browser's own image drag-and-drop; `Canvas` then received a `pointercancel` instead of the `pointermove` sequence its move gesture needs, and the block never travelled. `img` is deliberately absent from `INTERACTIVE_IN_BLOCK`, so the press was always _meant_ to become a block drag — the browser was taking it first. The canvas's `image` face now passes `draggable={false}`.
+
+  Set on the canvas face rather than on `Image` itself, so `Image`'s own default is unchanged: a draggable image is a legitimate thing to want elsewhere (dragging a thumbnail into an editor), and only on a canvas does an ancestor already own the press.
+
 ## 0.11.0
 
 ### Minor Changes
