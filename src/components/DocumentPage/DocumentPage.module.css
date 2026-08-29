@@ -1,21 +1,43 @@
+/*
+  The page's own print geometry — margin and text size — in one place, so
+  header/body/footer can never drift apart, and so a host can rescale the
+  whole sheet by overriding two variables rather than restating every rule.
+
+  Local variables rather than `--ds-*` tokens because `Document` does exactly
+  that: it scales the sheet, its margin, and its text by one zoom factor
+  together. A margin that stayed a fixed token while the sheet grew would
+  change how much text fits on a page at each zoom level — i.e. zooming would
+  repaginate the document. Standalone `DocumentPage` consumers keep the
+  token-valued defaults below and never see the difference.
+*/
 .page {
+  --doc-page-margin: var(--ds-space-lg);
+  --doc-page-font-size: var(--ds-font-size-md);
+
   display: flex;
   flex-direction: column;
   width: 100%;
   overflow: hidden;
+  color: var(--ds-color-text-primary);
+  font-family: var(--ds-font-family-base);
+  font-size: var(--doc-page-font-size);
+  line-height: var(--ds-line-height-base);
 }
 
 .header {
   flex: none;
-  padding: var(--ds-space-lg) var(--ds-space-lg) 0;
+  padding: var(--doc-page-margin) var(--doc-page-margin) 0;
 }
 
+/* `em`, not `--ds-font-size-xs`: page furniture is sized relative to the
+   page's own body text, so it stays in proportion when the sheet is scaled
+   (a zoomed page, a grid thumbnail) instead of snapping back to a fixed
+   token and swamping the miniature it sits on. */
 .footer {
   flex: none;
-  padding: 0 var(--ds-space-lg) var(--ds-space-lg);
+  padding: 0 var(--doc-page-margin) var(--doc-page-margin);
   color: var(--ds-color-text-secondary);
-  font-family: var(--ds-font-family-base);
-  font-size: var(--ds-font-size-xs);
+  font-size: 0.75em;
 }
 
 /* `min-height: 0` — a flex child otherwise refuses to shrink below its
@@ -24,12 +46,21 @@
 .body {
   flex: 1 1 auto;
   min-height: 0;
-  padding: var(--ds-space-lg);
+  padding: var(--doc-page-margin);
   overflow: hidden;
-  color: var(--ds-color-text-primary);
-  font-family: var(--ds-font-family-base);
-  font-size: var(--ds-font-size-sm);
-  line-height: var(--ds-line-height-base);
+}
+
+/* A header/footer sits *inside* the same page margin the body uses, so
+   stacking the two paddings put a full margin's worth of dead space between
+   a masthead and the first line under it — a page that read as top-heavy
+   even when its header held a single line of text. The seam between them is
+   a paragraph gap; only the sheet's outer edges keep the full margin. */
+.header + .body {
+  padding-block-start: 1em;
+}
+
+.body:has(+ .footer) {
+  padding-block-end: 1em;
 }
 
 .bodyGrid {

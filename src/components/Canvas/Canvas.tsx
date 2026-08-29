@@ -1,6 +1,6 @@
 import { forwardRef, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { ComponentPropsWithoutRef, KeyboardEvent, PointerEvent, ReactNode } from 'react';
-import { CanvasBlock, isNodeLikeBlockKind } from '../CanvasBlock/CanvasBlock';
+import { CanvasBlock, isFixedSizeBlockKind, isNodeLikeBlockKind } from '../CanvasBlock/CanvasBlock';
 import type { CanvasResizeHandle } from '../CanvasBlock/CanvasBlock';
 import { CanvasConnector } from '../CanvasConnector/CanvasConnector';
 import { CanvasOutline } from '../CanvasOutline/CanvasOutline';
@@ -942,10 +942,11 @@ const CanvasRoot = forwardRef<HTMLDivElement, CanvasProps>(function Canvas(
     if (event.altKey) {
       const block = findCanvasBlock(scene, primary);
       if (!block) return;
-      // A node-like block has no pointer resize handles either — its size is
-      // its content's. Said out loud rather than silently ignored, or the key
-      // just appears not to have registered.
-      if (isNodeLikeBlockKind(block.kind)) {
+      // A fixed-size block has no pointer affordance either — its size is its
+      // content's. Said out loud rather than silently ignored, or the key just
+      // appears not to have registered. `sticky` and `shape` are node-like but
+      // not fixed-size, so they resize by both paths.
+      if (isFixedSizeBlockKind(block.kind)) {
         setAnnouncement(`${canvasBlockLabel(block)} can't be resized.`);
         return;
       }

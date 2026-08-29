@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { FocusEvent, FormEvent, KeyboardEvent, ReactNode, SyntheticEvent } from 'react';
+import type {
+  CSSProperties,
+  FocusEvent,
+  FormEvent,
+  KeyboardEvent,
+  ReactNode,
+  SyntheticEvent,
+} from 'react';
 import { DocumentPage } from '../DocumentPage/DocumentPage';
 import type { DocumentPageLayout } from '../DocumentPage/DocumentPage';
 import {
@@ -192,6 +199,23 @@ function ListViewIcon() {
       <rect x="2" y="2" width="10" height="2.5" rx="0.5" fill="currentColor" />
       <rect x="2" y="6" width="10" height="2.5" rx="0.5" fill="currentColor" />
       <rect x="2" y="10" width="10" height="2.5" rx="0.5" fill="currentColor" />
+    </svg>
+  );
+}
+
+function ZoomOutIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+      <rect x="2" y="6" width="10" height="2" rx="1" fill="currentColor" />
+    </svg>
+  );
+}
+
+function ZoomInIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+      <rect x="2" y="6" width="10" height="2" rx="1" fill="currentColor" />
+      <rect x="6" y="2" width="2" height="10" rx="1" fill="currentColor" />
     </svg>
   );
 }
@@ -526,6 +550,8 @@ export function Document({
   function applyZoom(next: number) {
     setZoom(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, next)));
   }
+
+  const zoomPercent = Math.round(zoom * 100);
 
   /**
    * The page a keystroke last landed in, consumed by the very next reflow
@@ -975,59 +1001,78 @@ export function Document({
 
   return (
     <div className={mergeClasses(styles.root, className)}>
+      {/* One chrome row: the formatting controls (only while `editable`) and
+          the view/zoom controls, rather than a stacked bar each. Two rows of
+          chrome above a page is most of what made an editable document read
+          as a form with a preview under it. */}
       <div className={styles.toolbar}>
-        <div className={styles.viewToggle} role="group" aria-label="Page view">
-          {hasToc && (
+        {editable && renderFormatToolbar()}
+        <div className={styles.viewControls}>
+          <div className={styles.viewToggle} role="group" aria-label="Page view">
+            {hasToc && (
+              <IconButton
+                aria-label="Toggle table of contents"
+                size="sm"
+                variant={tocOpen ? 'secondary' : 'ghost'}
+                aria-pressed={tocOpen}
+                onClick={() => setTocOpen(!tocOpen)}
+              >
+                <TocIcon />
+              </IconButton>
+            )}
             <IconButton
-              aria-label="Toggle table of contents"
+              aria-label="List view"
               size="sm"
-              variant={tocOpen ? 'secondary' : 'ghost'}
-              aria-pressed={tocOpen}
-              onClick={() => setTocOpen(!tocOpen)}
+              variant={view === 'list' ? 'secondary' : 'ghost'}
+              aria-pressed={view === 'list'}
+              onClick={() => setView('list')}
             >
-              <TocIcon />
+              <ListViewIcon />
             </IconButton>
-          )}
-          <IconButton
-            aria-label="List view"
-            size="sm"
-            variant={view === 'list' ? 'secondary' : 'ghost'}
-            aria-pressed={view === 'list'}
-            onClick={() => setView('list')}
-          >
-            <ListViewIcon />
-          </IconButton>
-          <IconButton
-            aria-label="Grid view"
-            size="sm"
-            variant={view === 'grid' ? 'secondary' : 'ghost'}
-            aria-pressed={view === 'grid'}
-            onClick={() => setView('grid')}
-          >
-            <GridViewIcon />
-          </IconButton>
-        </div>
-        <div className={styles.zoomControls} role="group" aria-label="Zoom">
-          <IconButton
-            aria-label="Zoom out"
-            size="sm"
-            variant="ghost"
-            onClick={() => applyZoom(zoom / ZOOM_STEP)}
-          >
-            −
-          </IconButton>
-          <IconButton
-            aria-label="Zoom in"
-            size="sm"
-            variant="ghost"
-            onClick={() => applyZoom(zoom * ZOOM_STEP)}
-          >
-            +
-          </IconButton>
+            <IconButton
+              aria-label="Grid view"
+              size="sm"
+              variant={view === 'grid' ? 'secondary' : 'ghost'}
+              aria-pressed={view === 'grid'}
+              onClick={() => setView('grid')}
+            >
+              <GridViewIcon />
+            </IconButton>
+          </div>
+          <div className={styles.zoomControls} role="group" aria-label="Zoom">
+            <IconButton
+              aria-label="Zoom out"
+              size="sm"
+              variant="ghost"
+              disabled={zoom <= MIN_ZOOM}
+              onClick={() => applyZoom(zoom / ZOOM_STEP)}
+            >
+              <ZoomOutIcon />
+            </IconButton>
+            {/* A readout *and* the reset control — a silent transform gives
+                no way to tell 110% from 120%, and no way back to 100% short
+                of stepping there by guess. */}
+            <Button
+              size="sm"
+              variant="ghost"
+              className={styles.zoomValue}
+              aria-label={`Zoom ${zoomPercent}%, reset to 100%`}
+              onClick={() => applyZoom(1)}
+            >
+              {zoomPercent}%
+            </Button>
+            <IconButton
+              aria-label="Zoom in"
+              size="sm"
+              variant="ghost"
+              disabled={zoom >= MAX_ZOOM}
+              onClick={() => applyZoom(zoom * ZOOM_STEP)}
+            >
+              <ZoomInIcon />
+            </IconButton>
+          </div>
         </div>
       </div>
-
-      {editable && renderFormatToolbar()}
 
       <div className={styles.workspace}>
         {hasToc && tocOpen && (
@@ -1069,7 +1114,13 @@ export function Document({
           <div
             className={styles.world}
             data-view={view}
-            style={{ transform: `scale(${zoom})` }}
+            /* A CSS variable, not `transform: scale()`. The stylesheet
+               multiplies the sheet's width, print margin, and text size by
+               it together, so zooming reflows real layout — the viewport
+               scrolls to the whole page instead of clipping it, and
+               auto-pagination keeps measuring in one coordinate space. See
+               `Document.module.css`'s `.world` note. */
+            style={{ '--doc-zoom': zoom } as CSSProperties}
             onFocus={handleEditableSurfaceFocus}
             onBlur={handleEditableSurfaceBlur}
             onKeyUp={handleEditableSurfaceSelect}

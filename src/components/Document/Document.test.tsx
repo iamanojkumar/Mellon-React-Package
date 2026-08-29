@@ -169,10 +169,16 @@ describe('Document chrome', () => {
     const { container } = render(<Document defaultPages={['a']} />);
     const world = () => container.querySelector('[class*="world"]') as HTMLElement;
 
-    expect(world()).toHaveStyle({ transform: 'scale(1)' });
+    // Zoom is a real-length scale factor the stylesheet multiplies the
+    // sheet's width/margin/text by, not a `transform` — see
+    // `Document.module.css`'s `.world` note.
+    expect(world().style.getPropertyValue('--doc-zoom')).toBe('1');
 
     await user.click(screen.getByRole('button', { name: 'Zoom in' }));
-    expect(world().style.transform).not.toBe('scale(1)');
+    expect(Number(world().style.getPropertyValue('--doc-zoom'))).toBeGreaterThan(1);
+
+    await user.click(screen.getByRole('button', { name: /reset to 100%/ }));
+    expect(world().style.getPropertyValue('--doc-zoom')).toBe('1');
   });
 });
 

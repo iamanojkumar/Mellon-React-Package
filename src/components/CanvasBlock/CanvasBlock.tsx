@@ -39,17 +39,39 @@ export const NODE_LIKE_BLOCK_KINDS = ['node', 'sticky', 'shape'] as const;
 /**
  * Whether a kind is a diagram node — `node`, `sticky` and `shape`.
  *
- * Three consequences hang together on this one predicate, which is why it's a
- * predicate and not three separate checks: such a block is **not resizable**
- * (no pointer handles, no Alt+arrow resize — its size is its content's, the
- * way a pill's is), it is **connectable** (it draws `Node`'s input/output
- * ports and can be wired to any other block), and selecting it draws a
- * **rounded highlight** rather than the rectangular resize frame the sized
- * kinds carry. A frame with corner points that don't resize anything would be
- * a lie about what the block does.
+ * Two consequences hang together on this predicate: such a block is
+ * **connectable** (it draws `Node`'s input/output ports and can be wired to
+ * any other block), and selecting it draws a **rounded highlight** rather than
+ * the rectangular frame the sized kinds carry.
+ *
+ * It used to carry a third — "not resizable" — which was wrong for two of the
+ * three kinds and shipped as a regression. See `isFixedSizeBlockKind`.
  */
 export function isNodeLikeBlockKind(kind: CanvasBlockData['kind']): boolean {
   return kind === 'node' || kind === 'sticky' || kind === 'shape';
+}
+
+/** The kinds whose size is their content's, and which therefore cannot be resized at all. */
+export const FIXED_SIZE_BLOCK_KINDS = ['node'] as const;
+
+/**
+ * Whether a kind refuses resizing by every path — no pointer affordance, and
+ * Alt+arrows announces a refusal rather than silently doing nothing.
+ *
+ * Only `node`, whose size is its label's the way a pill's is. This was
+ * originally folded into `isNodeLikeBlockKind`, which made `sticky` and
+ * `shape` unresizable too — defensible for a pill, wrong for a sticky note,
+ * which is a container for arbitrary prose and whose author has every reason
+ * to widen it. That grouping also disagreed with the data layer, since
+ * `applyCanvasCommands` has always honoured `op: 'resize'` for every kind: a
+ * programmatic resize worked while a person couldn't do it by hand.
+ *
+ * The two are separate predicates rather than one because they answer
+ * different questions — "does this connect and highlight like a node" and
+ * "does this have a size of its own" — and only `node` answers yes to both.
+ */
+export function isFixedSizeBlockKind(kind: CanvasBlockData['kind']): boolean {
+  return kind === 'node';
 }
 
 export interface CanvasBlockOwnProps {
@@ -223,7 +245,26 @@ function BlockFace({
       return <CanvasFrame title={block.title} {...(block.tone ? { tone: block.tone } : {})} />;
 
     case 'image':
-      return <Image className={styles.image} src={block.src} alt={block.alt} fit="cover" />;
+      // `draggable={false}` is load-bearing, not tidiness. An `<img>` is
+      // natively draggable in every browser, so pressing one and moving starts
+      // the browser's own image drag-and-drop; the canvas then receives a
+      // `pointercancel` instead of the `pointermove` sequence its move gesture
+      // needs, and the block never travels. `img` is deliberately absent from
+      // `INTERACTIVE_IN_BLOCK`, so the press is *meant* to become a block drag
+      // — the browser was simply taking it first.
+      //
+      // Set here rather than on `Image` itself: a draggable image is a
+      // legitimate thing to want elsewhere (dragging a thumbnail into an
+      // editor), and only on a canvas does an ancestor already own the press.
+      return (
+        <Image
+          className={styles.image}
+          src={block.src}
+          alt={block.alt}
+          fit="cover"
+          draggable={false}
+        />
+      );
 
     case 'divider':
       return (
@@ -384,6 +425,7 @@ export const CanvasBlock = forwardRef<HTMLDivElement, CanvasBlockProps>(function
   ref,
 ) {
   const nodeLike = isNodeLikeBlockKind(block.kind);
+  const fixedSize = isFixedSizeBlockKind(block.kind);
 
   const showFillPicker =
     selected &&
@@ -463,19 +505,27 @@ export const CanvasBlock = forwardRef<HTMLDivElement, CanvasBlockProps>(function
       )}
 
       {/* Pointer-only affordance: keyboard resizing is Alt+arrows on the
-          block itself, so the handles add nothing for a keyboard user and
-          would only add eight tab stops per block.
+          block itself, so these add nothing for a keyboard user and would
+          only add eight tab stops per block.
 
-          Never drawn for a node-like kind, whatever `resizable` says — those
-          three aren't resizable by any path, and corner points that resize
-          nothing are worse than none. Their selection state is the rounded
-          highlight in the stylesheet instead. */}
-      {resizable && selected && !nodeLike && (
+          Never drawn for a fixed-size kind, whatever `resizable` says —
+          a `node`'s size is its label's, and corner points that resize
+          nothing are worse than none.
+
+          A node-like kind that *is* resizable (`sticky`, `shape`) gets the
+          same eight zones with no paint on them: invisible strips along the
+          edges and squares at the corners, which announce themselves by the
+          cursor alone. A note is a surface someone is reading, and eight dots
+          orbiting it to say "this can be resized" cost more attention than
+          they return — the cursor says the same thing at the moment it's
+          actually useful, and says nothing the rest of the time. Corners sit
+          above the edges so a corner cursor wins where they meet. */}
+      {resizable && selected && !fixedSize && (
         <span aria-hidden="true" className={styles.handles} data-canvas-resize-handles="">
           {RESIZE_HANDLES.map((handle) => (
             <span
               key={handle}
-              className={styles.handle}
+              className={nodeLike ? styles.edgeHandle : styles.handle}
               data-handle={handle}
               onPointerDown={(event) => onResizeStart?.(event, handle)}
             />

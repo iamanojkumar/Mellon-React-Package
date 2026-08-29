@@ -6,19 +6,42 @@
   height: 100%;
 }
 
+/* One chrome row, not two. The formatting controls and the view/zoom
+   controls used to stack as separate full-width rows above the page, which
+   ate two rows' worth of height before a single line of the document was
+   visible — the thing that made an editable document feel like a form with a
+   preview under it rather than a page. Both groups now share this row; the
+   view/zoom group pushes itself to the end so it stays put whether or not
+   the format group is there (a read-only document renders no format
+   controls at all). */
 .toolbar {
   display: flex;
   flex: none;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
   gap: var(--ds-space-sm);
+}
+
+.viewControls {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-sm);
+  margin-inline-start: auto;
 }
 
 .viewToggle,
 .tocToggle,
 .zoomControls {
   display: flex;
+  align-items: center;
   gap: var(--ds-space-xs);
+}
+
+/* Fixed width so stepping through 50%/100%/150% doesn't shuffle the
+   buttons either side of it. `tabular-nums` for the same reason. */
+.zoomValue {
+  min-width: 4ch;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Row holding the optional table-of-contents panel plus the page viewport —
@@ -76,29 +99,70 @@
   border-radius: var(--ds-radius-md);
 }
 
+/*
+  The page stack.
+
+  `--doc-sheet-scale` is the single number every piece of page geometry is
+  multiplied by — sheet width, print margin, and body text size all move
+  together, so a page reads as the same document at every zoom level and,
+  crucially, **the same amount of text fits on it**. Scaling only the sheet
+  (or only the text) would repaginate the document every time someone zoomed.
+
+  This replaces a `transform: scale()` on `.world`, which was wrong in three
+  ways at once. A transform doesn't take part in layout, so zooming in never
+  grew the scroll area — the sides of the page went somewhere unreachable
+  and the bottom clipped. It also broke auto-pagination, which compares
+  `getBoundingClientRect()` (scaled by the transform) against a padding read
+  from `getComputedStyle` (not scaled), so the clip limit was wrong by the
+  padding times the zoom factor and pages split in the wrong place. Zooming
+  by real lengths has neither problem: everything the pagination pass
+  measures is in the same coordinate space it always was.
+*/
 .world {
+  /* An A4 sheet at 96dpi (210mm). Paper geometry, not a design value —
+     there is no token for "the width of a page", and there shouldn't be. */
+  --doc-sheet-natural-width: 49.625rem;
+  --doc-sheet-scale: var(--doc-zoom);
+  --doc-sheet-width: calc(var(--doc-sheet-natural-width) * var(--doc-sheet-scale));
+  /* Two `2xl`s — a 1in print margin on a 96dpi A4 sheet. */
+  --doc-sheet-margin: calc(var(--ds-space-2xl) * 2 * var(--doc-sheet-scale));
+  --doc-sheet-font-size: calc(var(--ds-font-size-md) * var(--doc-sheet-scale));
+
   display: flex;
   flex-direction: column;
-  align-items: center;
+  /* `flex-start` + `margin-inline: auto` on the pages, not `center`. A
+     centred flex item that outgrows its container overflows *both* ways and
+     the start-edge overflow is unreachable — no scrollbar is generated for
+     it — which is what cut the left margin off every page above 100% zoom.
+     Auto margins centre the same way while still yielding to the overflow. */
+  align-items: flex-start;
+  /* Grows past the viewport when the page does, so `padding` below stays a
+     real gutter on the far side instead of collapsing at the scroll end. */
+  width: fit-content;
+  min-width: 100%;
+  box-sizing: border-box;
   gap: var(--ds-space-xl);
   padding: var(--ds-space-xl);
-  transform-origin: 50% 0;
 }
 
+/* Grid view is a contact sheet of thumbnails, so it scales the *whole* page
+   down rather than shrinking the sheet and leaving full-size text in it —
+   which is what made a grid cell read as a cropped page instead of a small
+   one. */
 .world[data-view='grid'] {
+  --doc-sheet-scale: calc(var(--doc-zoom) * 0.32);
+
   flex-direction: row;
   flex-wrap: wrap;
   align-items: flex-start;
   justify-content: center;
+  width: auto;
 }
 
 .page {
   flex: none;
-  width: 24rem;
-}
-
-.world[data-view='grid'] .page {
-  width: 16rem;
+  width: var(--doc-sheet-width);
+  margin-inline: auto;
 }
 
 /* Doubled class to reliably beat `Card`'s own single-class `.card` radius
@@ -109,19 +173,36 @@
   border-radius: 0;
 }
 
+/* Hands `DocumentPage`'s own two geometry variables the scaled values, so
+   header, body, and footer can never drift out of proportion with the sheet
+   holding them. Scoped to `.world` — the `--doc-sheet-*` variables only
+   exist there, and a bare/embedded page (below) sizes itself from its host
+   box instead. The shadow is what separates the sheet from the recessed
+   workspace behind it; the border alone left it reading as a panel drawn on
+   the background rather than a sheet resting on it. */
+.world .page {
+  --doc-page-margin: var(--doc-sheet-margin);
+  --doc-page-font-size: var(--doc-sheet-font-size);
+
+  box-shadow: var(--ds-elevation-md);
+}
+
 /* `name` (a consumer-supplied document title, not in-page content) renders
    as a small tab-style label above the page's own top-left corner — a
    column so the label sits above the page rather than beside it. Deliberately
    *not* `width: 100%` here: `.world` centers each page by letting it shrink-
-   to-fit its own content width (the page's fixed `24rem`/`16rem`); a
+   to-fit its own content width (the sheet's `--doc-sheet-width`); a
    full-width wrapper here would instead pin itself to the viewport's left
    edge while every other, unwrapped page stays centered — the two reading as
-   misaligned with each other rather than as one consistent stack. */
+   misaligned with each other rather than as one consistent stack. The auto
+   margin centres it the same way `.page` centres itself, for the same
+   overflow-safe reason. */
 .namedPage {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--ds-space-xs);
+  margin-inline: auto;
 }
 
 /* Grid view's name tag: a full-width row forcing a wrap before the pages, so
@@ -187,13 +268,26 @@
   height: 100%;
 }
 
+/* A container, so the embedded page's print geometry can be a share of the
+   host box's width rather than a fixed length — the same proportions a
+   standalone sheet has, at whatever size the host (a `Canvas` block) chose.
+   Without this a 400px-wide block got a full 1in margin and 16px text and
+   read as a fragment of a page rather than a small one. */
 .bareViewport {
+  container-type: inline-size;
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
 }
 
+/* `cqi` = 1% of the host box's width. A 1in margin on a 96dpi A4 sheet is
+   12.1% of its width and body text is 2%; the `clamp`s keep a small block
+   legible rather than faithfully proportional, since a page nobody can read
+   is not a better page. */
 .bare .page {
+  --doc-page-margin: clamp(var(--ds-space-md), 12.1cqi, calc(var(--ds-space-2xl) * 2));
+  --doc-page-font-size: clamp(var(--ds-font-size-sm), 2cqi, var(--ds-font-size-md));
+
   width: 100%;
   height: 100%;
 }
@@ -245,13 +339,15 @@
 /* `caption`/`note` block styles — applied as a class after
    `execCommand('formatBlock', ...)`, since neither has a real HTML tag of
    its own to format into. */
+/* `em`, so a caption keeps its proportion to the body text it annotates at
+   every sheet scale — a fixed token would swamp a grid thumbnail. */
 .caption {
   color: var(--ds-color-text-secondary);
-  font-size: var(--ds-font-size-xs);
+  font-size: 0.75em;
 }
 
 .note {
-  padding: var(--ds-space-sm);
+  padding: 0.5em;
   border-inline-start: var(--ds-border-width-thick) solid var(--ds-color-brand-primary);
   background: var(--ds-color-surface-secondary);
   border-radius: var(--ds-radius-sm);
@@ -260,9 +356,85 @@
 .editor blockquote,
 .staticBody blockquote {
   margin: 0;
-  padding-inline-start: var(--ds-space-md);
+  padding-inline-start: 1em;
   border-inline-start: var(--ds-border-width-medium) solid var(--ds-color-border-primary);
   font-style: italic;
+}
+
+/*
+  Prose rhythm inside a page.
+
+  Not optional and not inherited from anywhere: `reset.css`'s `* { margin: 0 }`
+  flattens every paragraph and heading to zero spacing, and `reset.css` isn't
+  part of `dist` at all — so a consumer who ships their own reset gets a
+  different document from ours. Either way the page has to state its own
+  typography, and a page whose paragraphs ran together with no gap was the
+  most direct reason typing into one felt like typing into a text box.
+
+  Every value is `em`, so the whole scale rides the sheet's one scale factor:
+  a grid thumbnail and a 200% page are the same document at different sizes,
+  not two differently-proportioned ones.
+*/
+.editor :is(p, ul, ol, blockquote, pre, table),
+.staticBody :is(p, ul, ol, blockquote, pre, table) {
+  margin-block: 0 0.75em;
+}
+
+.editor :is(h1, h2, h3, h4, h5, h6),
+.staticBody :is(h1, h2, h3, h4, h5, h6) {
+  margin-block: 1.25em 0.4em;
+  font-weight: var(--ds-font-weight-medium);
+  line-height: var(--ds-line-height-tight);
+}
+
+.editor h1,
+.staticBody h1 {
+  font-size: 1.75em;
+}
+
+.editor h2,
+.staticBody h2 {
+  font-size: 1.4em;
+}
+
+.editor h3,
+.staticBody h3 {
+  font-size: 1.2em;
+}
+
+.editor :is(h4, h5, h6),
+.staticBody :is(h4, h5, h6) {
+  font-size: 1em;
+  font-weight: var(--ds-font-weight-bold);
+}
+
+.editor :is(ul, ol),
+.staticBody :is(ul, ol) {
+  padding-inline-start: 1.5em;
+}
+
+.editor li,
+.staticBody li {
+  margin-block-end: 0.25em;
+}
+
+/* The first block's own top margin lands *inside* the page's print margin
+   rather than collapsing through it (the body has padding), so a page opened
+   at 100% zoom began with a full margin plus a blank line — dead space at the
+   very top of every sheet, and the loudest part of the page feeling
+   top-heavy. Same at the bottom, where it ate into what still fit.
+
+   `.editor` is `RichTextEditor`'s *root*, not its editable surface —
+   `className` lands there — so these have to reach one level further in;
+   `.editor > :first-child` matches the surface itself and does nothing. */
+.editor [contenteditable='true'] > :first-child,
+.staticBody > :first-child {
+  margin-block-start: 0;
+}
+
+.editor [contenteditable='true'] > :last-child,
+.staticBody > :last-child {
+  margin-block-end: 0;
 }
 
 /* `min-height`, not `height` — a fixed `height: 100%` would clip the editor
@@ -274,6 +446,17 @@
    it — clipped by `.body`'s own `overflow: hidden` — when it's not. */
 .editor {
   min-height: 100%;
+}
+
+/* `RichTextEditor` puts `className` on its root, not on the editable surface,
+   and that surface's own `min-height` is a fixed `8em` — so the caret area
+   stopped a fixed distance down a page of any height and clicking the blank
+   rest of the sheet did nothing. Stretching it to fill the root (selected by
+   the stable attribute, not the module's hashed class) makes the whole page
+   body a click target, which is the one thing that decides whether a page
+   feels like paper or like a text box sitting on paper. */
+.editor [contenteditable='true'] {
+  flex: 1 1 auto;
 }
 
 .staticBody {

@@ -729,10 +729,30 @@ describe('Canvas keyboard', () => {
     expect(next.blocks.find((block) => block.id === 'a')?.width).toBe(128);
   });
 
-  // The pointer has no resize handles on these three, so the keyboard must not
+  // The pointer has no resize affordance on a `node`, so the keyboard must not
   // quietly have a path the pointer doesn't — and a key that does nothing at
   // all is indistinguishable from one that didn't register.
-  it('refuses to resize a node-like block, and says so', async () => {
+  it('refuses to resize a fixed-size block, and says so', async () => {
+    const user = userEvent.setup();
+    const onSceneChange = vi.fn();
+    const scene: CanvasScene = {
+      blocks: [{ id: 'n', kind: 'node', name: 'Step', x: 0, y: 0, width: 120, height: 40 }],
+      connectors: [],
+    };
+    render(
+      <Canvas defaultScene={scene} defaultSelectedIds={['n']} onSceneChange={onSceneChange} />,
+    );
+
+    focusCanvas();
+    await user.keyboard('{Alt>}{ArrowRight}{/Alt}');
+
+    expect(onSceneChange).not.toHaveBeenCalled();
+    expect(screen.getByText("Step can't be resized.")).toBeInTheDocument();
+  });
+
+  // The other two node-like kinds are resizable by both paths — the grouping
+  // that made a sticky unresizable shipped as a regression in 0.11.0.
+  it('resizes a sticky with Alt+arrows, node-like or not', async () => {
     const user = userEvent.setup();
     const onSceneChange = vi.fn();
     render(
@@ -746,8 +766,9 @@ describe('Canvas keyboard', () => {
     focusCanvas();
     await user.keyboard('{Alt>}{ArrowRight}{/Alt}');
 
-    expect(onSceneChange).not.toHaveBeenCalled();
-    expect(screen.getByText("Login can't be resized.")).toBeInTheDocument();
+    expect(onSceneChange).toHaveBeenCalled();
+    const next: CanvasScene = onSceneChange.mock.calls.at(-1)?.[0];
+    expect(next.blocks.find((block) => block.id === 'a')?.width).toBeGreaterThan(120);
   });
 
   it('moves every selected block together', async () => {

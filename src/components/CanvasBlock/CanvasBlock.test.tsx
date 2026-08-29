@@ -57,6 +57,15 @@ describe('CanvasBlock faces', () => {
     expect(screen.getByAltText('A diagram')).toBeInTheDocument();
   });
 
+  // An `<img>` is natively draggable, and the browser's own drag-and-drop
+  // pre-empts the pointer sequence the canvas move gesture needs — the block
+  // simply never travels. jsdom has no native drag to reproduce that with, so
+  // this asserts the attribute that prevents it rather than the symptom.
+  it('marks an image block undraggable, so the canvas gesture wins the press', () => {
+    render(<CanvasBlock block={at({ kind: 'image', src: '/a.png', alt: 'A diagram' })} />);
+    expect(screen.getByAltText('A diagram')).toHaveAttribute('draggable', 'false');
+  });
+
   it('renders a titled embed', () => {
     render(
       <CanvasBlock block={at({ kind: 'embed', title: 'Docs', url: 'https://example.com' })} />,
@@ -115,25 +124,52 @@ describe('CanvasBlock handles', () => {
     );
   });
 
-  // The three node-like kinds are sized by their content, so a resize frame
-  // would be a control that does nothing — they get the rounded highlight
-  // (`data-node-like` + `data-selected` in the stylesheet) instead.
-  it.each(['node', 'sticky', 'shape'] as const)(
-    'never draws resize handles on a %s block, even when asked',
+  // A `node` is sized by its label, so a resize frame would be a control that
+  // does nothing. It's the only kind that refuses resizing outright.
+  it('never draws resize zones on a node block, even when asked', () => {
+    const { container } = render(
+      <CanvasBlock block={at({ kind: 'node', name: 'Step' })} resizable selected />,
+    );
+
+    expect(container.querySelector('[data-canvas-resize-handles]')).toBeNull();
+    expect(container.firstElementChild).toHaveAttribute('data-node-like');
+  });
+
+  // `sticky` and `shape` are node-like — they connect and highlight like a
+  // node — but a note is a container for arbitrary prose, so its author has to
+  // be able to widen it. Grouping the two questions together made these
+  // unresizable, which shipped as a regression in 0.11.0.
+  it.each(['sticky', 'shape'] as const)(
+    'gives a %s block resize zones while still being node-like',
     (kind) => {
       const block = at(
-        kind === 'node'
-          ? { kind: 'node', name: 'Step' }
-          : kind === 'sticky'
-            ? { kind: 'sticky', text: 'Note' }
-            : { kind: 'shape', shape: 'rectangle', text: 'Box' },
+        kind === 'sticky'
+          ? { kind: 'sticky', text: 'Note' }
+          : { kind: 'shape', shape: 'rectangle', text: 'Box' },
       );
       const { container } = render(<CanvasBlock block={block} resizable selected />);
 
-      expect(container.querySelector('[data-canvas-resize-handles]')).toBeNull();
+      expect(container.querySelector('[data-canvas-resize-handles]')).toBeInTheDocument();
       expect(container.firstElementChild).toHaveAttribute('data-node-like');
     },
   );
+
+  it('starts a resize from a node-like block’s edge zone', () => {
+    const onResizeStart = vi.fn();
+    const { container } = render(
+      <CanvasBlock
+        block={at({ kind: 'sticky', text: 'Note' })}
+        resizable
+        selected
+        onResizeStart={onResizeStart}
+      />,
+    );
+
+    const east = container.querySelector('[data-handle="e"]');
+    expect(east).toBeInTheDocument();
+    fireEvent.pointerDown(east!);
+    expect(onResizeStart).toHaveBeenCalledWith(expect.anything(), 'e');
+  });
 
   it('marks the sized kinds as not node-like, so they keep their frame', () => {
     const { container } = render(

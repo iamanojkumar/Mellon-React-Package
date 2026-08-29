@@ -362,10 +362,19 @@ through; Escape cancels an armed connection before falling through to
 These three share one predicate, exported as `isNodeLikeBlockKind` (with the
 list as `NODE_LIKE_BLOCK_KINDS`), and three behaviours hang together on it:
 
-- **They are never resizable.** No pointer handles regardless of
-  `CanvasBlock`'s `resizable` prop, and Alt+arrows announces
-  "<block> can't be resized." rather than silently doing nothing. Their size
-  is their content's, the way a pill's is. Every other kind keeps both paths.
+- **Only `node` refuses resizing** (`isFixedSizeBlockKind`): no zones
+  regardless of `CanvasBlock`'s `resizable` prop, and Alt+arrows announces
+  "<block> can't be resized." rather than silently doing nothing. Its size is
+  its label's, the way a pill's is. `sticky` and `shape` resize by both paths
+  — through `0.11.0` they didn't, which was a regression: a sticky is a
+  container for arbitrary prose, and the data layer never agreed anyway, since
+  `applyCanvasCommands` honours `op: 'resize'` for every kind.
+- **Their resize zones are invisible.** `sticky`/`shape` carry the same eight
+  zones and the same drag wiring as the sized kinds, with nothing painted on
+  them: strips along the edges, squares at the corners, and the **cursor is
+  the whole affordance** — the block keeps a clean edge until you reach for
+  one. The strips are a bigger target than the dots they replace, since a
+  whole edge beats a point at its midpoint.
 - **They are connectable.** All three draw `Node`'s input/output port dots and
   can be wired to any other block — a sticky note to a shape is the same
   `connect` command and the same routing a node-to-node edge is. `sticky` and
@@ -506,6 +515,20 @@ scene's bounds ride along so generated blocks don't stack at the origin),
 helpers — `connectorGeometry`, `resolveAnchorSides`, `snapToGrid`,
 `outlineOrder`, `buildCanvasOutline`.
 
+**What `applyCanvasCommands` validates, and what it can't.** It checks ids,
+kinds and shapes against the scene as of that point in the sequence, and turns
+anything that fails into a reported rejection rather than a half-applied
+change. What it cannot check is whether a _string_ is the whole string the
+model wrote: a `text` or `pages` payload truncated by an upstream parse is
+still a structurally perfect command, so it applies cleanly and overwrites
+whatever it replaces. Nothing downstream will flag it, because nothing
+downstream knows what the intended length was. That matters when a reply is
+recovered rather than parsed — a consumer running its own lenient JSON repair
+should decide whether truncated-but-parseable content is acceptable _for that
+content type_ (fine for a note's label, not fine for a document body) before
+handing the commands over, since `parseCanvasResolution` itself is strict:
+`JSON.parse` throws, and the whole reply becomes a `message` with no commands.
+
 ### Affinity mapping (`aiCluster`)
 
 `aiCluster` adds a **Group by theme** trigger: the notes are read, grouped by
@@ -604,11 +627,17 @@ typing already goes through) and mounts a `RichTextEditor` per page while
 
 **Header/footer editing is opt-in and separate from the static slot.** `header`/`footer` stay a plain `ReactNode` — arbitrary JSX, never editable. Supplying `headerValue` (or `defaultHeaderValue`/`onHeaderChange`) switches _that_ page region from the static slot to a `RichTextEditor` bound to that HTML string, the same controlled/uncontrolled shape `pages` uses. A page with no header/footer editing opted in renders exactly as before. `DocumentPage`'s header/footer no longer draw a divider against the body — header, body, and footer read as one continuous page. `DocumentPage`'s outer sheet is flat, not rounded (`.page.page { border-radius: 0 }`, a doubled-class override of `Card`'s own radius rule) — a page reads as a sheet of paper, not a rounded UI card.
 
-**`name` is the document's own identity (a file name), supplied by the consumer — not in-page content.** It renders as a small tab-style label above the page's top-left corner, once, above whichever page is currently visible (the only page in `chrome={false}` embedding, or page 1 in the standalone viewer). It's deliberately separate from `header`/`headerValue`, which is in-page content (a resume's masthead) that prints/exports with the page — `name` never does. Double-clicking the tag swaps it for a text input, committed on Enter/blur and discarded on Escape — but only when `onNameChange` is supplied, the same "a callback is the opt-in" shape the rest of `Document`'s editable surfaces use; without it the tag stays a static label. The tag's wrapper (`.namedPage`) deliberately doesn't stretch to the viewport's full width — `.world` centers each page by letting it shrink to its own `24rem`/`16rem`, and a full-width wrapper around just the named page would pin _that_ page to the left edge while every other page stayed centered, reading as misaligned rather than as one consistent stack. **Grid view doesn't use that wrapper at all**: grid lays the pages out as a wrapping row of cells, and wrapping page 1 alone makes its cell taller than its siblings by the tag's own height, knocking the whole row off its baseline. There the tag is a full-width row of its own (`.gridNameRow`) above the pages — still one tag for the document, now belonging to all of them rather than to the first.
+**`name` is the document's own identity (a file name), supplied by the consumer — not in-page content.** It renders as a small tab-style label above the page's top-left corner, once, above whichever page is currently visible (the only page in `chrome={false}` embedding, or page 1 in the standalone viewer). It's deliberately separate from `header`/`headerValue`, which is in-page content (a resume's masthead) that prints/exports with the page — `name` never does. Double-clicking the tag swaps it for a text input, committed on Enter/blur and discarded on Escape — but only when `onNameChange` is supplied, the same "a callback is the opt-in" shape the rest of `Document`'s editable surfaces use; without it the tag stays a static label. The tag's wrapper (`.namedPage`) deliberately doesn't stretch to the viewport's full width — `.world` centers each page by letting it shrink to its own `--doc-sheet-width`, and a full-width wrapper around just the named page would pin _that_ page to the left edge while every other page stayed centered, reading as misaligned rather than as one consistent stack. **Grid view doesn't use that wrapper at all**: grid lays the pages out as a wrapping row of cells, and wrapping page 1 alone makes its cell taller than its siblings by the tag's own height, knocking the whole row off its baseline. There the tag is a full-width row of its own (`.gridNameRow`) above the pages — still one tag for the document, now belonging to all of them rather than to the first.
+
+**A page is a real sheet, and zoom is a real length — not a `transform`.** `Document`'s standalone viewer sizes each page at A4's own width (`49.625rem` — 210mm at 96dpi) with a 1in print margin and `--ds-font-size-md` body text, so a document reads as a document rather than as prose in a `24rem` card. One custom property, `--doc-sheet-scale`, multiplies all three together — sheet width, print margin, and text size — which is what makes zooming change the text size (the thing a `transform` could do) _without_ changing how much text fits on a page (the thing it couldn't). `DocumentPage` exposes the two variables that scaling lands on, `--doc-page-margin` and `--doc-page-font-size`, and defaults them to `--ds-*` tokens, so a standalone `DocumentPage` is unaffected; grid view drives the same scale down to `0.32` so a thumbnail is a small page rather than a cropped one, and an embedded (`chrome={false}`) page reads them from container-query units so it stays in proportion inside whatever box its host gave it, floored so a small `Canvas` block stays legible.
+
+The zoom control was a `transform: scale()` through `0.11.0` and that was wrong three ways at once: a transform takes no part in layout, so zooming in never grew the scroll area and the sides and bottom of the page went somewhere unreachable; the `align-items: center` under it made the start-edge overflow unreachable even in principle (pages now use `margin-inline: auto` instead); and auto-pagination compared `getBoundingClientRect()` (scaled) against a padding read from `getComputedStyle` (not scaled), so above 100% the clip limit was wrong by the padding times the zoom factor and pages split in the wrong place. The toolbar also shows the current percentage, which doubles as the reset-to-100% control.
+
+**The page states its own prose typography.** `reset.css` zeroes every margin and isn't part of `dist` at all, so paragraph and heading rhythm inside a page can't be inherited from anywhere — `Document` defines it, entirely in `em` so the whole scale rides `--doc-sheet-scale`. The first and last block's outer margins are zeroed, since they land _inside_ the page's print margin rather than collapsing through it and otherwise open every sheet with a blank line.
 
 **`tocOpen`/`defaultTocOpen`/`onTocOpenChange`** (standalone `chrome` only) show/hide a table-of-contents panel to the left of the page(s), listing every `h1`–`h6` found across `pages` (re-parsed via `DOMParser` whenever `pages` changes); clicking an entry jumps to its page (`goToPage` — a heading only ever needs its page, never a scroll offset, since a page's body is a fixed, clipped box that doesn't scroll internally). The toggle icon at the start of the toolbar, and the panel itself, render only when at least one heading exists — an empty panel never takes up space.
 
-**One shared formatting toolbar, not one per region.** Every `RichTextEditor` `Document` mounts (header, body, footer) renders `showToolbar={false}` — `Document` itself renders a single toolbar above the page while `editable`, acting on whichever of the three surfaces was last focused (the same "save the selection `Range` on blur, restore it immediately before the command" technique `RichTextEditor`'s own link popover uses, generalized from one surface to three). Alongside bold/italic/underline/lists/link sits a paragraph-style `Select` — `Heading 1`–`6`, `Body`, `Caption`, `Quote`, `Note` — applied via `execCommand('formatBlock', ...)`; `Caption`/`Note` have no native block tag, so both format as `<p>` and are told apart by a CSS class applied afterward. The style picker sits outside the roving `role="toolbar"` group as its own tab stop, the same precedent `RichTextEditor`'s AI trigger already set for "a control that isn't a formatting command."
+**One shared formatting toolbar, not one per region.** Every `RichTextEditor` `Document` mounts (header, body, footer) renders `showToolbar={false}` — `Document` itself renders a single toolbar above the page while `editable`, sharing one row with the view/zoom controls rather than stacking a second full-width bar above them, acting on whichever of the three surfaces was last focused (the same "save the selection `Range` on blur, restore it immediately before the command" technique `RichTextEditor`'s own link popover uses, generalized from one surface to three). Alongside bold/italic/underline/lists/link sits a paragraph-style `Select` — `Heading 1`–`6`, `Body`, `Caption`, `Quote`, `Note` — applied via `execCommand('formatBlock', ...)`; `Caption`/`Note` have no native block tag, so both format as `<p>` and are told apart by a CSS class applied afterward. The style picker sits outside the roving `role="toolbar"` group as its own tab stop, the same precedent `RichTextEditor`'s AI trigger already set for "a control that isn't a formatting command."
 
 **Auto-pagination flows overflow forward, on any change to `pages`.** An
 effect measures each mounted page's top-level blocks against the page's own
@@ -641,6 +670,14 @@ tells it not to wrap the result; a consumer generating `pages` should either
 say so in the prompt or unwrap defensively before writing (strip a sole
 wrapper only when it's the page's only element with no text beside it, never
 an empty one, so a `<ul>` or `<table>` is never dissolved).
+
+The same applies to the other end of that pipeline: **a page is a fragment, not
+a document.** A model asked for a page body will readily return
+`<html><head><style>…</style></head><body>…` — measured at two replies in three
+by one consumer — and that whole thing lands in `pages[0]` as one top-level
+node, which is the wrapper case again with a `<style>` block along for the
+ride. State "fragment only, no `<html>`/`<head>`/`<body>`" as explicitly as the
+sibling rule, and strip those tags on the way in rather than trusting it.
 
 When the break happens under the caret — the person was typing — focus and the
 caret follow the moved content to its new page, deferred a macrotask via
